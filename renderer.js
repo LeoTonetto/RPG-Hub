@@ -101,7 +101,11 @@ function stopYouTubeVideo() {
 
 // ── HUD Toggle ────────────────────────────────────────────────────────────────
 const hudToggle = document.getElementById('hudToggle')
+const chatToggle = document.getElementById('chatToggle')
 let hudVisible = true
+let chatVisible = false
+
+hudToggle.addEventListener('click', toggleHUD)
 
 function toggleHUD() {
     hudVisible = !hudVisible
@@ -109,29 +113,61 @@ function toggleHUD() {
     hudToggle.title = hudVisible ? 'Ocultar HUD (H)' : 'Mostrar HUD (H)'
 }
 
-hudToggle.addEventListener('click', toggleHUD)
+chatToggle.addEventListener('click', toggleChat)
 document.addEventListener('keydown', e => {
     if ((e.key === 'h' || e.key === 'H') && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
         toggleHUD()
     }
+    if ((e.key === 'c' || e.key === 'C') && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        toggleChat()
+    }
 })
+
+function toggleChat() {
+    chatVisible = !chatVisible
+    const panel = document.getElementById('chatPanel')
+    panel.classList.toggle('chat-visible', chatVisible)
+    chatToggle.classList.toggle('chat-active', chatVisible)
+    chatToggle.title = chatVisible ? 'Ocultar Chat (C)' : 'Mostrar Chat (C)'
+    if (chatVisible) document.getElementById('chatInput').focus()
+}
 
 // ── Background Crossfade ──────────────────────────────────────────────────────
 let activeBgLayer = 'A'
 
-function applyScene({ url, mimeType }) {
+// Faz fetch com o header que bypassa o interstitial do ngrok.
+// Retorna um blob: URL para uso direto em <img>, <video> ou background-image.
+async function fetchAsBlobUrl(url) {
+    const res = await fetch(url, {
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob = await res.blob()
+    return URL.createObjectURL(blob)
+}
+
+async function applyScene({ url, mimeType }) {
     const layerA = document.getElementById('bgA')
     const layerB = document.getElementById('bgB')
     const next = activeBgLayer === 'A' ? layerB : layerA
     const prev = activeBgLayer === 'A' ? layerA : layerB
 
-    // Prepara o conteúdo na camada inativa
     next.innerHTML = ''
     next.style.backgroundImage = ''
 
+    // Busca o arquivo via fetch com header de bypass do ngrok.
+    // Isso garante que usuários externos recebam o arquivo real
+    // em vez da página de interstitial do ngrok free tier.
+    let displayUrl = url
+    try {
+        displayUrl = await fetchAsBlobUrl(url)
+    } catch (e) {
+        console.warn('[Cena] Fetch com bypass falhou, usando URL direta:', e.message)
+    }
+
     if (mimeType && mimeType.startsWith('video/')) {
         const vid = document.createElement('video')
-        vid.src = url
+        vid.src = displayUrl
         vid.autoplay = true
         vid.loop = true
         vid.muted = true
@@ -139,18 +175,20 @@ function applyScene({ url, mimeType }) {
         vid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;'
         next.appendChild(vid)
     } else {
-        next.style.backgroundImage = `url('${CSS.escape ? url : url}')`
+        next.style.backgroundImage = `url('${displayUrl}')`
         next.style.backgroundSize = 'cover'
         next.style.backgroundPosition = 'center'
     }
 
-    // Crossfade
     next.style.opacity = '1'
     prev.style.opacity = '0'
     activeBgLayer = activeBgLayer === 'A' ? 'B' : 'A'
 
-    // Limpa a camada anterior após a transição
     setTimeout(() => {
+        // Revoga blob URLs anteriores para liberar memória
+        const oldSrc = prev.style.backgroundImage.match(/url\(['"]?(blob:[^'")\s]+)/)
+        if (oldSrc) URL.revokeObjectURL(oldSrc[1])
+        prev.querySelectorAll('video').forEach(v => { URL.revokeObjectURL(v.src); v.src = '' })
         prev.innerHTML = ''
         prev.style.backgroundImage = ''
     }, 950)
@@ -367,9 +405,24 @@ ipcRenderer.on('room-created', (event, data) => {
     roomBadgeCode.textContent = data.roomCode
     fetch(`${data.publicUrl}/register-room`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+        },
         body: JSON.stringify({ code: data.roomCode, url: data.publicUrl })
     }).catch(e => console.error('[Room] Erro ao registrar sala:', e))
+
+    // Salva código→URL no Supabase para resolução remota por jogadores externos.
+    // Requer a tabela room_codes — ver SQL de criação no README.
+    if (supabase) {
+        supabase.from('room_codes')
+            .upsert({ code: data.roomCode, url: data.publicUrl, created_at: new Date().toISOString() })
+            .then(({ error }) => {
+                if (error) console.warn('[Room] Supabase room_codes falhou:', error.message, '— crie a tabela no Supabase!')
+                else console.log('[Room] Código registrado no Supabase:', data.roomCode)
+            })
+    }
+
     connectToRoom(data.publicUrl, data.roomCode)
 })
 
@@ -381,24 +434,67 @@ ipcRenderer.on('room-error', (event, data) => {
 joinRoomButton.addEventListener('click', async () => {
     const input = roomCodeInput.value.trim()
     if (!input) { roomCodeInput.focus(); return }
-    let roomUrl = input, roomCode = input
+    let roomUrl = null, roomCode = input
+
     if (/^https?:\/\//i.test(input)) {
-        roomUrl = input; roomCode = input
+        // Input já é uma URL completa
+        roomUrl = input
+        roomCode = input
     } else {
-        roomUrl = rooms[input.toLowerCase()]
+        const code = input.toUpperCase()
+        roomCode = code
+
+        // 1) Memória local (mesma sessão/janela)
+        roomUrl = rooms[input.toLowerCase()] || null
+
+        // 2) Servidor local em localhost (mesma máquina, outra instância)
         if (!roomUrl) {
             try {
-                const r1 = await fetch(`http://localhost:3001/resolve-code/${input}`)
-                roomUrl = (await r1.json()).url
-                if (!roomUrl && serverUrl) {
-                    const r2 = await fetch(`${serverUrl}/resolve-code/${input}`)
-                    roomUrl = (await r2.json()).url
-                }
-            } catch (e) { console.error('[Room] Erro ao resolver código:', e) }
-            if (!roomUrl) { setRoomInfo('Código não encontrado.\nPara amigos remotos, use a URL completa do anfitrião.', 'error'); return }
+                const r = await fetch(`http://localhost:3001/resolve-code/${code}`, {
+                    headers: { 'ngrok-skip-browser-warning': 'true' }
+                })
+                const json = await r.json()
+                if (json.url) roomUrl = json.url
+            } catch (e) { /* usuário externo, localhost inacessível — esperado */ }
         }
-        roomCode = input.toUpperCase()
+
+        // 3) Supabase — única forma de funcionar para usuários externos
+        //    Requer tabela room_codes no Supabase (ver SQL abaixo)
+        if (!roomUrl && supabase) {
+            setRoomInfo('Procurando sala...', '')
+            try {
+                const { data: row, error } = await supabase
+                    .from('room_codes')
+                    .select('url')
+                    .eq('code', code)
+                    .maybeSingle()
+
+                if (error) {
+                    // Tabela provavelmente não existe
+                    console.error('[Room] Supabase room_codes erro:', error.message)
+                    setRoomInfo(
+                        'Tabela room_codes não encontrada no Supabase.\n' +
+                        'Execute no SQL Editor do Supabase:\n\n' +
+                        'create table room_codes (\n  code text primary key,\n  url text not null,\n  created_at timestamptz default now()\n);\n' +
+                        'alter table room_codes enable row level security;\n' +
+                        'create policy "public rw" on room_codes for all using (true) with check (true);',
+                        'error'
+                    )
+                    return
+                }
+
+                if (row?.url) roomUrl = row.url
+            } catch (e) {
+                console.warn('[Room] Supabase lookup exceção:', e)
+            }
+        }
+
+        if (!roomUrl) {
+            setRoomInfo('Código não encontrado.\nVerifique o código ou use a URL completa do ngrok.', 'error')
+            return
+        }
     }
+
     connectToRoom(roomUrl, roomCode)
 })
 
@@ -419,8 +515,14 @@ function connectToRoom(url, roomCode) {
         hudToggle.style.display = 'flex'
         hudToggle.style.alignItems = 'center'
         hudToggle.style.justifyContent = 'center'
+        chatToggle.style.display = 'flex'
+        chatToggle.style.alignItems = 'center'
+        chatToggle.style.justifyContent = 'center'
+        const chatPanel = document.getElementById('chatPanel')
+        chatPanel.style.display = 'flex'
         roomBadgeCode.textContent = currentRoomCode
         initMusicPanel()
+        initChat()
         await loadAndShareCharacters()
     })
 
@@ -462,6 +564,11 @@ function connectToRoom(url, roomCode) {
     socket.on('room_characters', (allChars) => {
         console.log('[Characters] room_characters:', allChars.length, 'entradas')
         renderCharacterBar(allChars)
+    })
+
+    // ── Chat ──────────────────────────────────────────────────────────────────
+    socket.on('chat_message', ({ playerName: from, message }) => {
+        addChatMessage(from, message, from === playerName)
     })
 
     socket.on('players_update', (players) => {
@@ -808,7 +915,8 @@ function initMusicPanel() {
                 method: 'POST',
                 headers: {
                     'Content-Type': file.type || 'application/octet-stream',
-                    'X-File-Ext': ext
+                    'X-File-Ext': ext,
+                    'ngrok-skip-browser-warning': 'true'
                 },
                 body: arrayBuffer
             })
@@ -870,6 +978,75 @@ function hideMusicActive() {
     volumeRow.style.display = 'none'
     musicNote.classList.remove('active')
     if (stopBtn) stopBtn.style.display = 'none'
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+const MSG_LIFETIME = 18000   // ms antes de começar a sumir
+const MSG_FADE = 1200    // ms da transição de fade
+const MAX_VISIBLE = 12      // máximo de msgs visíveis ao mesmo tempo
+
+function initChat() {
+    if (document.getElementById('chatInput').dataset.inited) return
+    document.getElementById('chatInput').dataset.inited = '1'
+
+    const input = document.getElementById('chatInput')
+    const sendBtn = document.getElementById('chatSendBtn')
+
+    function sendChat() {
+        const msg = input.value.trim()
+        if (!msg || !socket) return
+        socket.emit('chat_message', { playerName, message: msg })
+        input.value = ''
+    }
+
+    sendBtn.addEventListener('click', sendChat)
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); sendChat() }
+        e.stopPropagation()   // impede que 'h' ou 'c' ativem atalhos de HUD/chat
+    })
+}
+
+function addChatMessage(from, message, isOwn = false) {
+    const container = document.getElementById('chatMessages')
+    if (!container) return
+
+    const el = document.createElement('div')
+    el.className = 'chat-msg' + (isOwn ? ' chat-own' : '')
+
+    const name = document.createElement('span')
+    name.className = 'chat-name'
+    name.textContent = from + ':'
+    el.appendChild(name)
+    el.appendChild(document.createTextNode(' ' + message))
+
+    container.appendChild(el)
+
+    // Mantém no máximo MAX_VISIBLE mensagens
+    while (container.children.length > MAX_VISIBLE) {
+        container.firstChild.remove()
+    }
+
+    // Auto-scroll ao fundo
+    container.scrollTop = container.scrollHeight
+
+    // Se o chat estiver fechado, mostra brevemente a mensagem mesmo assim
+    const panel = document.getElementById('chatPanel')
+    if (!chatVisible) {
+        panel.style.display = 'flex'
+        panel.style.pointerEvents = 'none'
+    }
+
+    // Inicia timer de fade-out
+    const fadeTimer = setTimeout(() => {
+        el.classList.add('chat-fading')
+        setTimeout(() => { el.remove() }, MSG_FADE)
+    }, MSG_LIFETIME)
+
+    // Cancela o fade se o chat estiver aberto (não some enquanto visível)
+    const observer = new MutationObserver(() => {
+        if (chatVisible) { clearTimeout(fadeTimer); el.classList.remove('chat-fading') }
+    })
+    observer.observe(panel, { attributes: true, attributeFilter: ['class'] })
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

@@ -90,7 +90,8 @@
         }
 
         body.hud-hidden #musicPanel,
-        body.hud-hidden #roomBadge {
+        body.hud-hidden #roomBadge,
+        body.hud-hidden #chatPanel {
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s;
@@ -1191,6 +1192,156 @@
             border-color: var(--gold-dim);
             color: var(--gold);
         }
+
+        /* ══ CHAT PANEL ══ */
+        #chatPanel {
+            position: fixed;
+            left: 16px;
+            bottom: 24px;
+            width: 260px;
+            z-index: 1001;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            pointer-events: none;
+        }
+
+        #chatPanel.chat-visible {
+            pointer-events: all;
+        }
+
+        #chatMessages {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            max-height: 320px;
+            overflow: hidden;
+            justify-content: flex-end;
+        }
+
+        .chat-msg {
+            font-family: 'Crimson Text', Georgia, serif;
+            font-size: 14px;
+            line-height: 1.35;
+            color: rgba(244, 234, 213, 0.88);
+            background: rgba(8, 6, 4, 0.55);
+            padding: 4px 9px;
+            border-radius: 2px;
+            word-break: break-word;
+            animation: chatFadeIn 0.3s ease both;
+            backdrop-filter: blur(4px);
+            border-left: 1.5px solid transparent;
+        }
+
+        .chat-msg.chat-own {
+            border-left-color: rgba(201, 168, 76, 0.5);
+        }
+
+        .chat-msg .chat-name {
+            font-family: 'Cinzel', serif;
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            color: var(--gold);
+            margin-right: 5px;
+        }
+
+        .chat-msg.chat-own .chat-name {
+            color: var(--gold-light);
+        }
+
+        @keyframes chatFadeIn {
+            from {
+                opacity: 0;
+                transform: translateX(-8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .chat-msg.chat-fading {
+            transition: opacity 1.2s ease;
+            opacity: 0;
+        }
+
+        #chatInputRow {
+            display: flex;
+            gap: 5px;
+            pointer-events: all;
+        }
+
+        #chatInput {
+            flex: 1;
+            background: rgba(8, 6, 4, 0.72);
+            border: 1px solid rgba(201, 168, 76, 0.2);
+            border-radius: 2px;
+            color: var(--parchment);
+            font-family: 'Crimson Text', serif;
+            font-size: 14px;
+            padding: 7px 10px;
+            outline: none;
+            transition: border-color 0.2s;
+            backdrop-filter: blur(8px);
+        }
+
+        #chatInput::placeholder {
+            color: rgba(244, 234, 213, 0.2);
+        }
+
+        #chatInput:focus {
+            border-color: rgba(201, 168, 76, 0.45);
+        }
+
+        #chatSendBtn {
+            background: rgba(201, 168, 76, 0.1);
+            border: 1px solid rgba(201, 168, 76, 0.2);
+            border-radius: 2px;
+            color: rgba(201, 168, 76, 0.6);
+            font-size: 14px;
+            width: 34px;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(8px);
+        }
+
+        #chatSendBtn:hover {
+            background: rgba(201, 168, 76, 0.18);
+            color: var(--gold);
+            border-color: rgba(201, 168, 76, 0.45);
+        }
+
+        /* Chat toggle button (top-left, next to HUD toggle) */
+        #chatToggle {
+            position: fixed;
+            top: 16px;
+            left: 56px;
+            z-index: 1010;
+            background: rgba(10, 8, 6, 0.65);
+            border: 1px solid rgba(201, 168, 76, 0.2);
+            border-radius: 3px;
+            color: rgba(201, 168, 76, 0.45);
+            font-size: 14px;
+            width: 34px;
+            height: 34px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+            transition: color 0.2s, border-color 0.2s;
+        }
+
+        #chatToggle:hover {
+            color: var(--gold);
+            border-color: rgba(201, 168, 76, 0.5);
+        }
+
+        #chatToggle.chat-active {
+            color: var(--gold);
+            border-color: rgba(201, 168, 76, 0.5);
+        }
     </style>
 </head>
 
@@ -1202,6 +1353,17 @@
 
     <!-- ══ HUD TOGGLE ══ -->
     <button id="hudToggle" title="Mostrar/Ocultar HUD (H)">👁</button>
+    <button id="chatToggle" title="Mostrar/Ocultar Chat (C)">💬</button>
+
+    <!-- ══ CHAT PANEL ══ -->
+    <div id="chatPanel">
+        <div id="chatMessages"></div>
+        <div id="chatInputRow">
+            <input id="chatInput" maxlength="300" placeholder="Diga algo na taverna…" autocomplete="off"
+                spellcheck="false" />
+            <button id="chatSendBtn">↵</button>
+        </div>
+    </div>
 
     <!-- ══ TELA DE AUTH ══ -->
     <div id="authScreen" class="screen">

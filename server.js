@@ -163,6 +163,12 @@ io.on('connection', (socket) => {
         broadcastRoomChars(roomCode)
     })
 
+    socket.on('chat_message', ({ playerName, message }) => {
+        if (!message || typeof message !== 'string' || !message.trim()) return
+        const safe = message.trim().slice(0, 300)
+        io.to(roomCode).emit('chat_message', { playerName: playerName || 'Anônimo', message: safe })
+    })
+
     socket.on('mouse_move', (data) => {
         rooms[roomCode][socket.id] = data
         io.to(roomCode).emit('players_update', rooms[roomCode])

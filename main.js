@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, Menu } = require('electron')
 const { startServer } = require('./server')
 const { spawn } = require('child_process')
 const http = require('http')
@@ -99,6 +99,7 @@ app.on('second-instance', () => {
 })
 
 app.whenReady().then(async () => {
+    Menu.setApplicationMenu(null)
     await startServer()
     createWindow()
     mainWindow = windows[0]
