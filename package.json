@@ -1,0 +1,28 @@
+{
+  "name": "rpg-lobby-electron",
+  "version": "1.0.0",
+  "description": "Lobby interativo para sessões de RPG",
+  "author": "Seu Nome",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.100.1",
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "electron": "^41.1.0",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.rpglobby.app",
+    "productName": "RPG Lobby",
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

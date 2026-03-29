@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>RPG Lobby</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --gold: #c9a84c;
+            --gold-light: #e8c96a;
+            --gold-dim: #7a6230;
+            --blood: #8b1a1a;
+            --parchment: #f4ead5;
+            --ember: #d4622a;
+            --hp: #c0392b;
+            --san: #2980b9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            overflow: hidden;
+            background: url('assets/scene1.jpg') center/cover no-repeat;
+            width: 100vw;
+            height: 100vh;
+            font-family: 'Crimson Text', Georgia, serif;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 60%, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.82) 100%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ══ BASE CARD ══ */
+        .screen {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .connect-card {
+            background: linear-gradient(160deg, #1a1510 0%, #0f0c09 60%, #160e08 100%);
+            border: 1px solid var(--gold-dim);
+            border-radius: 4px;
+            padding: 48px 52px 44px;
+            width: 420px;
+            text-align: center;
+            position: relative;
+            box-shadow:
+                0 0 0 1px rgba(201, 168, 76, 0.12),
+                0 0 60px rgba(0, 0, 0, 0.9),
+                inset 0 1px 0 rgba(201, 168, 76, 0.15);
+            animation: cardIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .connect-card.wide {
+            width: 480px;
+        }
+
+        @keyframes cardIn {
+            from {
+                opacity: 0;
+                transform: translateY(24px) scale(0.97);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Cantos decorativos */
+        .connect-card::before,
+        .connect-card::after,
+        .card-corners-br::before,
+        .card-corners-br::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-color: var(--gold);
+            border-style: solid;
+            opacity: 0.6;
+        }
+
+        .connect-card::before {
+            top: 10px;
+            left: 10px;
+            border-width: 1px 0 0 1px;
+        }
+
+        .connect-card::after {
+            bottom: 10px;
+            right: 10px;
+            border-width: 0 1px 1px 0;
+        }
+
+        .card-corners-br::before {
+            top: 10px;
+            right: 10px;
+            border-width: 1px 1px 0 0;
+        }
+
+        .card-corners-br::after {
+            bottom: 10px;
+            left: 10px;
+            border-width: 0 0 1px 1px;
+        }
+
+        .card-icon {
+            font-size: 36px;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 0 12px rgba(201, 168, 76, 0.5));
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-6px);
+            }
+        }
+
+        .card-title {
+            font-family: 'Cinzel', serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--gold);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            text-shadow: 0 0 30px rgba(201, 168, 76, 0.4);
+        }
+
+        .card-subtitle {
+            font-style: italic;
+            color: rgba(244, 234, 213, 0.4);
+            font-size: 15px;
+            margin-bottom: 32px;
+            letter-spacing: 0.04em;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid var(--gold-dim);
+            opacity: 0.4;
+            margin: 22px 0;
+            position: relative;
+        }
+
+        .divider::after {
+            content: '⟡';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #0f0c09;
+            color: var(--gold-dim);
+            padding: 0 10px;
+            font-size: 12px;
+        }
+
+        /* ── Tabs ── */
+        .tab-row {
+            display: flex;
+            margin-bottom: 26px;
+            border-bottom: 1px solid rgba(201, 168, 76, 0.2);
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            padding: 10px;
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgba(201, 168, 76, 0.35);
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+
+        .tab-btn.active {
+            color: var(--gold);
+            border-bottom-color: var(--gold);
+        }
+
+        /* ── Inputs ── */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            text-align: left;
+            flex: 1;
+        }
+
+        .input-label {
+            font-family: 'Cinzel', serif;
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--gold-dim);
+        }
+
+        .room-input {
+            width: 100%;
+            padding: 13px 16px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(201, 168, 76, 0.25);
+            border-radius: 3px;
+            color: var(--parchment);
+            font-family: 'Crimson Text', serif;
+            font-size: 17px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .room-input::placeholder {
+            color: rgba(244, 234, 213, 0.2);
+        }
+
+        .room-input:focus {
+            border-color: var(--gold-dim);
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .room-input.centered {
+            text-align: center;
+            letter-spacing: 0.12em;
+        }
+
+        .room-input.small {
+            padding: 10px 12px;
+            font-size: 15px;
+        }
+
+        /* Photo upload */
+        .photo-upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 11px 16px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px dashed rgba(201, 168, 76, 0.3);
+            border-radius: 3px;
+            color: rgba(244, 234, 213, 0.4);
+            font-family: 'Cinzel', serif;
+            font-size: 10px;
+            letter-spacing: 0.14em;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            gap: 8px;
+        }
+
+        .photo-upload-label:hover {
+            border-color: var(--gold-dim);
+            color: var(--gold-dim);
+        }
+
+        .photo-upload-label.has-file {
+            border-color: var(--gold-dim);
+            color: var(--gold);
+        }
+
+        /* ── Botões ── */
+        .btn-primary {
+            width: 100%;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #2a1f0f 0%, #1a1208 100%);
+            border: 1px solid var(--gold-dim);
+            border-radius: 3px;
+            color: var(--gold);
+            font-family: 'Cinzel', serif;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            overflow: hidden;
+        }
+
+        .btn-primary:hover {
+            border-color: var(--gold);
+            color: var(--gold-light);
+            box-shadow: 0 0 20px rgba(201, 168, 76, 0.15);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.99);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            width: 100%;
+            padding: 13px 20px;
+            background: transparent;
+            border: 1px solid rgba(201, 168, 76, 0.3);
+            border-radius: 3px;
+            color: rgba(244, 234, 213, 0.65);
+            font-family: 'Cinzel', serif;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--gold-dim);
+            color: var(--gold);
+            background: rgba(201, 168, 76, 0.05);
+        }
+
+        .btn-ghost {
+            background: none;
+            border: none;
+            color: rgba(201, 168, 76, 0.4);
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            letter-spacing: 0.12em;
+            cursor: pointer;
+            padding: 8px;
+            transition: color 0.2s;
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+
+        .btn-ghost:hover {
+            color: var(--gold);
+        }
+
+        /* ── Info / erros ── */
+        .info-box {
+            margin-top: 16px;
+            padding: 11px 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 2px solid var(--gold-dim);
+            border-radius: 0 3px 3px 0;
+            color: rgba(244, 234, 213, 0.65);
+            font-size: 13px;
+            line-height: 1.6;
+            text-align: left;
+            white-space: pre-line;
+            display: none;
+        }
+
+        .info-box.visible {
+            display: block;
+        }
+
+        .info-box.error {
+            border-color: var(--blood);
+            color: rgba(255, 150, 150, 0.8);
+        }
+
+        .info-box.success {
+            border-color: #4a7c4e;
+            color: rgba(150, 255, 160, 0.8);
+        }
+
+        /* ══ LOBBY ══ */
+        #roomBadge {
+            position: fixed;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 8, 6, 0.75);
+            color: rgba(201, 168, 76, 0.6);
+            padding: 5px 14px;
+            border-radius: 2px;
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            letter-spacing: 0.25em;
+            z-index: 999;
+            cursor: pointer;
+            border: 1px solid rgba(201, 168, 76, 0.2);
+            backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
+            display: none;
+        }
+
+        #roomBadge:hover {
+            color: var(--gold);
+            border-color: rgba(201, 168, 76, 0.5);
+        }
+
+        #diceResult {
+            position: fixed;
+            bottom: 110px;
+            right: 24px;
+            background: linear-gradient(135deg, rgba(20, 14, 8, 0.95), rgba(10, 8, 5, 0.98));
+            border: 1px solid var(--gold-dim);
+            color: var(--parchment);
+            padding: 10px 18px;
+            border-radius: 3px;
+            font-size: 16px;
+            z-index: 1002;
+            max-width: 220px;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+        }
+
+        #diceResult.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #diceResult.crit {
+            border-color: var(--ember);
+            animation: critGlow 1.2s ease forwards;
+        }
+
+        #diceResult.fail {
+            border-color: var(--blood);
+        }
+
+        @keyframes critGlow {
+            0% {
+                box-shadow: 0 0 0 rgba(212, 98, 42, 0);
+            }
+
+            40% {
+                box-shadow: 0 0 40px rgba(212, 98, 42, 0.6);
+            }
+
+            100% {
+                box-shadow: 0 0 0 rgba(212, 98, 42, 0);
+            }
+        }
+
+        .result-label {
+            font-family: 'Cinzel', serif;
+            font-size: 9px;
+            letter-spacing: 0.2em;
+            color: var(--gold-dim);
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .result-value {
+            font-size: 26px;
+            font-weight: 600;
+            color: var(--gold);
+            line-height: 1;
+            display: block;
+            font-family: 'Cinzel', serif;
+        }
+
+        .result-crit {
+            display: block;
+            color: var(--ember);
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            font-family: 'Cinzel', serif;
+        }
+
+        /* ── Dado FAB ── */
+        #diceFab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1003;
+            display: none;
+        }
+
+        #diceMainBtn {
+            width: 62px;
+            height: 62px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #2d1f0d 0%, #130d06 100%);
+            border: 1.5px solid var(--gold-dim);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        #diceMainBtn:hover {
+            border-color: var(--gold);
+            box-shadow: 0 6px 28px rgba(0, 0, 0, 0.7), 0 0 18px rgba(201, 168, 76, 0.2);
+            transform: scale(1.06);
+        }
+
+        #diceMainBtn:active {
+            transform: scale(0.97);
+        }
+
+        #diceMainBtn svg {
+            width: 30px;
+            height: 30px;
+            fill: var(--gold);
+            color: var(--gold);
+            filter: drop-shadow(0 0 6px rgba(201, 168, 76, 0.4));
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        #diceFab.open #diceMainBtn svg {
+            transform: rotate(180deg);
+        }
+
+        #diceFab.open #diceMainBtn {
+            border-color: var(--gold);
+            box-shadow: 0 0 24px rgba(201, 168, 76, 0.25);
+        }
+
+        #diceMenu {
+            position: absolute;
+            bottom: 72px;
+            right: 0;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .dice-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0;
+            transform: translateY(12px) scale(0.9);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+        }
+
+        #diceFab.open .dice-option {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: all;
+        }
+
+        #diceFab.open .dice-option:nth-child(1) {
+            transition-delay: 0.00s;
+        }
+
+        #diceFab.open .dice-option:nth-child(2) {
+            transition-delay: 0.04s;
+        }
+
+        #diceFab.open .dice-option:nth-child(3) {
+            transition-delay: 0.08s;
+        }
+
+        #diceFab.open .dice-option:nth-child(4) {
+            transition-delay: 0.12s;
+        }
+
+        #diceFab.open .dice-option:nth-child(5) {
+            transition-delay: 0.16s;
+        }
+
+        #diceFab.open .dice-option:nth-child(6) {
+            transition-delay: 0.20s;
+        }
+
+        #diceFab.open .dice-option:nth-child(7) {
+            transition-delay: 0.24s;
+        }
+
+        .dice-label {
+            font-family: 'Cinzel', serif;
+            font-size: 10px;
+            letter-spacing: 0.15em;
+            color: rgba(201, 168, 76, 0.7);
+            background: rgba(10, 8, 6, 0.85);
+            padding: 4px 10px;
+            border-radius: 2px;
+            border: 1px solid rgba(201, 168, 76, 0.15);
+            backdrop-filter: blur(4px);
+            white-space: nowrap;
+        }
+
+        .dice-btn {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #231908, #0d0905);
+            border: 1px solid rgba(201, 168, 76, 0.35);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gold);
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            font-weight: 700;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .dice-btn:hover {
+            border-color: var(--gold);
+            color: var(--gold-light);
+            box-shadow: 0 0 14px rgba(201, 168, 76, 0.2);
+            transform: scale(1.1);
+        }
+
+        .cursor {
+            position: fixed;
+            pointer-events: none;
+            z-index: 900;
+        }
+
+        .cursor-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--gold);
+            box-shadow: 0 0 6px rgba(201, 168, 76, 0.7);
+        }
+
+        /* ══ CHARACTER BAR ══ */
+        #characterBar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 10px;
+            z-index: 1001;
+            max-width: calc(100vw - 140px);
+            overflow-x: auto;
+            padding: 4px 2px 6px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--gold-dim) transparent;
+        }
+
+        #characterBar::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        #characterBar::-webkit-scrollbar-thumb {
+            background: var(--gold-dim);
+            border-radius: 2px;
+        }
+
+        .char-card {
+            display: flex;
+            align-items: stretch;
+            background: linear-gradient(160deg, rgba(26, 21, 16, 0.96) 0%, rgba(12, 9, 6, 0.98) 100%);
+            border: 1px solid var(--gold-dim);
+            border-radius: 4px;
+            width: 230px;
+            min-height: 96px;
+            flex-shrink: 0;
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(201, 168, 76, 0.08);
+            transition: box-shadow 0.25s, border-color 0.25s;
+            position: relative;
+        }
+
+        .char-card:hover {
+            border-color: rgba(201, 168, 76, 0.5);
+            box-shadow: 0 6px 32px rgba(0, 0, 0, 0.8), 0 0 16px rgba(201, 168, 76, 0.08);
+        }
+
+        .char-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.25), transparent);
+        }
+
+        .char-card-photo-wrap {
+            width: 72px;
+            flex-shrink: 0;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .char-card-photo {
+            width: 72px;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .char-card-photo-placeholder {
+            width: 72px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            opacity: 0.25;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .char-card-info {
+            flex: 1;
+            padding: 10px 12px 10px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 0;
+        }
+
+        .char-card-name {
+            font-family: 'Cinzel', serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gold);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+
+        .char-stat {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .char-stat-label {
+            font-family: 'Cinzel', serif;
+            font-size: 8px;
+            letter-spacing: 0.15em;
+            color: var(--gold-dim);
+            text-transform: uppercase;
+            width: 46px;
+            flex-shrink: 0;
+        }
+
+        .char-stat-bar {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .char-stat-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+
+        .hp-fill {
+            background: linear-gradient(90deg, #7b1818, #c0392b);
+        }
+
+        .san-fill {
+            background: linear-gradient(90deg, #1a4a6b, #2980b9);
+        }
+
+        .char-stat-val {
+            font-family: 'Cinzel', serif;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--parchment);
+            width: 26px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .char-bullets {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .char-bullets-label {
+            font-family: 'Cinzel', serif;
+            font-size: 8px;
+            letter-spacing: 0.15em;
+            color: var(--gold-dim);
+            text-transform: uppercase;
+            width: 46px;
+        }
+
+        .char-bullets-val {
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(244, 234, 213, 0.8);
+        }
+
+        /* ══ CHARACTER MODAL ══ */
+        #charModal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(3px);
+        }
+
+        #charModal .connect-card {
+            width: 480px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        #charModal .connect-card::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #charModal .connect-card::-webkit-scrollbar-thumb {
+            background: var(--gold-dim);
+        }
+
+        /* ══ MUSIC PANEL ══ */
+        #musicPanel {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            z-index: 500;
+            background: linear-gradient(160deg, #1a1510 0%, #0f0c09 100%);
+            border: 1px solid rgba(201, 168, 76, 0.3);
+            border-radius: 4px;
+            padding: 14px 18px;
+            min-width: 260px;
+            max-width: 320px;
+            box-shadow:
+                0 0 0 1px rgba(201, 168, 76, 0.08),
+                0 8px 32px rgba(0, 0, 0, 0.7);
+            display: none;
+        }
+
+        #musicPanel::before {
+            content: '';
+            position: absolute;
+            top: 7px;
+            left: 7px;
+            width: 12px;
+            height: 12px;
+            border-top: 1px solid var(--gold);
+            border-left: 1px solid var(--gold);
+            opacity: 0.5;
+        }
+
+        #musicPanel::after {
+            content: '';
+            position: absolute;
+            bottom: 7px;
+            right: 7px;
+            width: 12px;
+            height: 12px;
+            border-bottom: 1px solid var(--gold);
+            border-right: 1px solid var(--gold);
+            opacity: 0.5;
+        }
+
+        .music-panel-title {
+            font-family: 'Cinzel', serif;
+            font-size: 9px;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--gold-dim);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .music-panel-title .music-note {
+            font-size: 12px;
+            animation: musicPulse 2s ease-in-out infinite;
+            display: none;
+        }
+
+        @keyframes musicPulse {
+
+            0%,
+            100% {
+                opacity: 0.4;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.15);
+            }
+        }
+
+        .music-panel-title .music-note.active {
+            display: inline;
+        }
+
+        .music-url-row {
+            display: flex;
+            gap: 7px;
+            margin-bottom: 8px;
+        }
+
+        #musicUrlInput {
+            flex: 1;
+            padding: 8px 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(201, 168, 76, 0.2);
+            border-radius: 3px;
+            color: var(--parchment);
+            font-family: 'Crimson Text', serif;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+            min-width: 0;
+        }
+
+        #musicUrlInput:focus {
+            border-color: rgba(201, 168, 76, 0.5);
+        }
+
+        #musicUrlInput::placeholder {
+            color: rgba(244, 234, 213, 0.25);
+        }
+
+        #musicPlayBtn {
+            padding: 8px 12px;
+            background: rgba(201, 168, 76, 0.12);
+            border: 1px solid rgba(201, 168, 76, 0.35);
+            border-radius: 3px;
+            color: var(--gold);
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        #musicPlayBtn:hover {
+            background: rgba(201, 168, 76, 0.22);
+            border-color: var(--gold);
+        }
+
+        #musicStopBtn {
+            width: 100%;
+            padding: 7px;
+            background: rgba(139, 26, 26, 0.2);
+            border: 1px solid rgba(192, 57, 43, 0.35);
+            border-radius: 3px;
+            color: #c0392b;
+            font-family: 'Cinzel', serif;
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+            display: none;
+        }
+
+        #musicStopBtn:hover {
+            background: rgba(139, 26, 26, 0.38);
+            border-color: #c0392b;
+        }
+
+        .music-now-playing {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+            padding: 6px 8px;
+            background: rgba(201, 168, 76, 0.06);
+            border-radius: 3px;
+            border: 1px solid rgba(201, 168, 76, 0.12);
+        }
+
+        .music-now-playing.visible {
+            display: flex;
+        }
+
+        .music-now-playing-text {
+            font-family: 'Crimson Text', serif;
+            font-style: italic;
+            font-size: 12px;
+            color: rgba(244, 234, 213, 0.6);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .music-now-playing-by {
+            font-family: 'Cinzel', serif;
+            font-size: 8px;
+            letter-spacing: 0.12em;
+            color: rgba(201, 168, 76, 0.4);
+            flex-shrink: 0;
+        }
+
+        .music-volume-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .music-vol-icon {
+            font-size: 13px;
+            opacity: 0.5;
+            flex-shrink: 0;
+        }
+
+        #volumeSlider {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 3px;
+            background: rgba(201, 168, 76, 0.2);
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        #volumeSlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--gold);
+            cursor: pointer;
+            box-shadow: 0 0 6px rgba(201, 168, 76, 0.5);
+            transition: box-shadow 0.2s;
+        }
+
+        #volumeSlider::-webkit-slider-thumb:hover {
+            box-shadow: 0 0 10px rgba(201, 168, 76, 0.8);
+        }
+
+        .music-vol-val {
+            font-family: 'Cinzel', serif;
+            font-size: 9px;
+            color: var(--gold-dim);
+            width: 28px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        /* Oculta o iframe do YouTube completamente */
+        #ytPlayerContainer {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+            overflow: hidden;
+            bottom: 0;
+            left: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ══ TELA DE AUTH ══ -->
+    <div id="authScreen" class="screen">
+        <div class="connect-card card-corners-br">
+            <div class="card-icon">⚔</div>
+            <h1 class="card-title">RPG Lobby</h1>
+            <p class="card-subtitle">Identifique-se para entrar na taverna</p>
+
+            <div class="tab-row">
+                <button class="tab-btn active" id="tabLogin">Entrar</button>
+                <button class="tab-btn" id="tabRegister">Criar Conta</button>
+            </div>
+
+            <!-- Campos de login -->
+            <div id="loginFields" class="input-group">
+                <div class="input-wrap">
+                    <span class="input-label">Usuário</span>
+                    <input class="room-input" id="usernameLoginInput" type="text" placeholder="Seu nome de aventureiro"
+                        autocomplete="username" />
+                </div>
+                <div class="input-wrap">
+                    <span class="input-label">Senha</span>
+                    <input class="room-input" id="passwordInput" type="password" placeholder="••••••••"
+                        autocomplete="current-password" />
+                </div>
+            </div>
+
+            <!-- Campos de registro -->
+            <div id="registerFields" class="input-group" style="display:none;">
+                <div class="input-wrap">
+                    <span class="input-label">Usuário</span>
+                    <input class="room-input" id="usernameRegisterInput" type="text" placeholder="Escolha seu nome"
+                        autocomplete="username" />
+                </div>
+                <div class="input-wrap">
+                    <span class="input-label">Senha</span>
+                    <input class="room-input" id="passwordRegisterInput" type="password"
+                        placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+                </div>
+            </div>
+
+            <button class="btn-primary" id="authSubmitBtn">Entrar na Taverna</button>
+            <div id="authInfo" class="info-box"></div>
+        </div>
+    </div>
+
+    <!-- ══ TELA DE SALA ══ -->
+    <div id="connectScreen" class="screen" style="display:none;">
+        <div class="connect-card card-corners-br">
+            <div class="card-icon">⚄</div>
+            <h1 class="card-title">RPG Lobby</h1>
+            <p class="card-subtitle" id="connectSubtitle">Bem-vindo, Aventureiro</p>
+
+            <button class="btn-primary" id="createRoomButton">✦ Criar Sala</button>
+
+            <hr class="divider">
+
+            <div class="input-wrap" style="margin-bottom:10px;">
+                <span class="input-label">Código ou URL da sala</span>
+                <input class="room-input centered" id="roomCodeInput" placeholder="XXXXXX" spellcheck="false"
+                    autocomplete="off" />
+            </div>
+            <button class="btn-secondary" id="joinRoomButton">Entrar na Sala →</button>
+
+            <div id="roomInfo" class="info-box"></div>
+
+            <hr class="divider" style="margin-top:24px;">
+            <button class="btn-ghost" id="logoutBtn">↩ Sair da conta</button>
+        </div>
+    </div>
+
+    <!-- ══ MODAL DE PERSONAGEM ══ -->
+    <div id="charModal">
+        <div class="connect-card card-corners-br wide">
+            <div class="card-icon">🗡</div>
+            <h1 class="card-title">Novo Personagem</h1>
+            <p class="card-subtitle">Forje seu avatar neste mundo</p>
+
+            <div class="input-group">
+                <div class="input-wrap">
+                    <span class="input-label">Nome do Personagem</span>
+                    <input class="room-input" id="charName" type="text" placeholder="Como é chamado?" />
+                </div>
+
+                <div class="input-row">
+                    <div class="input-wrap">
+                        <span class="input-label">Vida (HP)</span>
+                        <input class="room-input small" id="charHp" type="number" placeholder="100" min="0" />
+                    </div>
+                    <div class="input-wrap">
+                        <span class="input-label">Sanidade (opcional)</span>
+                        <input class="room-input small" id="charSanity" type="number" placeholder="—" min="0" />
+                    </div>
+                    <div class="input-wrap">
+                        <span class="input-label">Balas (opcional)</span>
+                        <input class="room-input small" id="charBullets" type="number" placeholder="—" min="0" />
+                    </div>
+                </div>
+
+                <div class="input-wrap">
+                    <span class="input-label">Foto do Personagem</span>
+                    <label class="photo-upload-label" for="charPhoto" id="photoUploadLabel">
+                        <span>📷</span>
+                        <span id="photoLabelText">Clique para escolher imagem</span>
+                        <input id="charPhoto" type="file" accept="image/*" style="display:none;" />
+                    </label>
+                </div>
+            </div>
+
+            <button class="btn-primary" id="charSubmitBtn">⚔ Invocar Personagem</button>
+            <div id="charModalInfo" class="info-box"></div>
+        </div>
+    </div>
+
+    <!-- ── Badge, dado, resultado ── -->
+    <div id="roomBadge">
+        <span style="margin-right:6px;opacity:.7;font-size:9px;">⚿</span>
+        <span id="roomBadgeCode"></span>
+    </div>
+
+    <div id="diceResult">
+        <span class="result-label" id="diceResultLabel">Resultado</span>
+        <span class="result-value" id="diceResultValue">—</span>
+        <span class="result-crit" id="diceResultCrit"></span>
+    </div>
+
+    <div id="diceFab">
+        <div id="diceMenu"></div>
+        <button id="diceMainBtn" title="Rolar dado">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2 L22 7 L22 17 L12 22 L2 17 L2 7 Z" fill="none" stroke="currentColor" stroke-width="1.2" />
+                <path d="M12 2 L12 22" stroke="currentColor" stroke-width="0.8" opacity="0.5" />
+                <path d="M2 7 L22 7" stroke="currentColor" stroke-width="0.8" opacity="0.5" />
+                <path d="M2 17 L22 17" stroke="currentColor" stroke-width="0.8" opacity="0.5" />
+                <text x="12" y="14.5" text-anchor="middle" font-size="6" font-family="Cinzel,serif" fill="currentColor"
+                    font-weight="700">d20</text>
+            </svg>
+        </button>
+    </div>
+
+    <!-- ── Barra de personagens ── -->
+    <div id="characterBar"></div>
+
+    <!-- ══ PAINEL DE MÚSICA ══ -->
+    <div id="musicPanel">
+        <div class="music-panel-title">
+            <span class="music-note" id="musicNote">♪</span>
+            <span id="musicPanelLabel">Trilha Sonora</span>
+        </div>
+
+        <!-- Controles do Mestre (só visível para quem criou a sala) -->
+        <div id="musicMasterControls" style="display:none;">
+            <div class="music-url-row">
+                <input id="musicUrlInput" type="text" placeholder="Link do YouTube…" />
+                <button id="musicPlayBtn">▶ Tocar</button>
+            </div>
+            <button id="musicStopBtn">■ Parar Música</button>
+        </div>
+
+        <!-- Faixa em reprodução (visível para todos) -->
+        <div class="music-now-playing" id="musicNowPlaying">
+            <span class="music-now-playing-text" id="musicNowPlayingText">Em reprodução</span>
+            <span class="music-now-playing-by" id="musicNowPlayingBy"></span>
+        </div>
+
+        <!-- Volume (visível para todos quando há música) -->
+        <div class="music-volume-row" id="musicVolumeRow" style="display:none;">
+            <span class="music-vol-icon">🔊</span>
+            <input type="range" id="volumeSlider" min="0" max="100" value="60" />
+            <span class="music-vol-val" id="volumeVal">60%</span>
+        </div>
+    </div>
+
+    <!-- Container oculto do player YouTube -->
+    <div id="ytPlayerContainer">
+        <div id="ytPlayer"></div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+
+</html>
