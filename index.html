@@ -28,10 +28,72 @@
 
         body {
             overflow: hidden;
-            background: url('assets/scene1.jpg') center/cover no-repeat;
+            background: #07050300;
             width: 100vw;
             height: 100vh;
             font-family: 'Crimson Text', Georgia, serif;
+        }
+
+        /* ══ CAMADAS DE BACKGROUND ══ */
+        .bg-layer {
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: opacity 0.85s ease;
+        }
+
+        #bgA {
+            opacity: 1;
+            background-image: url('assets/scene1.jpg');
+            background-color: #0a0806;
+        }
+
+        #bgB {
+            opacity: 0;
+            background-color: #0a0806;
+        }
+
+        /* ══ HUD TOGGLE ══ */
+        #hudToggle {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1010;
+            background: rgba(10, 8, 6, 0.65);
+            border: 1px solid rgba(201, 168, 76, 0.2);
+            border-radius: 3px;
+            color: rgba(201, 168, 76, 0.45);
+            font-size: 15px;
+            width: 34px;
+            height: 34px;
+            cursor: pointer;
+            display: none;
+            backdrop-filter: blur(8px);
+            transition: color 0.2s, border-color 0.2s, opacity 0.3s;
+            line-height: 1;
+        }
+
+        #hudToggle:hover {
+            color: var(--gold);
+            border-color: rgba(201, 168, 76, 0.5);
+        }
+
+        body.hud-hidden #hudToggle {
+            opacity: 0.25;
+        }
+
+        body.hud-hidden #hudToggle:hover {
+            opacity: 1;
+        }
+
+        body.hud-hidden #musicPanel,
+        body.hud-hidden #roomBadge {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
         }
 
         body::before {
@@ -862,19 +924,20 @@
         /* ══ MUSIC PANEL ══ */
         #musicPanel {
             position: fixed;
-            bottom: 24px;
-            left: 24px;
+            top: 16px;
+            right: 16px;
             z-index: 500;
             background: linear-gradient(160deg, #1a1510 0%, #0f0c09 100%);
             border: 1px solid rgba(201, 168, 76, 0.3);
             border-radius: 4px;
-            padding: 14px 18px;
-            min-width: 260px;
-            max-width: 320px;
+            padding: 12px 16px;
+            min-width: 240px;
+            max-width: 300px;
             box-shadow:
                 0 0 0 1px rgba(201, 168, 76, 0.08),
                 0 8px 32px rgba(0, 0, 0, 0.7);
             display: none;
+            transition: opacity 0.3s;
         }
 
         #musicPanel::before {
@@ -1098,10 +1161,47 @@
             bottom: 0;
             left: 0;
         }
+
+        /* ── Divisor interno do painel ── */
+        .panel-divider {
+            border: none;
+            border-top: 1px solid rgba(201, 168, 76, 0.12);
+            margin: 10px 0 8px;
+        }
+
+        /* ── Botão de trocar cena ── */
+        #scenePickerBtn {
+            width: 100%;
+            padding: 7px;
+            background: rgba(201, 168, 76, 0.06);
+            border: 1px dashed rgba(201, 168, 76, 0.25);
+            border-radius: 3px;
+            color: rgba(201, 168, 76, 0.55);
+            font-family: 'Cinzel', serif;
+            font-size: 9px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        #scenePickerBtn:hover {
+            background: rgba(201, 168, 76, 0.1);
+            border-color: var(--gold-dim);
+            color: var(--gold);
+        }
     </style>
 </head>
 
 <body>
+
+    <!-- ══ CAMADAS DE FUNDO ══ -->
+    <div id="bgA" class="bg-layer"></div>
+    <div id="bgB" class="bg-layer"></div>
+
+    <!-- ══ HUD TOGGLE ══ -->
+    <button id="hudToggle" title="Mostrar/Ocultar HUD (H)">👁</button>
 
     <!-- ══ TELA DE AUTH ══ -->
     <div id="authScreen" class="screen">
@@ -1249,25 +1349,31 @@
     <div id="musicPanel">
         <div class="music-panel-title">
             <span class="music-note" id="musicNote">♪</span>
-            <span id="musicPanelLabel">Trilha Sonora</span>
+            <span>Trilha Sonora</span>
         </div>
 
-        <!-- Controles do Mestre (só visível para quem criou a sala) -->
+        <!-- Controles exclusivos do Mestre -->
         <div id="musicMasterControls" style="display:none;">
             <div class="music-url-row">
                 <input id="musicUrlInput" type="text" placeholder="Link do YouTube…" />
-                <button id="musicPlayBtn">▶ Tocar</button>
+                <button id="musicPlayBtn">▶</button>
             </div>
-            <button id="musicStopBtn">■ Parar Música</button>
+            <button id="musicStopBtn">■ Parar</button>
+
+            <hr class="panel-divider">
+
+            <button id="scenePickerBtn">🖼 Trocar Cena</button>
+            <input id="sceneFileInput" type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" style="display:none;" />
         </div>
 
-        <!-- Faixa em reprodução (visível para todos) -->
+        <!-- Faixa em reprodução (todos) -->
         <div class="music-now-playing" id="musicNowPlaying">
             <span class="music-now-playing-text" id="musicNowPlayingText">Em reprodução</span>
             <span class="music-now-playing-by" id="musicNowPlayingBy"></span>
         </div>
 
-        <!-- Volume (visível para todos quando há música) -->
+        <!-- Volume (todos, só quando há música) -->
         <div class="music-volume-row" id="musicVolumeRow" style="display:none;">
             <span class="music-vol-icon">🔊</span>
             <input type="range" id="volumeSlider" min="0" max="100" value="60" />

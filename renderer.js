@@ -99,6 +99,63 @@ function stopYouTubeVideo() {
     }
 }
 
+// ── HUD Toggle ────────────────────────────────────────────────────────────────
+const hudToggle = document.getElementById('hudToggle')
+let hudVisible = true
+
+function toggleHUD() {
+    hudVisible = !hudVisible
+    document.body.classList.toggle('hud-hidden', !hudVisible)
+    hudToggle.title = hudVisible ? 'Ocultar HUD (H)' : 'Mostrar HUD (H)'
+}
+
+hudToggle.addEventListener('click', toggleHUD)
+document.addEventListener('keydown', e => {
+    if ((e.key === 'h' || e.key === 'H') && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        toggleHUD()
+    }
+})
+
+// ── Background Crossfade ──────────────────────────────────────────────────────
+let activeBgLayer = 'A'
+
+function applyScene({ url, mimeType }) {
+    const layerA = document.getElementById('bgA')
+    const layerB = document.getElementById('bgB')
+    const next = activeBgLayer === 'A' ? layerB : layerA
+    const prev = activeBgLayer === 'A' ? layerA : layerB
+
+    // Prepara o conteúdo na camada inativa
+    next.innerHTML = ''
+    next.style.backgroundImage = ''
+
+    if (mimeType && mimeType.startsWith('video/')) {
+        const vid = document.createElement('video')
+        vid.src = url
+        vid.autoplay = true
+        vid.loop = true
+        vid.muted = true
+        vid.playsInline = true
+        vid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;'
+        next.appendChild(vid)
+    } else {
+        next.style.backgroundImage = `url('${CSS.escape ? url : url}')`
+        next.style.backgroundSize = 'cover'
+        next.style.backgroundPosition = 'center'
+    }
+
+    // Crossfade
+    next.style.opacity = '1'
+    prev.style.opacity = '0'
+    activeBgLayer = activeBgLayer === 'A' ? 'B' : 'A'
+
+    // Limpa a camada anterior após a transição
+    setTimeout(() => {
+        prev.innerHTML = ''
+        prev.style.backgroundImage = ''
+    }, 950)
+}
+
 const authScreen = document.getElementById('authScreen')
 const tabLogin = document.getElementById('tabLogin')
 const tabRegister = document.getElementById('tabRegister')
@@ -359,6 +416,9 @@ function connectToRoom(url, roomCode) {
         connectScreen.style.display = 'none'
         diceFab.style.display = 'block'
         roomBadge.style.display = 'block'
+        hudToggle.style.display = 'flex'
+        hudToggle.style.alignItems = 'center'
+        hudToggle.style.justifyContent = 'center'
         roomBadgeCode.textContent = currentRoomCode
         initMusicPanel()
         await loadAndShareCharacters()
@@ -390,6 +450,12 @@ function connectToRoom(url, roomCode) {
     socket.on('music_stop', () => {
         stopYouTubeVideo()
         hideMusicActive()
+    })
+
+    // ── Cena de fundo ─────────────────────────────────────────────────────────
+    socket.on('scene_change', (data) => {
+        console.log('[Cena] Nova cena recebida:', data.url)
+        applyScene(data)
     })
 
     // Recebe lista completa de personagens de todos os jogadores da sala
@@ -672,7 +738,6 @@ function initMusicPanel() {
     const playBtn = document.getElementById('musicPlayBtn')
     const stopBtn = document.getElementById('musicStopBtn')
     const urlInput = document.getElementById('musicUrlInput')
-    const volumeRow = document.getElementById('musicVolumeRow')
     const volSlider = document.getElementById('volumeSlider')
     const volVal = document.getElementById('volumeVal')
 
@@ -683,6 +748,10 @@ function initMusicPanel() {
     } else {
         masterControls.style.display = 'none'
     }
+
+    // Evita registrar listeners duplicados
+    if (panel.dataset.inited) return
+    panel.dataset.inited = '1'
 
     // Botão Tocar
     playBtn.addEventListener('click', () => {
@@ -709,15 +778,68 @@ function initMusicPanel() {
     volSlider.addEventListener('input', () => {
         const v = parseInt(volSlider.value)
         volVal.textContent = v + '%'
+        const icon = document.querySelector('.music-vol-icon')
+        if (icon) icon.textContent = v === 0 ? '🔇' : '🔊'
         if (ytPlayer && typeof ytPlayer.setVolume === 'function') {
             ytPlayer.setVolume(v)
         }
     })
 
-    // Volume zero = ícone mudo
-    volSlider.addEventListener('input', () => {
-        const icon = document.querySelector('.music-vol-icon')
-        if (icon) icon.textContent = parseInt(volSlider.value) === 0 ? '🔇' : '🔊'
+    // ── Upload de cena ────────────────────────────────────────────────────────
+    const scenePickerBtn = document.getElementById('scenePickerBtn')
+    const sceneFileInput = document.getElementById('sceneFileInput')
+
+    scenePickerBtn.addEventListener('click', () => sceneFileInput.click())
+
+    sceneFileInput.addEventListener('change', async () => {
+        const file = sceneFileInput.files[0]
+        if (!file) return
+
+        scenePickerBtn.textContent = '⏳ Enviando…'
+        scenePickerBtn.disabled = true
+
+        try {
+            const ext = file.name.split('.').pop().toLowerCase()
+            const uploadUrl = `${serverUrl}/upload-scene`
+
+            const arrayBuffer = await file.arrayBuffer()
+
+            const res = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': file.type || 'application/octet-stream',
+                    'X-File-Ext': ext
+                },
+                body: arrayBuffer
+            })
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+            const { scenePath } = await res.json()
+            // scenePath é relativo ao servidor ngrok
+            const fullUrl = `${serverUrl}${scenePath}`
+
+            socket.emit('scene_change', { url: fullUrl, mimeType: file.type })
+            console.log('[Cena] Upload concluído:', fullUrl)
+
+        } catch (e) {
+            console.error('[Cena] Erro no upload:', e)
+            scenePickerBtn.textContent = '✗ Erro no upload'
+            setTimeout(() => {
+                scenePickerBtn.textContent = '🖼 Trocar Cena'
+                scenePickerBtn.disabled = false
+            }, 2500)
+            return
+        }
+
+        scenePickerBtn.textContent = '✓ Cena enviada'
+        setTimeout(() => {
+            scenePickerBtn.textContent = '🖼 Trocar Cena'
+            scenePickerBtn.disabled = false
+        }, 2000)
+
+        // Limpa o input para permitir selecionar o mesmo arquivo novamente
+        sceneFileInput.value = ''
     })
 }
 

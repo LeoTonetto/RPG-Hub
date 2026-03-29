@@ -1,17 +1,24 @@
 const express = require('express')
 const { createServer } = require('http')
 const { Server } = require('socket.io')
+const fs = require('fs')
+const path = require('path')
 
 const app = express()
 const httpServer = createServer(app)
 const io = new Server(httpServer, { cors: { origin: '*' } })
 
-const rooms = {}   // { roomCode: { socketId: { x, y } } }
-const roomCodes = {}   // { CODE: url }
+// Garante que o diretório de cenas existe
+const SCENES_DIR = path.join(__dirname, 'scenes')
+if (!fs.existsSync(SCENES_DIR)) fs.mkdirSync(SCENES_DIR)
+
+const rooms = {}      // { roomCode: { socketId: { x, y } } }
+const roomCodes = {}  // { CODE: url }
 const urlCodes = {}   // { normalizedUrl: CODE }
-const roomChars = {}   // { roomCode: { socketId: { playerName, characters[] } } }
-const roomMusic = {}   // { roomCode: { videoId, startedBy } | null }
-const roomMasters = {} // { roomCode: socketId }
+const roomChars = {}  // { roomCode: { socketId: { playerName, characters[] } } }
+const roomMusic = {}  // { roomCode: { videoId, startedBy, startTime } | null }
+const roomMasters = {}// { roomCode: socketId }
+const roomScene = {}  // { roomCode: { url, mimeType } | null }
 
 function normalizeUrl(url) { return url.toLowerCase().replace(/\/$/, '') }
 
@@ -24,6 +31,29 @@ function broadcastRoomChars(roomCode) {
     }
     io.to(roomCode).emit('room_characters', all)
 }
+
+// Upload de cena (arquivo bruto no body)
+app.post('/upload-scene', (req, res) => {
+    const ext = (req.headers['x-file-ext'] || 'jpg').replace(/[^a-z0-9]/gi, '').toLowerCase()
+    const filename = `scene_${Date.now()}.${ext}`
+    const filepath = path.join(SCENES_DIR, filename)
+    const chunks = []
+    req.on('data', chunk => chunks.push(chunk))
+    req.on('end', () => {
+        try {
+            fs.writeFileSync(filepath, Buffer.concat(chunks))
+            res.json({ ok: true, scenePath: `/scenes/${filename}` })
+            console.log('[Cena] Arquivo salvo:', filename)
+        } catch (e) {
+            console.error('[Cena] Erro ao salvar:', e)
+            res.status(500).json({ error: 'Falha ao salvar arquivo' })
+        }
+    })
+    req.on('error', () => res.status(500).json({ error: 'Erro no upload' }))
+})
+
+// Serve arquivos de cena estáticos
+app.use('/scenes', express.static(SCENES_DIR))
 
 app.get('/debug', (req, res) => {
     res.json({ roomCodes, urlCodes, rooms: Object.keys(rooms) })
@@ -83,6 +113,11 @@ io.on('connection', (socket) => {
         socket.emit('music_play', { ...roomMusic[roomCode], seekTime: elapsed })
     }
 
+    // Envia cena atual para quem acabou de entrar
+    if (roomScene[roomCode]) {
+        socket.emit('scene_change', roomScene[roomCode])
+    }
+
     // Mestre inicia uma música — transmite para toda a sala
     socket.on('play_music', ({ videoId, startedBy }) => {
         if (roomMasters[roomCode] !== socket.id) {
@@ -107,6 +142,18 @@ io.on('connection', (socket) => {
         roomMusic[roomCode] = null
         io.to(roomCode).emit('music_stop', { stoppedBy })
         console.log(`[Música] ${stoppedBy} parou a música na sala ${roomCode}`)
+    })
+
+    // Mestre troca a cena de fundo — transmite para toda a sala
+    socket.on('scene_change', ({ url, mimeType }) => {
+        if (roomMasters[roomCode] !== socket.id) {
+            console.warn(`[Cena] tentativa não autorizada por ${socket.id} na sala ${roomCode}`)
+            return
+        }
+        if (!url || typeof url !== 'string') return
+        roomScene[roomCode] = { url, mimeType: mimeType || 'image/jpeg' }
+        io.to(roomCode).emit('scene_change', roomScene[roomCode])
+        console.log(`[Cena] Nova cena na sala ${roomCode}:`, url)
     })
 
     // Recebe personagens do jogador e redistribui para todos na sala
