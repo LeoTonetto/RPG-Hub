@@ -566,6 +566,40 @@ function connectToRoom(url, roomCode) {
         renderCharacterBar(allChars)
     })
 
+    // Recebe atualização de atributo em tempo real
+    socket.on('stat_update', ({ charId, field, value, ownerName }) => {
+        console.log('[Stat] recebido:', field, '=', value, 'para', charId)
+
+        const entry = allCharsCache.find(e => e.character.id === charId)
+        const oldVal = entry ? entry.character[field] : null
+
+        // Se o valor já está atualizado (enviado por nós mesmos), não reprocessa
+        if (oldVal === value) return
+
+        // Atualiza cache
+        if (entry) entry.character[field] = value
+
+        // Atualiza playerCharacters local se for do jogador
+        const ownChar = playerCharacters.find(c => c.id === charId)
+        if (ownChar) ownChar[field] = value
+
+        // Atualiza card visual
+        updateCardStat(charId, field, value)
+
+        // Atualiza popup se aberto para este personagem
+        if (statPopupCharId === charId) {
+            if (field === 'hp') statHpVal.value = value
+            else if (field === 'hp_max') statHpMax.value = value
+            else if (field === 'sanity') statSanVal.value = value
+            else if (field === 'sanity_max') statSanMax.value = value
+            else if (field === 'bullets') statBulletsVal.value = value
+        }
+
+        // Flash visual
+        if (field === 'hp') flashCard(charId, value < oldVal ? 'red' : 'green')
+        else if (field === 'sanity') flashCard(charId, 'blue')
+    })
+
     // ── Chat ──────────────────────────────────────────────────────────────────
     socket.on('chat_message', ({ playerName: from, message }) => {
         addChatMessage(from, message, from === playerName)
@@ -613,8 +647,376 @@ function emitCharacters() {
     console.log('[Characters] Emitidos para a sala:', playerCharacters.length)
 }
 
+// ── Stat Popup ────────────────────────────────────────────────────────────────
+let statPopupCharId = null
+let statPopupChar = null   // referência ao objeto char em memória (allChars cache)
+let allCharsCache = []     // cache da última room_characters recebida
+
+const statPopup = document.getElementById('statPopup')
+const statPopupName = document.getElementById('statPopupName')
+const statPopupClose = document.getElementById('statPopupClose')
+const statPopupHeader = document.getElementById('statPopupHeader')
+const statHpVal = document.getElementById('statHpVal')
+const statHpMax = document.getElementById('statHpMax')
+const statSanVal = document.getElementById('statSanVal')
+const statSanMax = document.getElementById('statSanMax')
+const statBulletsVal = document.getElementById('statBulletsVal')
+const statRowSan = document.getElementById('statRowSan')
+const statRowBullets = document.getElementById('statRowBullets')
+
+// ── Drag: reutilizável ────────────────────────────────────────────────────────
+function makeDraggable(el, handle) {
+    let isDragging = false, ox = 0, oy = 0
+    handle.addEventListener('mousedown', e => {
+        if (e.button !== 0) return
+        isDragging = true
+        el.style.transform = ''   // limpa transform para não atrapalhar getBoundingClientRect
+        const r = el.getBoundingClientRect()
+        ox = e.clientX - r.left
+        oy = e.clientY - r.top
+        e.preventDefault()
+    })
+    document.addEventListener('mousemove', e => {
+        if (!isDragging) return
+        const x = Math.max(0, Math.min(e.clientX - ox, window.innerWidth - el.offsetWidth))
+        const y = Math.max(0, Math.min(e.clientY - oy, window.innerHeight - el.offsetHeight))
+        el.style.left = x + 'px'
+        el.style.top = y + 'px'
+    })
+    document.addEventListener('mouseup', () => { isDragging = false })
+}
+
+makeDraggable(statPopup, statPopupHeader)
+
+statPopupClose.addEventListener('click', closeStatPopup)
+document.addEventListener('click', (e) => {
+    if (statPopup.classList.contains('visible')
+        && !statPopup.contains(e.target)
+        && !inventoryModal.contains(e.target)) {
+        closeStatPopup()
+    }
+})
+
+function openStatPopup(char, ownerName, cardEl) {
+    statPopupCharId = char.id
+    statPopupChar = char
+    statPopupName.textContent = char.name
+
+    const canEdit = isRoomMaster || ownerName === playerName
+
+    // HP
+    statHpVal.value = char.hp ?? 0
+    statHpMax.value = char.hp_max ?? char.hp ?? 0
+    statHpVal.disabled = !canEdit
+    statHpMax.disabled = !canEdit
+    statRowSan.style.display = char.sanity != null ? 'flex' : 'none'
+
+    // Sanidade
+    if (char.sanity != null) {
+        statSanVal.value = char.sanity
+        statSanMax.value = char.sanity_max ?? char.sanity ?? 0
+        statSanVal.disabled = !canEdit
+        statSanMax.disabled = !canEdit
+    }
+
+    // Balas
+    statRowBullets.style.display = char.bullets != null ? 'flex' : 'none'
+    if (char.bullets != null) {
+        statBulletsVal.value = char.bullets
+        statBulletsVal.disabled = !canEdit
+    }
+
+    statPopup.querySelectorAll('.stat-adj-btn').forEach(btn => { btn.disabled = !canEdit })
+
+    // Posiciona: mede a altura real antes de mostrar
+    statPopup.style.visibility = 'hidden'
+    statPopup.style.transform = ''
+    statPopup.classList.add('visible')
+
+    requestAnimationFrame(() => {
+        const pw = statPopup.offsetWidth
+        const ph = statPopup.offsetHeight
+        const rect = cardEl.getBoundingClientRect()
+
+        // Preferência: acima do card; se não couber, vai abaixo
+        let top = rect.top - ph - 8
+        if (top < 8) top = rect.bottom + 8
+
+        let left = rect.left
+        // Clamp: não sair da tela horizontalmente
+        left = Math.max(8, Math.min(left, window.innerWidth - pw - 8))
+        // Clamp: não sair da tela verticalmente
+        top = Math.max(8, Math.min(top, window.innerHeight - ph - 8))
+
+        statPopup.style.left = left + 'px'
+        statPopup.style.top = top + 'px'
+        statPopup.style.visibility = 'visible'
+    })
+}
+
+function closeStatPopup() {
+    statPopup.classList.remove('visible')
+    statPopupCharId = null
+    statPopupChar = null
+    inventoryModal.classList.remove('visible')
+}
+
+// Adj buttons (−/+)
+statPopup.querySelectorAll('.stat-adj-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const field = btn.dataset.field
+        const delta = parseInt(btn.dataset.delta)
+        let input
+        if (field === 'hp') input = statHpVal
+        else if (field === 'sanity') input = statSanVal
+        else if (field === 'bullets') input = statBulletsVal
+        if (!input || input.disabled) return
+        const newVal = Math.max(0, (parseInt(input.value) || 0) + delta)
+        input.value = newVal
+        commitStatChange(field, newVal)
+    })
+})
+
+    // Typing directly in input
+    ;[
+        { input: statHpVal, field: 'hp' },
+        { input: statHpMax, field: 'hp_max' },
+        { input: statSanVal, field: 'sanity' },
+        { input: statSanMax, field: 'sanity_max' },
+        { input: statBulletsVal, field: 'bullets' }
+    ].forEach(({ input, field }) => {
+        input.addEventListener('change', () => {
+            const v = Math.max(0, parseInt(input.value) || 0)
+            input.value = v
+            commitStatChange(field, v)
+        })
+    })
+
+// ── Inventory Modal ───────────────────────────────────────────────────────────
+const inventoryModal = document.getElementById('inventoryModal')
+const invModalHeader = document.getElementById('invModalHeader')
+const invModalCharName = document.getElementById('invModalCharName')
+const invGrid = document.getElementById('invGrid')
+const invGridEmpty = document.getElementById('invGridEmpty')
+const invModalFooter = document.getElementById('invModalFooter')
+const invItemInput = document.getElementById('invItemInput')
+const invAddBtn = document.getElementById('invAddBtn')
+
+makeDraggable(inventoryModal, invModalHeader)
+
+document.getElementById('inventoryClose').addEventListener('click', () => {
+    inventoryModal.classList.remove('visible')
+})
+
+// Só fecha o modal de inventário com click fora se o stat popup também não estiver sendo clicado
+document.addEventListener('click', e => {
+    if (inventoryModal.classList.contains('visible')
+        && !inventoryModal.contains(e.target)
+        && !statPopup.contains(e.target)) {
+        inventoryModal.classList.remove('visible')
+    }
+})
+
+// Inventários em memória: { [charId]: [ { id, icon, name } ] }
+const inventories = {}
+
+const ICON_MAP = {
+    espada: '⚔', faca: '🗡', adaga: '🗡', sword: '⚔', knife: '🗡',
+    arco: '🏹', bow: '🏹', flecha: '🏹',
+    escudo: '🛡', shield: '🛡',
+    'poção': '🧪', pocao: '🧪', potion: '🧪', frasco: '🧪', elixir: '🧪',
+    livro: '📖', book: '📖', grimório: '📖',
+    mapa: '🗺', map: '🗺',
+    chave: '🗝', key: '🗝',
+    ouro: '🪙', gold: '🪙', moeda: '🪙', coin: '🪙',
+    lanterna: '🔦', torch: '🔥', tocha: '🔥',
+    comida: '🍖', food: '🍖', ração: '🍖',
+    corda: '🪢', rope: '🪢',
+    bomba: '💣', bomb: '💣',
+    elmo: '⛑', helmet: '⛑', capacete: '⛑',
+    magia: '✨', magic: '✨', runa: '✨',
+    pergaminho: '📜', scroll: '📜',
+    anel: '💍', ring: '💍',
+    amuleto: '🔮', amulet: '🔮',
+    pistola: '🔫', gun: '🔫', revólver: '🔫',
+    bala: '🔫', bullets: '🔫',
+    machado: '🪓', axe: '🪓',
+    martelo: '🔨', hammer: '🔨',
+    bastão: '🪄', staff: '🪄', cajado: '🪄',
+}
+
+function getItemIcon(name) {
+    const lc = name.toLowerCase()
+    for (const [key, icon] of Object.entries(ICON_MAP)) {
+        if (lc.includes(key)) return icon
+    }
+    return '📦'
+}
+
+document.getElementById('openInventoryBtn').addEventListener('click', () => {
+    if (!statPopupChar) return
+    openInventoryModal(statPopupChar)
+})
+
+function openInventoryModal(char) {
+    invModalCharName.textContent = char.name
+    if (!inventories[char.id]) inventories[char.id] = []
+
+    // Só o mestre vê o footer de adicionar itens
+    invModalFooter.style.display = isRoomMaster ? 'flex' : 'none'
+
+    renderInvGrid(char.id)
+
+    // Posiciona ao lado do stat popup; fallback: centro da tela
+    inventoryModal.style.visibility = 'hidden'
+    inventoryModal.classList.add('visible')
+
+    requestAnimationFrame(() => {
+        const mw = inventoryModal.offsetWidth
+        const mh = inventoryModal.offsetHeight
+        const sp = statPopup.getBoundingClientRect()
+
+        let left = sp.right + 10
+        if (left + mw > window.innerWidth - 8) left = sp.left - mw - 10
+        left = Math.max(8, Math.min(left, window.innerWidth - mw - 8))
+
+        let top = sp.top
+        top = Math.max(8, Math.min(top, window.innerHeight - mh - 8))
+
+        inventoryModal.style.left = left + 'px'
+        inventoryModal.style.top = top + 'px'
+        inventoryModal.style.visibility = 'visible'
+    })
+}
+
+function renderInvGrid(charId) {
+    // Remove tiles antigos mas preserva o empty msg
+    invGrid.querySelectorAll('.inv-item-tile').forEach(el => el.remove())
+    const items = inventories[charId] || []
+    invGridEmpty.style.display = items.length === 0 ? 'block' : 'none'
+    items.forEach(item => invGrid.insertBefore(buildInvTile(item, charId), invGridEmpty))
+}
+
+function buildInvTile(item, charId) {
+    const tile = document.createElement('div')
+    tile.className = 'inv-item-tile'
+    tile.dataset.itemId = item.id
+
+    const icon = document.createElement('span')
+    icon.className = 'inv-item-tile-icon'
+    icon.textContent = item.icon
+
+    const name = document.createElement('span')
+    name.className = 'inv-item-tile-name'
+    name.textContent = item.name
+
+    // Botão de deletar — só visível no hover, só funciona para o mestre
+    if (isRoomMaster) {
+        const del = document.createElement('button')
+        del.className = 'inv-item-del-tile'
+        del.textContent = '✕'
+        del.title = 'Remover'
+        del.addEventListener('click', e => {
+            e.stopPropagation()
+            inventories[charId] = inventories[charId].filter(i => i.id !== item.id)
+            renderInvGrid(charId)
+        })
+        tile.appendChild(del)
+    }
+
+    tile.appendChild(icon)
+    tile.appendChild(name)
+    return tile
+}
+
+invAddBtn.addEventListener('click', addInvItem)
+invItemInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addInvItem() }
+    e.stopPropagation()
+})
+
+function addInvItem() {
+    if (!statPopupChar || !isRoomMaster) return
+    const name = invItemInput.value.trim()
+    if (!name) { invItemInput.focus(); return }
+    const item = { id: crypto.randomUUID(), icon: getItemIcon(name), name }
+    if (!inventories[statPopupChar.id]) inventories[statPopupChar.id] = []
+    inventories[statPopupChar.id].push(item)
+    invItemInput.value = ''
+    renderInvGrid(statPopupChar.id)
+}
+
+function commitStatChange(field, value) {
+    if (!statPopupCharId || !socket) return
+
+    // Captura valor anterior para flash local
+    const cachedEntry = allCharsCache.find(e => e.character.id === statPopupCharId)
+    const oldVal = cachedEntry ? cachedEntry.character[field] : null
+
+    // Update local cache immediately
+    if (cachedEntry) cachedEntry.character[field] = value
+
+    // Update playerCharacters if owned
+    const ownChar = playerCharacters.find(c => c.id === statPopupCharId)
+    if (ownChar) ownChar[field] = value
+
+    // Update card visually
+    updateCardStat(statPopupCharId, field, value)
+
+    // Flash local (o quem alterou também vê o efeito)
+    if (oldVal !== null && oldVal !== value) {
+        if (field === 'hp') flashCard(statPopupCharId, value < oldVal ? 'red' : 'green')
+        else if (field === 'sanity') flashCard(statPopupCharId, 'blue')
+    }
+
+    // Persist to Supabase
+    supabase.from('characters').update({ [field]: value }).eq('id', statPopupCharId)
+        .then(({ error }) => { if (error) console.warn('[Stat] Supabase update error:', error.message) })
+
+    // Broadcast via socket
+    socket.emit('stat_update', { charId: statPopupCharId, field, value, ownerName: playerName })
+}
+
+function updateCardStat(charId, field, value) {
+    const card = characterBar.querySelector(`[data-char-id="${charId}"]`)
+    if (!card) return
+
+    const entry = allCharsCache.find(e => e.character.id === charId)
+    const char = entry ? entry.character : null
+
+    if (field === 'hp' || field === 'hp_max') {
+        const hp = field === 'hp' ? value : (char ? char.hp : value)
+        const hpMax = field === 'hp_max' ? value : (char ? (char.hp_max ?? char.hp ?? 1) : 1)
+        const fill = card.querySelector('.hp-fill')
+        const val = card.querySelector('[data-stat-field="hp"]')
+        if (fill) fill.style.width = Math.max(0, Math.min(100, (hp / hpMax) * 100)) + '%'
+        if (val) val.textContent = `${hp}/${hpMax}`
+    } else if (field === 'sanity' || field === 'sanity_max') {
+        const san = field === 'sanity' ? value : (char ? char.sanity : value)
+        const sanMax = field === 'sanity_max' ? value : (char ? (char.sanity_max ?? char.sanity ?? 1) : 1)
+        const fill = card.querySelector('.san-fill')
+        const val = card.querySelector('[data-stat-field="sanity"]')
+        if (fill) fill.style.width = Math.max(0, Math.min(100, (san / sanMax) * 100)) + '%'
+        if (val) val.textContent = `${san}/${sanMax}`
+    } else if (field === 'bullets') {
+        const val = card.querySelector('[data-stat-field="bullets"]')
+        if (val) val.textContent = `🔫 ${value}`
+    }
+}
+
+function flashCard(charId, type) {
+    // type: 'red' | 'green' | 'blue'
+    const card = characterBar.querySelector(`[data-char-id="${charId}"]`)
+    if (!card) return
+    card.classList.remove('flash-red', 'flash-green', 'flash-blue')
+    void card.offsetWidth // reflow
+    card.classList.add(`flash-${type}`)
+    setTimeout(() => card.classList.remove(`flash-${type}`), 750)
+}
+
 // allChars = [ { playerName, character }, ... ]
 function renderCharacterBar(allChars) {
+    allCharsCache = allChars || []
     characterBar.innerHTML = ''
     if (!allChars || allChars.length === 0) { characterBar.style.display = 'none'; return }
     allChars.forEach(({ playerName: owner, character }) => {
@@ -625,7 +1027,9 @@ function renderCharacterBar(allChars) {
 
 function buildCharCard(char, ownerName) {
     const card = document.createElement('div')
-    card.className = 'char-card'
+    card.className = 'char-card clickable'
+    card.dataset.charId = char.id
+    card.dataset.ownerName = ownerName
     if (ownerName === playerName) card.style.borderColor = 'rgba(201,168,76,0.65)'
 
     // Foto
@@ -657,17 +1061,30 @@ function buildCharCard(char, ownerName) {
     nameEl.textContent = char.name
     info.appendChild(nameEl)
 
-    info.appendChild(buildStatRow('Vida', char.hp, 'hp-fill'))
-    if (char.sanity != null) info.appendChild(buildStatRow('Sanidade', char.sanity, 'san-fill'))
+    info.appendChild(buildStatRow('Vida', char.hp, char.hp_max ?? char.hp ?? 1, 'hp-fill', 'hp'))
+    if (char.sanity != null) info.appendChild(buildStatRow('Sanidade', char.sanity, char.sanity_max ?? char.sanity ?? 1, 'san-fill', 'sanity'))
     if (char.bullets != null) {
         const row = document.createElement('div')
         row.className = 'char-bullets'
         const lbl = document.createElement('span'); lbl.className = 'char-bullets-label'; lbl.textContent = 'Balas'
-        const val = document.createElement('span'); val.className = 'char-bullets-val'; val.textContent = `🔫 ${char.bullets}`
+        const val = document.createElement('span')
+        val.className = 'char-bullets-val'
+        val.dataset.statField = 'bullets'
+        val.textContent = `🔫 ${char.bullets}`
         row.appendChild(lbl); row.appendChild(val)
         info.appendChild(row)
     }
     card.appendChild(info)
+
+    card.addEventListener('click', (e) => {
+        e.stopPropagation()
+        // Players só abrem o próprio card; o mestre abre qualquer um
+        if (!isRoomMaster && ownerName !== playerName) return
+        // Sempre busca a versão mais recente do cache para ter os valores atualizados
+        const fresh = allCharsCache.find(e => e.character.id === char.id)
+        openStatPopup(fresh ? fresh.character : char, ownerName, card)
+    })
+
     return card
 }
 
@@ -678,14 +1095,34 @@ function buildPhotoPlaceholder() {
     return ph
 }
 
-function buildStatRow(label, value, fillClass) {
-    const row = document.createElement('div'); row.className = 'char-stat'
-    const lbl = document.createElement('span'); lbl.className = 'char-stat-label'; lbl.textContent = label
-    const bar = document.createElement('div'); bar.className = 'char-stat-bar'
-    const fill = document.createElement('div'); fill.className = `char-stat-fill ${fillClass}`; fill.style.width = '100%'
+function buildStatRow(label, value, max, fillClass, fieldName) {
+    const row = document.createElement('div')
+    row.className = 'char-stat'
+
+    const lbl = document.createElement('span')
+    lbl.className = 'char-stat-label'
+    lbl.textContent = label
+
+    const bar = document.createElement('div')
+    bar.className = 'char-stat-bar'
+
+    const fill = document.createElement('div')
+    fill.className = `char-stat-fill ${fillClass}`
+    fill.style.width = Math.max(0, Math.min(100, (value / max) * 100)) + '%'
+
+    const val = document.createElement('span')
+    val.className = 'char-stat-val'
+
+    // 🔥 AQUI É A CORREÇÃO
+    val.dataset.statField = fieldName
+
+    val.textContent = `${value}/${max}`
+
     bar.appendChild(fill)
-    const val = document.createElement('span'); val.className = 'char-stat-val'; val.textContent = value
-    row.appendChild(lbl); row.appendChild(bar); row.appendChild(val)
+    row.appendChild(lbl)
+    row.appendChild(bar)
+    row.appendChild(val)
+
     return row
 }
 
@@ -701,13 +1138,13 @@ charPhotoInput.addEventListener('change', () => {
 
 charSubmitBtn.addEventListener('click', async () => {
     const name = charNameInput.value.trim()
-    const hp = parseInt(charHpInput.value)
-    const sanity = charSanityInput.value !== '' ? parseInt(charSanityInput.value) : null
+    const hpMax = parseInt(charHpInput.value)
+    const sanityMax = charSanityInput.value !== '' ? parseInt(charSanityInput.value) : null
     const bullets = charBulletsInput.value !== '' ? parseInt(charBulletsInput.value) : null
     const photoFile = charPhotoInput.files[0] || null
 
     if (!name) { showCharModalInfo('O nome do personagem é obrigatório.', 'error'); return }
-    if (isNaN(hp) || !charHpInput.value) { showCharModalInfo('Vida (HP) é obrigatória.', 'error'); return }
+    if (isNaN(hpMax) || !charHpInput.value) { showCharModalInfo('Vida Máxima (HP) é obrigatória.', 'error'); return }
 
     charSubmitBtn.disabled = true
     charSubmitBtn.textContent = 'Invocando...'
@@ -753,10 +1190,20 @@ charSubmitBtn.addEventListener('click', async () => {
             }
         }
 
-        // ── Inserir no banco ──────────────────────────────────────────────────
+        // ── Inserir no banco: hp_current = hp_max, sanity_current = sanity_max ──
         const { data: newChar, error: insertError } = await supabase
             .from('characters')
-            .insert({ id: charId, user_id: currentUserId, name, hp, sanity, bullets, photo: photoUrl })
+            .insert({
+                id: charId,
+                user_id: currentUserId,
+                name,
+                hp: hpMax,
+                hp_max: hpMax,
+                sanity: sanityMax,
+                sanity_max: sanityMax,
+                bullets,
+                photo: photoUrl
+            })
             .select()
             .single()
 

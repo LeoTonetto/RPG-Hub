@@ -163,6 +163,31 @@ io.on('connection', (socket) => {
         broadcastRoomChars(roomCode)
     })
 
+    // Atualização de atributos (vida, sanidade, balas) — mestre pode alterar qualquer char, jogador só o seu
+    socket.on('stat_update', ({ charId, field, value, ownerName }) => {
+        if (!roomChars[roomCode]) return
+        // Valida permissão: só mestre ou dono do personagem
+        const isMaster = roomMasters[roomCode] === socket.id
+        const isOwner = roomChars[roomCode][socket.id] &&
+            roomChars[roomCode][socket.id].characters.some(c => c.id === charId)
+        if (!isMaster && !isOwner) {
+            console.warn(`[Stat] ${socket.id} tentou alterar char ${charId} sem permissão na sala ${roomCode}`)
+            return
+        }
+        // Aplica a mudança localmente no servidor para novos jogadores
+        for (const sid in roomChars[roomCode]) {
+            const entry = roomChars[roomCode][sid]
+            const char = entry.characters.find(c => c.id === charId)
+            if (char) {
+                char[field] = value
+                break
+            }
+        }
+        // Transmite para toda a sala
+        io.to(roomCode).emit('stat_update', { charId, field, value, ownerName })
+        console.log(`[Stat] ${ownerName} atualizou ${field}=${value} em char ${charId} na sala ${roomCode}`)
+    })
+
     socket.on('chat_message', ({ playerName, message }) => {
         if (!message || typeof message !== 'string' || !message.trim()) return
         const safe = message.trim().slice(0, 300)
