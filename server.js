@@ -9,7 +9,10 @@ const httpServer = createServer(app)
 const io = new Server(httpServer, { cors: { origin: '*' } })
 
 // Garante que o diretório de cenas existe
-const SCENES_DIR = path.join(__dirname, 'scenes')
+const { app: electronApp } = require('electron')
+
+// Pasta fora do .asar (segura)
+const SCENES_DIR = path.join(electronApp.getPath('userData'), 'scenes')
 if (!fs.existsSync(SCENES_DIR)) fs.mkdirSync(SCENES_DIR)
 
 const rooms = {}      // { roomCode: { socketId: { x, y } } }
