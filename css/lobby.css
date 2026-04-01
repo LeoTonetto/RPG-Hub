@@ -1,0 +1,556 @@
+/* ══ HUD TOGGLE ══ */
+#hudToggle {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 1010;
+    background: rgba(10, 8, 6, 0.65);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 3px;
+    color: rgba(201, 168, 76, 0.45);
+    font-size: 15px;
+    width: 34px;
+    height: 34px;
+    cursor: pointer;
+    display: none;
+    backdrop-filter: blur(8px);
+    transition: color 0.2s, border-color 0.2s, opacity 0.3s;
+    line-height: 1;
+}
+
+#hudToggle:hover {
+    color: var(--gold);
+    border-color: rgba(201, 168, 76, 0.5);
+}
+
+body.hud-hidden #hudToggle {
+    opacity: 0.25;
+}
+
+body.hud-hidden #hudToggle:hover {
+    opacity: 1;
+}
+
+body.hud-hidden #musicPanel,
+body.hud-hidden #roomBadge,
+body.hud-hidden #chatPanel {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+/* ══ ROOM BADGE ══ */
+#roomBadge {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10, 8, 6, 0.75);
+    color: rgba(201, 168, 76, 0.6);
+    padding: 5px 14px;
+    border-radius: 2px;
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    z-index: 999;
+    cursor: pointer;
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    backdrop-filter: blur(8px);
+    transition: all 0.3s ease;
+    display: none;
+}
+
+#roomBadge:hover {
+    color: var(--gold);
+    border-color: rgba(201, 168, 76, 0.5);
+}
+
+/* ══ DICE RESULT ══ */
+#diceResult {
+    position: fixed;
+    bottom: 110px;
+    right: 24px;
+    background: linear-gradient(135deg, rgba(20, 14, 8, 0.95), rgba(10, 8, 5, 0.98));
+    border: 1px solid var(--gold-dim);
+    color: var(--parchment);
+    padding: 10px 18px;
+    border-radius: 3px;
+    font-size: 16px;
+    z-index: 1002;
+    max-width: 220px;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+}
+
+#diceResult.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+#diceResult.crit {
+    border-color: var(--ember);
+    animation: critGlow 1.2s ease forwards;
+}
+
+#diceResult.fail {
+    border-color: var(--blood);
+}
+
+@keyframes critGlow {
+    0% {
+        box-shadow: 0 0 0 rgba(212, 98, 42, 0);
+    }
+
+    40% {
+        box-shadow: 0 0 40px rgba(212, 98, 42, 0.6);
+    }
+
+    100% {
+        box-shadow: 0 0 0 rgba(212, 98, 42, 0);
+    }
+}
+
+.result-label {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 3px;
+}
+
+.result-value {
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--gold);
+    line-height: 1;
+    display: block;
+    font-family: 'Cinzel', serif;
+}
+
+.result-crit {
+    display: block;
+    color: var(--ember);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    font-family: 'Cinzel', serif;
+}
+
+/* ══ DICE FAB ══ */
+#diceFab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1003;
+    display: none;
+}
+
+#diceMainBtn {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #2d1f0d 0%, #130d06 100%);
+    border: 1.5px solid var(--gold-dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 2;
+}
+
+#diceMainBtn:hover {
+    border-color: var(--gold);
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.7), 0 0 18px rgba(201, 168, 76, 0.2);
+    transform: scale(1.06);
+}
+
+#diceMainBtn:active {
+    transform: scale(0.97);
+}
+
+#diceMainBtn svg {
+    width: 30px;
+    height: 30px;
+    fill: var(--gold);
+    color: var(--gold);
+    filter: drop-shadow(0 0 6px rgba(201, 168, 76, 0.4));
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#diceFab.open #diceMainBtn svg {
+    transform: rotate(180deg);
+}
+
+#diceFab.open #diceMainBtn {
+    border-color: var(--gold);
+    box-shadow: 0 0 24px rgba(201, 168, 76, 0.25);
+}
+
+#diceMenu {
+    position: absolute;
+    bottom: 72px;
+    right: 0;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.dice-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+}
+
+#diceFab.open .dice-option {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: all;
+}
+
+#diceFab.open .dice-option:nth-child(1) {
+    transition-delay: 0.00s;
+}
+
+#diceFab.open .dice-option:nth-child(2) {
+    transition-delay: 0.04s;
+}
+
+#diceFab.open .dice-option:nth-child(3) {
+    transition-delay: 0.08s;
+}
+
+#diceFab.open .dice-option:nth-child(4) {
+    transition-delay: 0.12s;
+}
+
+#diceFab.open .dice-option:nth-child(5) {
+    transition-delay: 0.16s;
+}
+
+#diceFab.open .dice-option:nth-child(6) {
+    transition-delay: 0.20s;
+}
+
+#diceFab.open .dice-option:nth-child(7) {
+    transition-delay: 0.24s;
+}
+
+.dice-label {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: rgba(201, 168, 76, 0.7);
+    background: rgba(10, 8, 6, 0.85);
+    padding: 4px 10px;
+    border-radius: 2px;
+    border: 1px solid rgba(201, 168, 76, 0.15);
+    backdrop-filter: blur(4px);
+    white-space: nowrap;
+}
+
+.dice-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #231908, #0d0905);
+    border: 1px solid rgba(201, 168, 76, 0.35);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 700;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.dice-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold-light);
+    box-shadow: 0 0 14px rgba(201, 168, 76, 0.2);
+    transform: scale(1.1);
+}
+
+/* ══ CURSOR ══ */
+.cursor {
+    position: fixed;
+    pointer-events: none;
+    z-index: 900;
+}
+
+.cursor-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 6px rgba(201, 168, 76, 0.7);
+}
+
+/* ══ CHARACTER BAR ══
+   Corredor central: chat ocupa left 0→292px, dado ocupa right 0→102px.
+   Mesmo bottom que chat e dado — sem sobreposição possível entre os três. */
+#characterBar {
+    position: fixed;
+    bottom: 24px;
+    left: 292px;
+    /* chat: 16(margin) + 260(width) + 16(gap) */
+    right: 102px;
+    /* dice: 24(margin) + 62(btn) + 16(gap)    */
+    transform: none;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;
+    z-index: 1001;
+    overflow-x: auto;
+    padding: 4px 4px 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold-dim) transparent;
+}
+
+#characterBar::-webkit-scrollbar {
+    height: 3px;
+}
+
+#characterBar::-webkit-scrollbar-thumb {
+    background: var(--gold-dim);
+    border-radius: 2px;
+}
+
+.char-card {
+    display: flex;
+    align-items: stretch;
+    background: linear-gradient(160deg, rgba(26, 21, 16, 0.96) 0%, rgba(12, 9, 6, 0.98) 100%);
+    border: 1px solid var(--gold-dim);
+    border-radius: 4px;
+    width: 185px;
+    min-height: 82px;
+    flex-shrink: 0;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(201, 168, 76, 0.08);
+    transition: box-shadow 0.25s, border-color 0.25s;
+    position: relative;
+}
+
+.char-card:hover {
+    border-color: rgba(201, 168, 76, 0.5);
+    box-shadow: 0 6px 32px rgba(0, 0, 0, 0.8), 0 0 16px rgba(201, 168, 76, 0.08);
+}
+
+.char-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.25), transparent);
+}
+
+.char-card.clickable {
+    cursor: pointer;
+}
+
+.char-card-photo-wrap {
+    width: 58px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.char-card-photo {
+    width: 58px;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.char-card-photo-placeholder {
+    width: 58px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    opacity: 0.25;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.char-card-info {
+    flex: 1;
+    padding: 8px 10px 8px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.char-card-name {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+}
+
+.char-stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.char-stat-label {
+    font-family: 'Cinzel', serif;
+    font-size: 7px;
+    letter-spacing: 0.1em;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    width: 36px;
+    flex-shrink: 0;
+}
+
+.char-stat-bar {
+    flex: 1;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.char-stat-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+}
+
+.hp-fill {
+    background: linear-gradient(90deg, #7b1818, #c0392b);
+}
+
+.san-fill {
+    background: linear-gradient(90deg, #1a4a6b, #2980b9);
+}
+
+/* Largura suficiente para "99/100" em Cinzel 9px */
+.char-stat-val {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--parchment);
+    min-width: 44px;
+    max-width: 56px;
+    width: auto;
+    text-align: right;
+    flex-shrink: 0;
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
+.char-bullets {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.char-bullets-label {
+    font-family: 'Cinzel', serif;
+    font-size: 7px;
+    letter-spacing: 0.1em;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+    width: 36px;
+}
+
+.char-bullets-val {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(244, 234, 213, 0.8);
+}
+
+/* ══ FLASH ANIMATIONS ══ */
+@keyframes flashRed {
+    0% {
+        box-shadow: 0 0 0 2px rgba(192, 57, 43, 0);
+        background: linear-gradient(160deg, rgba(26, 21, 16, .96), rgba(12, 9, 6, .98));
+    }
+
+    20% {
+        box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.9), 0 0 24px rgba(192, 57, 43, 0.5);
+        background: rgba(80, 10, 10, 0.7);
+    }
+
+    100% {
+        box-shadow: 0 0 0 2px rgba(192, 57, 43, 0);
+        background: linear-gradient(160deg, rgba(26, 21, 16, .96), rgba(12, 9, 6, .98));
+    }
+}
+
+@keyframes flashGreen {
+    0% {
+        box-shadow: 0 0 0 2px rgba(39, 174, 96, 0);
+        background: linear-gradient(160deg, rgba(26, 21, 16, .96), rgba(12, 9, 6, .98));
+    }
+
+    20% {
+        box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.9), 0 0 24px rgba(39, 174, 96, 0.5);
+        background: rgba(10, 50, 20, 0.7);
+    }
+
+    100% {
+        box-shadow: 0 0 0 2px rgba(39, 174, 96, 0);
+        background: linear-gradient(160deg, rgba(26, 21, 16, .96), rgba(12, 9, 6, .98));
+    }
+}
+
+@keyframes flashBlue {
+    0% {
+        box-shadow: 0 0 0 2px rgba(41, 128, 185, 0);
+        background: linear-gradient(160deg, rgba(26, 21, 16, .96), rgba(12, 9, 6, .98));
+    }
+
+    20% {
+        box-shadow: 0 0 0 3px rgba(41, 128, 185, 0.9), 0 0 24px rgba(41, 128, 185, 0.5);
+        background: rgba(10, 30, 60, 0.7);
+    }
+
+    100% {
+        box-shadow: 0 0 0 2px rgba(41, 128, 185, 0);
+        background: linear-gradient(160deg, rgba(26, 21, 16, .96), rgba(12, 9, 6, .98));
+    }
+}
+
+.char-card.flash-red {
+    animation: flashRed 0.7s ease forwards;
+}
+
+.char-card.flash-green {
+    animation: flashGreen 0.7s ease forwards;
+}
+
+.char-card.flash-blue {
+    animation: flashBlue 0.7s ease forwards;
+}
