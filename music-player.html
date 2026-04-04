@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Music Player</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #player {
+            width: 1px;
+            height: 1px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="player"></div>
+
+    <script>
+        var ytPlayer = null
+        var ytReady = false
+        var pendingVideoId = null
+        var pendingSeekTime = 0
+        var currentVolume = 60
+
+        // Carrega a IFrame API do YouTube
+        var tag = document.createElement('script')
+        tag.src = 'https://www.youtube.com/iframe_api'
+        document.head.appendChild(tag)
+
+        window.onYouTubeIframeAPIReady = function () {
+            ytReady = true
+            console.log('[MusicPlayer] YouTube IFrame API pronta')
+            if (pendingVideoId) {
+                doLoad(pendingVideoId, pendingSeekTime)
+                pendingVideoId = null
+            }
+        }
+
+        function doLoad(videoId, seekTime) {
+            console.log('[MusicPlayer] doLoad — videoId:', videoId, 'seekTime:', seekTime)
+            if (ytPlayer) {
+                ytPlayer.loadVideoById({ videoId: videoId, startSeconds: Math.floor(seekTime || 0) })
+                ytPlayer.setVolume(currentVolume)
+            } else {
+                ytPlayer = new YT.Player('player', {
+                    height: '1', width: '1',
+                    videoId: videoId,
+                    playerVars: {
+                        autoplay: 1,
+                        controls: 0,
+                        loop: 1,
+                        playlist: videoId,
+                        start: Math.floor(seekTime || 0),
+                    },
+                    events: {
+                        onReady: function (e) {
+                            console.log('[MusicPlayer] onReady — definindo volume:', currentVolume)
+                            e.target.setVolume(currentVolume)
+                            e.target.playVideo()
+                        },
+                        onStateChange: function (e) {
+                            console.log('[MusicPlayer] state changed:', e.data)
+                        },
+                        onError: function (e) {
+                            console.error('[MusicPlayer] erro:', e.data)
+                        }
+                    }
+                })
+            }
+        }
+
+        // Funções chamadas pelo main process via executeJavaScript
+        window.musicPlay = function (videoId, seekTime) {
+            console.log('[MusicPlayer] musicPlay:', videoId, seekTime)
+            if (!ytReady) {
+                pendingVideoId = videoId
+                pendingSeekTime = seekTime
+                return
+            }
+            doLoad(videoId, seekTime)
+        }
+
+        window.musicStop = function () {
+            console.log('[MusicPlayer] musicStop')
+            if (ytPlayer) {
+                try { ytPlayer.stopVideo() } catch (e) { }
+            }
+        }
+
+        window.musicSetVolume = function (vol) {
+            currentVolume = Math.max(0, Math.min(100, vol))
+            console.log('[MusicPlayer] volume:', currentVolume)
+            if (ytPlayer) {
+                try {
+                    ytPlayer.setVolume(currentVolume)
+                    if (currentVolume === 0) ytPlayer.mute()
+                    else ytPlayer.unMute()
+                } catch (e) { }
+            }
+        }
+    </script>
+</body>
+
+</html>

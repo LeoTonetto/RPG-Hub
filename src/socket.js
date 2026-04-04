@@ -45,9 +45,7 @@ function connectToRoom(url, roomCode) {
 
     // ── Música ───────────────────────────────────────────────────────────────
     state.socket.on('music_play', ({ videoId, startedBy, seekTime }) => {
-        state.pendingVideoId = null
-        state.pendingSeekTime = 0
-        loadYouTubeAPI()
+        console.log('[Socket] music_play recebido — videoId:', videoId, 'seekTime:', seekTime)
         playYouTubeVideo(videoId, seekTime || 0)
         showMusicActive(videoId, startedBy)
     })
