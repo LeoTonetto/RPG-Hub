@@ -145,9 +145,9 @@ function setupSocketHandlers(io) {
         })
 
         // ── Chat ─────────────────────────────────────────────────────────────
-        socket.on('chat_message', ({ playerName, message }) => {
+        socket.on('chat_message', ({ playerName, message, type, gifUrl }) => {
             if (!message || typeof message !== 'string' || !message.trim()) return
-            io.to(roomCode).emit('chat_message', { playerName, message: message.trim() })
+            io.to(roomCode).emit('chat_message', { playerName, message: message.trim(), type: type || 'text', gifUrl: gifUrl || null })
         })
 
         // ── Cursores ─────────────────────────────────────────────────────────

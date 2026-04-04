@@ -10,14 +10,16 @@ async function fetchAsBlobUrl(url) {
 async function applyScene({ url, mimeType }) {
     const layerA = document.getElementById('bgA')
     const layerB = document.getElementById('bgB')
-    const next   = state.activeBgLayer === 'A' ? layerB : layerA
-    const prev   = state.activeBgLayer === 'A' ? layerA : layerB
+    const next = state.activeBgLayer === 'A' ? layerB : layerA
+    const prev = state.activeBgLayer === 'A' ? layerA : layerB
 
-    next.innerHTML        = ''
+    next.innerHTML = ''
     next.style.backgroundImage = ''
 
-    let displayUrl = url
-    try { displayUrl = await fetchAsBlobUrl(url) }
+    const absoluteUrl = url.startsWith('/') ? (state.serverUrl + url) : url
+
+    let displayUrl = absoluteUrl
+    try { displayUrl = await fetchAsBlobUrl(absoluteUrl) }
     catch (e) { console.warn('[Cena] Fetch bypass falhou, usando URL direta:', e.message) }
 
     if (mimeType && mimeType.startsWith('video/')) {
@@ -26,9 +28,9 @@ async function applyScene({ url, mimeType }) {
         vid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;'
         next.appendChild(vid)
     } else {
-        next.style.backgroundImage  = `url('${displayUrl}')`
-        next.style.backgroundSize    = 'cover'
-        next.style.backgroundPosition= 'center'
+        next.style.backgroundImage = `url('${displayUrl}')`
+        next.style.backgroundSize = 'cover'
+        next.style.backgroundPosition = 'center'
     }
 
     next.style.opacity = '1'
@@ -39,7 +41,7 @@ async function applyScene({ url, mimeType }) {
         const oldSrc = prev.style.backgroundImage.match(/url\(['"]?(blob:[^'")\s]+)/)
         if (oldSrc) URL.revokeObjectURL(oldSrc[1])
         prev.querySelectorAll('video').forEach(v => { URL.revokeObjectURL(v.src); v.src = '' })
-        prev.innerHTML         = ''
+        prev.innerHTML = ''
         prev.style.backgroundImage = ''
     }, 950)
 }
