@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="css/music.css">
     <link rel="stylesheet" href="css/chat.css">
     <link rel="stylesheet" href="css/popups.css">
+    <link rel="stylesheet" href="css/npc.css">
 </head>
 
 <body>
@@ -194,6 +195,11 @@
             <button id="scenePickerBtn">🖼 Trocar Cena</button>
             <input id="sceneFileInput" type="file"
                 accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" style="display:none;" />
+            <hr class="panel-divider">
+            <div class="npc-panel-wrap" id="npcPanelWrap">
+                <button id="npcInvokeBtn">👤 Invocar NPC</button>
+                <div id="npcPicker"></div>
+            </div>
         </div>
 
         <div class="music-now-playing" id="musicNowPlaying">
@@ -281,6 +287,20 @@
             <button class="inv-add-btn" id="invAddBtn">+ Adicionar</button>
         </div>
     </div>
+
+    <!-- ══ NPC OVERLAY (intro) ══ -->
+    <div id="npcOverlay">
+        <div id="npcIntroWrap">
+            <div id="npcIntroPhoto"></div>
+            <div id="npcIntroCard"></div>
+        </div>
+    </div>
+
+    <!-- ══ NPC SCENE BAR (bolhas no canto) ══ -->
+    <div id="npcSceneBar"></div>
+
+    <!-- ══ NPC CARD MODAL ══ -->
+    <div id="npcCardModal"></div>
 
     <script src="renderer.js"></script>
 </body>

@@ -1,0 +1,568 @@
+/* ══════════════════════════════════════════════════════════
+   css/npc.css  —  Sistema de NPCs
+   ══════════════════════════════════════════════════════════ */
+
+/* ══ OVERLAY DE INTRO (fundo escuro) ══ */
+#npcOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0);
+    pointer-events: none;
+    transition: background 0.6s ease;
+}
+
+#npcOverlay.active {
+    background: rgba(0, 0, 0, 0.7);
+    pointer-events: all;
+}
+
+/* ══ INTRO: WRAP (foto + card lado a lado) ══ */
+#npcIntroWrap {
+    display: flex;
+    align-items: stretch;
+    position: relative;
+}
+
+/* ── Foto ── */
+#npcIntroPhoto {
+    width: 210px;
+    height: 280px;
+    flex-shrink: 0;
+    border-radius: 4px 0 0 4px;
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    border-right: none;
+    background: rgba(8, 6, 4, 0.97);
+    overflow: hidden;
+    opacity: 0;
+    transform: scale(0.88) translateY(12px);
+    transition: opacity 0.65s ease, transform 0.65s ease;
+    box-shadow: -4px 8px 40px rgba(0, 0, 0, 0.85);
+}
+
+#npcIntroPhoto.visible {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+
+#npcIntroPhoto img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+}
+
+.npc-photo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 64px;
+    opacity: 0.3;
+}
+
+/* ── Card de descrição ── */
+#npcIntroCard {
+    width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease 0.1s;
+    background: linear-gradient(160deg, rgba(18, 14, 10, 0.98), rgba(10, 8, 6, 0.99));
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 0 4px 4px 0;
+    display: flex;
+    flex-direction: column;
+    height: 280px;
+    box-shadow: 4px 8px 40px rgba(0, 0, 0, 0.75);
+}
+
+#npcIntroCard.visible {
+    width: 270px;
+    opacity: 1;
+}
+
+.npc-card-inner {
+    padding: 18px 16px 10px;
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.npc-card-name {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.07em;
+    border-bottom: 1px solid rgba(201, 168, 76, 0.18);
+    padding-bottom: 9px;
+}
+
+.npc-card-desc {
+    font-family: 'Crimson Text', serif;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: rgba(220, 200, 160, 0.82);
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 4px;
+}
+
+.npc-card-desc::-webkit-scrollbar {
+    width: 3px;
+}
+
+.npc-card-desc::-webkit-scrollbar-thumb {
+    background: rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+}
+
+.npc-card-footer {
+    padding: 7px 14px 12px;
+    border-top: 1px solid rgba(201, 168, 76, 0.1);
+    display: flex;
+    gap: 6px;
+}
+
+.npc-close-intro-btn {
+    flex: 1;
+    padding: 6px;
+    background: rgba(201, 168, 76, 0.06);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 3px;
+    color: rgba(201, 168, 76, 0.55);
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.npc-close-intro-btn:hover {
+    background: rgba(201, 168, 76, 0.11);
+    color: var(--gold);
+    border-color: var(--gold-dim);
+}
+
+/* ══ NPC SCENE BAR (bolhas no canto) ══ */
+#npcSceneBar {
+    position: fixed;
+    right: 16px;
+    top: 290px;
+    /* abaixo do painel de música */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 200;
+    align-items: flex-end;
+}
+
+/* ── Bolha individual ── */
+.npc-bubble {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 2px solid rgba(201, 168, 76, 0.3);
+    overflow: visible;
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.2s ease, border-color 0.2s, box-shadow 0.2s;
+    background: rgba(8, 6, 4, 0.92);
+    box-shadow: 0 2px 14px rgba(0, 0, 0, 0.65);
+    animation: npcBubbleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.npc-bubble>img,
+.npc-bubble>.npc-bubble-placeholder {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    display: block;
+}
+
+.npc-bubble>img {
+    object-fit: cover;
+    object-position: top center;
+}
+
+.npc-bubble-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    opacity: 0.45;
+}
+
+@keyframes npcBubbleIn {
+    from {
+        opacity: 0;
+        transform: translateX(24px) scale(0.65);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+@keyframes npcBubbleOut {
+    to {
+        opacity: 0;
+        transform: translateX(24px) scale(0.65);
+    }
+}
+
+.npc-bubble:hover {
+    transform: scale(1.12);
+    border-color: var(--gold);
+    box-shadow: 0 4px 20px rgba(201, 168, 76, 0.28);
+}
+
+/* Tooltip com nome */
+.npc-bubble::after {
+    content: attr(data-name);
+    position: absolute;
+    right: 62px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(8, 6, 4, 0.94);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 3px;
+    padding: 3px 9px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: var(--gold-dim);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+    z-index: 10;
+}
+
+.npc-bubble:hover::after {
+    opacity: 1;
+}
+
+/* Overlay de dispensar (hover, apenas mestre) */
+.npc-bubble-dismiss {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    color: rgba(192, 57, 43, 0.85);
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+}
+
+.npc-bubble.master:hover .npc-bubble-dismiss {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* ══ NPC CARD MODAL ══ */
+#npcCardModal {
+    position: fixed;
+    inset: 0;
+    z-index: 9500;
+    background: rgba(0, 0, 0, 0.68);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+#npcCardModal.visible {
+    display: flex;
+}
+
+.npc-modal-wrap {
+    display: flex;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 16px 70px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(201, 168, 76, 0.12);
+    max-width: 90vw;
+    animation: npcCardIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes npcCardIn {
+    from {
+        opacity: 0;
+        transform: scale(0.91) translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.npc-modal-photo {
+    width: 170px;
+    height: 230px;
+    flex-shrink: 0;
+    background: rgba(8, 6, 4, 0.97);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-right: none;
+    overflow: hidden;
+}
+
+.npc-modal-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+}
+
+.npc-modal-photo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 52px;
+    opacity: 0.3;
+}
+
+.npc-modal-body {
+    width: 250px;
+    background: linear-gradient(160deg, rgba(18, 14, 10, 0.98), rgba(10, 8, 6, 0.99));
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    display: flex;
+    flex-direction: column;
+    height: 230px;
+}
+
+.npc-modal-inner {
+    padding: 15px 15px 8px;
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.npc-modal-name {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.07em;
+    border-bottom: 1px solid rgba(201, 168, 76, 0.18);
+    padding-bottom: 7px;
+}
+
+.npc-modal-desc {
+    font-family: 'Crimson Text', serif;
+    font-size: 13px;
+    line-height: 1.55;
+    color: rgba(220, 200, 160, 0.8);
+    overflow-y: auto;
+    flex: 1;
+}
+
+.npc-modal-desc::-webkit-scrollbar {
+    width: 3px;
+}
+
+.npc-modal-desc::-webkit-scrollbar-thumb {
+    background: rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+}
+
+.npc-modal-footer {
+    padding: 7px 13px 11px;
+    display: flex;
+    gap: 6px;
+    border-top: 1px solid rgba(201, 168, 76, 0.1);
+}
+
+.npc-modal-btn {
+    flex: 1;
+    padding: 6px;
+    background: rgba(201, 168, 76, 0.06);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 3px;
+    color: rgba(201, 168, 76, 0.55);
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.npc-modal-btn:hover {
+    background: rgba(201, 168, 76, 0.11);
+    color: var(--gold);
+    border-color: var(--gold-dim);
+}
+
+.npc-modal-btn.dismiss {
+    border-color: rgba(192, 57, 43, 0.28);
+    color: rgba(192, 57, 43, 0.55);
+}
+
+.npc-modal-btn.dismiss:hover {
+    background: rgba(192, 57, 43, 0.09);
+    color: rgba(220, 80, 60, 0.9);
+    border-color: rgba(192, 57, 43, 0.5);
+}
+
+/* ══ NPC PICKER (dropdown do mestre) ══ */
+.npc-panel-wrap {
+    position: relative;
+}
+
+#npcInvokeBtn {
+    width: 100%;
+    padding: 7px;
+    background: rgba(201, 168, 76, 0.05);
+    border: 1px dashed rgba(201, 168, 76, 0.22);
+    border-radius: 3px;
+    color: rgba(201, 168, 76, 0.5);
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+#npcInvokeBtn:hover {
+    background: rgba(201, 168, 76, 0.1);
+    border-color: var(--gold-dim);
+    color: var(--gold);
+}
+
+#npcPicker {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 5px);
+    width: 198px;
+    background: linear-gradient(160deg, rgba(18, 14, 10, 0.99), rgba(10, 8, 6, 1));
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 4px;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.85);
+    z-index: 600;
+    display: none;
+    flex-direction: column;
+    max-height: 260px;
+    overflow-y: auto;
+    animation: npcPickerIn 0.18s ease;
+}
+
+@keyframes npcPickerIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#npcPicker.visible {
+    display: flex;
+}
+
+#npcPicker::-webkit-scrollbar {
+    width: 3px;
+}
+
+#npcPicker::-webkit-scrollbar-thumb {
+    background: rgba(201, 168, 76, 0.18);
+    border-radius: 2px;
+}
+
+.npc-picker-title {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    color: rgba(201, 168, 76, 0.32);
+    text-transform: uppercase;
+    padding: 8px 10px 6px;
+    border-bottom: 1px solid rgba(201, 168, 76, 0.1);
+    flex-shrink: 0;
+}
+
+.npc-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(201, 168, 76, 0.05);
+    transition: background 0.1s;
+    flex-shrink: 0;
+}
+
+.npc-picker-item:hover {
+    background: rgba(201, 168, 76, 0.07);
+}
+
+.npc-picker-item:last-child {
+    border-bottom: none;
+}
+
+.npc-picker-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgba(201, 168, 76, 0.18);
+    flex-shrink: 0;
+    background: rgba(8, 6, 4, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    overflow: hidden;
+}
+
+.npc-picker-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: top center;
+    border-radius: 50%;
+}
+
+.npc-picker-name {
+    font-family: 'Crimson Text', serif;
+    font-size: 13px;
+    color: rgba(220, 200, 160, 0.85);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.npc-picker-already {
+    font-size: 8px;
+    color: var(--gold);
+    opacity: 0.45;
+    flex-shrink: 0;
+}
+
+.npc-picker-empty {
+    padding: 16px 12px;
+    font-family: 'Crimson Text', serif;
+    font-size: 12px;
+    color: rgba(201, 168, 76, 0.28);
+    text-align: center;
+    font-style: italic;
+}

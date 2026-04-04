@@ -8,6 +8,7 @@ const { showDiceResult } = require('./dice')
 const { initChat, addChatMessage } = require('./chat')
 const { showHUDButtons } = require('./hud')
 const { handleInventoryUpdate } = require('./inventory')
+const { initNPC, handleNPCSummon, handleNPCDismiss } = require('./npc')
 
 function connectToRoom(url, roomCode) {
     state.currentRoomCode = (roomCode || 'DEFAULT').toString().trim().toUpperCase()
@@ -32,6 +33,7 @@ function connectToRoom(url, roomCode) {
     state.socket.on('master_status', isMaster => {
         state.isRoomMaster = isMaster
         initMusicPanel()   // mostra/oculta controles do mestre
+        initNPC()          // configura painel de NPC (mestre) ou apenas listeners (players)
     })
 
     state.socket.on('connect_error', err => {
@@ -90,9 +92,13 @@ function connectToRoom(url, roomCode) {
         handleInventoryUpdate({ charId, items })
     })
 
+    // ── NPCs ──────────────────────────────────────────────────────────────────
+    state.socket.on('npc_summon', npc => handleNPCSummon(npc))
+    state.socket.on('npc_dismiss', ({ npcId }) => handleNPCDismiss({ npcId }))
+
     // ── Chat ──────────────────────────────────────────────────────────────────
-    state.socket.on('chat_message', ({ playerName: from, message, type, gifUrl }) => {
-        addChatMessage(from, message, from === state.playerName, type || 'text', gifUrl || null)
+    state.socket.on('chat_message', ({ playerName: from, message }) => {
+        addChatMessage(from, message, from === state.playerName)
     })
 
     // ── Cursors ───────────────────────────────────────────────────────────────

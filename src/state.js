@@ -54,6 +54,9 @@ const state = {
     pendingVideoId: null,
     pendingSeekTime: 0,
 
+    // NPCs ativos na cena
+    activeNPCs: {},   // { npcId: { id, name, photo, description } }
+
     // UI
     hudVisible: true,
     chatVisible: false,

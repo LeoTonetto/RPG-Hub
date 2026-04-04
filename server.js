@@ -4,7 +4,7 @@ const { createServer } = require('http')
 const { Server } = require('socket.io')
 
 const { setupSceneRoutes } = require('./server/scenes')
-const { setupSocketHandlers, setupCleanupRoute } = require('./server/handlers')
+const { setupSocketHandlers } = require('./server/handlers')
 const { roomCodes, urlCodes, rooms, normalizeUrl } = require('./server/roomState')
 
 const app = express()
@@ -36,7 +36,6 @@ app.post('/register-room', express.json(), (req, res) => {
 // ── Arquivos estáticos (HTML/CSS/JS do client) ────────────────────────────────
 app.use(express.static(__dirname))
 
-setupCleanupRoute(app, io)
 setupSocketHandlers(io)
 
 // ── Inicialização ─────────────────────────────────────────────────────────────
