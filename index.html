@@ -5,7 +5,9 @@
     <meta charset="UTF-8" />
     <title>RPG Lobby</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap"
+        rel="stylesheet">
 
     <!-- Estilos divididos por responsabilidade -->
     <link rel="stylesheet" href="css/base.css">
@@ -22,14 +24,15 @@
     <div id="bgB" class="bg-layer"></div>
 
     <!-- ══ CONTROLES DE HUD ══ -->
-    <button id="hudToggle"  title="Mostrar/Ocultar HUD (H)">👁</button>
+    <button id="hudToggle" title="Mostrar/Ocultar HUD (H)">👁</button>
     <button id="chatToggle" title="Mostrar/Ocultar Chat (C)">💬</button>
 
     <!-- ══ CHAT ══ -->
     <div id="chatPanel">
         <div id="chatMessages"></div>
         <div id="chatInputRow">
-            <input id="chatInput" maxlength="300" placeholder="Diga algo na taverna…" autocomplete="off" spellcheck="false" />
+            <input id="chatInput" maxlength="300" placeholder="Diga algo na taverna…" autocomplete="off"
+                spellcheck="false" />
             <button id="chatSendBtn">↵</button>
         </div>
     </div>
@@ -49,22 +52,26 @@
             <div id="loginFields" class="input-group">
                 <div class="input-wrap">
                     <span class="input-label">Usuário</span>
-                    <input class="room-input" id="usernameLoginInput" type="text" placeholder="Seu nome de aventureiro" autocomplete="username" />
+                    <input class="room-input" id="usernameLoginInput" type="text" placeholder="Seu nome de aventureiro"
+                        autocomplete="username" />
                 </div>
                 <div class="input-wrap">
                     <span class="input-label">Senha</span>
-                    <input class="room-input" id="passwordInput" type="password" placeholder="••••••••" autocomplete="current-password" />
+                    <input class="room-input" id="passwordInput" type="password" placeholder="••••••••"
+                        autocomplete="current-password" />
                 </div>
             </div>
 
             <div id="registerFields" class="input-group" style="display:none;">
                 <div class="input-wrap">
                     <span class="input-label">Usuário</span>
-                    <input class="room-input" id="usernameRegisterInput" type="text" placeholder="Escolha seu nome" autocomplete="username" />
+                    <input class="room-input" id="usernameRegisterInput" type="text" placeholder="Escolha seu nome"
+                        autocomplete="username" />
                 </div>
                 <div class="input-wrap">
                     <span class="input-label">Senha</span>
-                    <input class="room-input" id="passwordRegisterInput" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
+                    <input class="room-input" id="passwordRegisterInput" type="password"
+                        placeholder="Mínimo 6 caracteres" autocomplete="new-password" />
                 </div>
             </div>
 
@@ -85,7 +92,8 @@
 
             <div class="input-wrap" style="margin-bottom:10px;">
                 <span class="input-label">Código ou URL da sala</span>
-                <input class="room-input centered" id="roomCodeInput" placeholder="XXXXXX" spellcheck="false" autocomplete="off" />
+                <input class="room-input centered" id="roomCodeInput" placeholder="XXXXXX" spellcheck="false"
+                    autocomplete="off" />
             </div>
             <button class="btn-secondary" id="joinRoomButton">Entrar na Sala →</button>
 
@@ -152,11 +160,12 @@
         <div id="diceMenu"></div>
         <button id="diceMainBtn" title="Rolar dado">
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2 L22 7 L22 17 L12 22 L2 17 L2 7 Z" fill="none" stroke="currentColor" stroke-width="1.2"/>
-                <path d="M12 2 L12 22" stroke="currentColor" stroke-width="0.8" opacity="0.5"/>
-                <path d="M2 7 L22 7"   stroke="currentColor" stroke-width="0.8" opacity="0.5"/>
-                <path d="M2 17 L22 17" stroke="currentColor" stroke-width="0.8" opacity="0.5"/>
-                <text x="12" y="14.5" text-anchor="middle" font-size="6" font-family="Cinzel,serif" fill="currentColor" font-weight="700">d20</text>
+                <path d="M12 2 L22 7 L22 17 L12 22 L2 17 L2 7 Z" fill="none" stroke="currentColor" stroke-width="1.2" />
+                <path d="M12 2 L12 22" stroke="currentColor" stroke-width="0.8" opacity="0.5" />
+                <path d="M2 7 L22 7" stroke="currentColor" stroke-width="0.8" opacity="0.5" />
+                <path d="M2 17 L22 17" stroke="currentColor" stroke-width="0.8" opacity="0.5" />
+                <text x="12" y="14.5" text-anchor="middle" font-size="6" font-family="Cinzel,serif" fill="currentColor"
+                    font-weight="700">d20</text>
             </svg>
         </button>
     </div>
@@ -179,12 +188,13 @@
             <button id="musicStopBtn">■ Parar</button>
             <hr class="panel-divider">
             <button id="scenePickerBtn">🖼 Trocar Cena</button>
-            <input id="sceneFileInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" style="display:none;" />
+            <input id="sceneFileInput" type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" style="display:none;" />
         </div>
 
         <div class="music-now-playing" id="musicNowPlaying">
             <span class="music-now-playing-text" id="musicNowPlayingText">Em reprodução</span>
-            <span class="music-now-playing-by"   id="musicNowPlayingBy"></span>
+            <span class="music-now-playing-by" id="musicNowPlayingBy"></span>
         </div>
 
         <div class="music-volume-row" id="musicVolumeRow" style="display:none;">
@@ -237,6 +247,18 @@
             </div>
             <button class="stat-inv-btn" id="openInventoryBtn">📦 Inventário</button>
         </div>
+        <!-- ══ GESTÃO DE PERSONAGEM (card próprio) ══ -->
+        <div id="statCharMgmt" style="display:none;">
+            <div class="stat-char-sep"></div>
+            <div class="stat-char-mgmt-btns">
+                <button class="stat-char-btn" id="statBtnSwitch">↺ Trocar de Personagem</button>
+                <button class="stat-char-btn" id="statBtnEdit">✏ Editar Personagem</button>
+                <button class="stat-char-btn primary" id="statBtnNew">＋ Novo Personagem</button>
+            </div>
+        </div>
+
+        <!-- Lista de troca (toggle do botão acima) -->
+        <div id="statSwitchPanel" style="display:none;"></div>
     </div>
 
     <!-- ══ INVENTORY MODAL ══ -->
@@ -250,7 +272,8 @@
             <div class="inv-grid-empty" id="invGridEmpty">🎒<br>Nenhum item ainda.</div>
         </div>
         <div class="inv-modal-footer" id="invModalFooter" style="display:none;">
-            <input class="inv-add-input" id="invItemInput" type="text" placeholder="Nome do item…" maxlength="40" autocomplete="off" />
+            <input class="inv-add-input" id="invItemInput" type="text" placeholder="Nome do item…" maxlength="40"
+                autocomplete="off" />
             <button class="inv-add-btn" id="invAddBtn">+ Adicionar</button>
         </div>
     </div>

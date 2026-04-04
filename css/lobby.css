@@ -341,7 +341,7 @@ body.hud-hidden #chatPanel {
     border: 1px solid var(--gold-dim);
     border-radius: 4px;
     width: 185px;
-    min-height: 82px;
+    height: 108px;
     flex-shrink: 0;
     overflow: hidden;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(201, 168, 76, 0.08);
@@ -489,6 +489,29 @@ body.hud-hidden #chatPanel {
     font-size: 10px;
     font-weight: 600;
     color: rgba(244, 234, 213, 0.8);
+}
+
+/* ══ PERSONAGEM ATIVO (selecionado para rolagem de dados) ══ */
+.char-card.char-active {
+    border-color: var(--gold) !important;
+    box-shadow:
+        0 6px 32px rgba(0, 0, 0, 0.8),
+        0 0 18px rgba(201, 168, 76, 0.14),
+        0 0 0 1px rgba(201, 168, 76, 0.3);
+}
+
+/* Bolinha dourada no canto superior direito do card ativo */
+.char-card.char-active::after {
+    content: '✦';
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    font-size: 8px;
+    color: var(--gold);
+    opacity: 0.85;
+    font-family: 'Cinzel', serif;
+    pointer-events: none;
+    text-shadow: 0 0 6px rgba(201, 168, 76, 0.6);
 }
 
 /* ══ FLASH ANIMATIONS ══ */

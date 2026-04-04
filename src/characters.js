@@ -8,14 +8,25 @@ async function loadAndShareCharacters() {
             .from('characters').select('*').eq('user_id', state.currentUserId)
         if (error) { console.error('[Characters] Erro ao carregar:', error.message); return }
         state.playerCharacters = chars || []
-        if (state.playerCharacters.length === 0) openCharModal()
-        else emitCharacters()
+        if (state.playerCharacters.length === 0) {
+            openCharModal()
+        } else {
+            if (!state.activeCharacterId) {
+                state.activeCharacterId = state.playerCharacters[0].id
+            }
+            emitCharacters()
+        }
     } catch (e) { console.error('[Characters] Erro:', e) }
 }
 
+// Emite apenas o personagem ativo — um card por jogador na barra
 function emitCharacters() {
     if (!state.socket) return
-    state.socket.emit('share_characters', { playerName: state.playerName, characters: state.playerCharacters })
+    const activeChar = state.activeCharacterId
+        ? state.playerCharacters.find(c => c.id === state.activeCharacterId)
+        : state.playerCharacters[0]
+    const toSend = activeChar ? [activeChar] : []
+    state.socket.emit('share_characters', { playerName: state.playerName, characters: toSend })
 }
 
 // ── Render da barra ───────────────────────────────────────────────────────────
@@ -28,11 +39,10 @@ function renderCharacterBar(allChars) {
         bar.appendChild(buildCharCard(character, owner))
     })
     bar.style.display = 'flex'
+    updateActiveIndicator()
 }
 
 function buildCharCard(char, ownerName) {
-    const { openStatPopup } = require('./statPopup')
-
     const card = document.createElement('div')
     card.className = 'char-card clickable'
     card.dataset.charId = char.id
@@ -68,10 +78,12 @@ function buildCharCard(char, ownerName) {
     }
     card.appendChild(info)
 
+    // ── Click: abre statPopup (comportamento original restaurado) ─────────────
     card.addEventListener('click', e => {
         e.stopPropagation()
         if (!state.isRoomMaster && ownerName !== state.playerName) return
         const fresh = state.allCharsCache.find(en => en.character.id === char.id)
+        const { openStatPopup } = require('./statPopup')
         openStatPopup(fresh ? fresh.character : char, ownerName, card)
     })
 
@@ -87,13 +99,13 @@ function buildStatRow(label, value, maxValue, fillClass, field) {
     const lbl = document.createElement('span'); lbl.className = 'char-stat-label'; lbl.textContent = label
     const bar = document.createElement('div'); bar.className = 'char-stat-bar'
     const fill = document.createElement('div')
-    fill.className = `char-stat-fill ${fillClass}`  // NÃO setar data-stat-field no fill
+    fill.className = `char-stat-fill ${fillClass}`
     const pct = (maxValue && maxValue > 0) ? Math.max(0, Math.min(100, (value / maxValue) * 100)) : 100
     fill.style.width = pct + '%'
     bar.appendChild(fill)
     const val = document.createElement('span')
     val.className = 'char-stat-val'
-    val.dataset.statField = field  // apenas o texto tem o atributo
+    val.dataset.statField = field
     val.textContent = maxValue != null ? `${value}/${maxValue}` : value
     row.appendChild(lbl); row.appendChild(bar); row.appendChild(val)
     return row
@@ -132,10 +144,57 @@ function flashCard(charId, type) {
     setTimeout(() => card.classList.remove(`flash-${type}`), 750)
 }
 
-// ── Modal de criação de personagem ────────────────────────────────────────────
+// ── Indicador de personagem ativo ─────────────────────────────────────────────
+function updateActiveIndicator() {
+    document.querySelectorAll('.char-card').forEach(c => c.classList.remove('char-active'))
+    if (!state.activeCharacterId) return
+    document.querySelectorAll(`.char-card[data-char-id="${state.activeCharacterId}"]`).forEach(card => {
+        if (card.dataset.ownerName === state.playerName) card.classList.add('char-active')
+    })
+}
+
+// ── Modais de Personagem ──────────────────────────────────────────────────────
 function openCharModal() {
+    state.editCharMode = false
+    state.editCharId = null
+
+        ;['charName', 'charHp', 'charSanity', 'charBullets'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.value = ''
+        })
+    document.getElementById('charPhoto').value = ''
+    document.getElementById('photoLabelText').textContent = 'Clique para escolher imagem'
+    document.getElementById('photoUploadLabel').classList.remove('has-file')
+    document.getElementById('charSubmitBtn').textContent = '⚔ Invocar Personagem'
+
     const modal = document.getElementById('charModal')
+    modal.querySelector('.card-title').textContent = 'Novo Personagem'
+    modal.querySelector('.card-subtitle').textContent = 'Forje seu avatar neste mundo'
     modal.style.display = 'flex'
+
+    document.getElementById('charModalInfo').className = 'info-box'
+    document.getElementById('charModalInfo').textContent = ''
+}
+
+function openEditCharModal(char) {
+    state.editCharMode = true
+    state.editCharId = char.id
+
+    document.getElementById('charName').value = char.name || ''
+    document.getElementById('charHp').value = char.hp_max ?? char.hp ?? ''
+    document.getElementById('charSanity').value = char.sanity_max != null ? char.sanity_max : ''
+    document.getElementById('charBullets').value = char.bullets != null ? char.bullets : ''
+    document.getElementById('charPhoto').value = ''
+
+    const hasPhoto = !!char.photo
+    document.getElementById('photoLabelText').textContent = hasPhoto ? 'Foto atual (clique para alterar)' : 'Clique para escolher imagem'
+    document.getElementById('photoUploadLabel').classList.toggle('has-file', hasPhoto)
+    document.getElementById('charSubmitBtn').textContent = '✏ Atualizar Personagem'
+
+    const modal = document.getElementById('charModal')
+    modal.querySelector('.card-title').textContent = 'Editar Personagem'
+    modal.querySelector('.card-subtitle').textContent = 'Atualize os dados do personagem'
+    modal.style.display = 'flex'
+
     document.getElementById('charModalInfo').className = 'info-box'
     document.getElementById('charModalInfo').textContent = ''
 }
@@ -171,49 +230,83 @@ function initCharModal() {
         if (isNaN(hpMax)) { showCharModalInfo('Vida Máxima (HP) é obrigatória.', 'error'); return }
 
         charSubmitBtn.disabled = true
-        charSubmitBtn.textContent = 'Invocando...'
+        charSubmitBtn.textContent = state.editCharMode ? 'Atualizando...' : 'Invocando...'
 
         try {
-            const charId = crypto.randomUUID()
-            let photoUrl = null
-
-            if (photoFile) {
-                const ext = photoFile.name.split('.').pop().toLowerCase()
-                const filePath = `${state.currentUserId}/${charId}/photo.${ext}`
-                const mimeType = photoFile.type || `image/${ext}`
-                try {
-                    const arrayBuffer = await photoFile.arrayBuffer()
-                    const { data, error } = await state.supabase.storage
-                        .from('CharactersAndItems')
-                        .upload(filePath, arrayBuffer, { contentType: mimeType, upsert: true })
-                    if (error) throw error
-                    const { data: urlData } = state.supabase.storage.from('CharactersAndItems').getPublicUrl(filePath)
-                    photoUrl = urlData?.publicUrl
-                } catch (err) { console.error('[Photo] Erro no upload:', err) }
-            }
-
-            const { data: newChar, error: insertError } = await state.supabase
-                .from('characters')
-                .insert({ id: charId, user_id: state.currentUserId, name, hp: hpMax, hp_max: hpMax, sanity: sanityMax, sanity_max: sanityMax, bullets, photo: photoUrl })
-                .select().single()
-            if (insertError) throw new Error(insertError.message)
-
-            state.playerCharacters.push(newChar)
-            closeCharModal()
-            emitCharacters()
-
-                ;['charName', 'charHp', 'charSanity', 'charBullets'].forEach(id => { document.getElementById(id).value = '' })
-            charPhotoInput.value = ''
-            photoLabelText.textContent = 'Clique para escolher imagem'
-            photoUploadLabel.classList.remove('has-file')
+            if (state.editCharMode) await handleEditChar(name, hpMax, sanityMax, bullets, photoFile)
+            else await handleCreateChar(name, hpMax, sanityMax, bullets, photoFile)
         } catch (e) {
             console.error('[Characters] Erro:', e)
             showCharModalInfo(`Erro: ${e.message}`, 'error')
         } finally {
             charSubmitBtn.disabled = false
-            charSubmitBtn.textContent = '⚔ Invocar Personagem'
+            charSubmitBtn.textContent = state.editCharMode ? '✏ Atualizar Personagem' : '⚔ Invocar Personagem'
         }
     })
 }
 
-module.exports = { loadAndShareCharacters, emitCharacters, renderCharacterBar, updateCardStat, flashCard, openCharModal, initCharModal }
+async function handleCreateChar(name, hpMax, sanityMax, bullets, photoFile) {
+    const charId = crypto.randomUUID()
+    const photoUrl = photoFile ? await uploadCharPhoto(charId, photoFile) : null
+
+    const { data: newChar, error } = await state.supabase
+        .from('characters')
+        .insert({ id: charId, user_id: state.currentUserId, name, hp: hpMax, hp_max: hpMax, sanity: sanityMax, sanity_max: sanityMax, bullets, photo: photoUrl })
+        .select().single()
+    if (error) throw new Error(error.message)
+
+    state.playerCharacters.push(newChar)
+    if (!state.activeCharacterId) state.activeCharacterId = newChar.id
+    closeCharModal()
+    emitCharacters()
+}
+
+async function handleEditChar(name, hpMax, sanityMax, bullets, photoFile) {
+    const charId = state.editCharId
+    const existing = state.playerCharacters.find(c => c.id === charId)
+    if (!existing) throw new Error('Personagem não encontrado')
+
+    let photoUrl = existing.photo
+    if (photoFile) {
+        const uploaded = await uploadCharPhoto(charId, photoFile)
+        if (uploaded) photoUrl = uploaded
+    }
+
+    const updates = {
+        name,
+        hp: Math.min(existing.hp ?? hpMax, hpMax),
+        hp_max: hpMax,
+        sanity: sanityMax !== null ? Math.min(existing.sanity ?? sanityMax, sanityMax) : null,
+        sanity_max: sanityMax,
+        bullets,
+        photo: photoUrl
+    }
+
+    const { error } = await state.supabase.from('characters').update(updates).eq('id', charId)
+    if (error) throw new Error(error.message)
+
+    Object.assign(existing, updates)
+    closeCharModal()
+    emitCharacters()
+}
+
+async function uploadCharPhoto(charId, photoFile) {
+    try {
+        const ext = photoFile.name.split('.').pop().toLowerCase()
+        const filePath = `${state.currentUserId}/${charId}/photo.${ext}`
+        const mimeType = photoFile.type || `image/${ext}`
+        const buffer = await photoFile.arrayBuffer()
+        const { error } = await state.supabase.storage
+            .from('CharactersAndItems')
+            .upload(filePath, buffer, { contentType: mimeType, upsert: true })
+        if (error) throw error
+        const { data: urlData } = state.supabase.storage.from('CharactersAndItems').getPublicUrl(filePath)
+        return urlData?.publicUrl || null
+    } catch (err) { console.error('[Photo] Erro:', err); return null }
+}
+
+module.exports = {
+    loadAndShareCharacters, emitCharacters, renderCharacterBar,
+    updateCardStat, flashCard, updateActiveIndicator,
+    openCharModal, openEditCharModal, initCharModal
+}

@@ -15,24 +15,32 @@ const state = {
     supabase,
 
     // Auth
-    playerName:     localStorage.getItem('playerName') || 'Aventureiro',
-    currentUserId:  null,
-    isLoginMode:    true,
+    playerName: localStorage.getItem('playerName') || 'Aventureiro',
+    currentUserId: null,
+    isLoginMode: true,
 
     // Sala
-    socket:          null,
+    socket: null,
     currentRoomCode: null,
-    serverUrl:       null,
-    isRoomMaster:    false,
-    rooms:           {},   // mapa local código→url
+    serverUrl: null,
+    isRoomMaster: false,
+    rooms: {},   // mapa local código→url
 
     // Personagens
     playerCharacters: [],
-    allCharsCache:    [],
+    allCharsCache: [],
+
+    // Character options popup & edit mode
+    activeCharacterId: null,  // personagem ativo para rolagem de dados
+    charOptionsChar: null,
+    charOptionsCardEl: null,
+    charOptionsOwner: null,
+    editCharMode: false,
+    editCharId: null,
 
     // Stat popup
     statPopupCharId: null,
-    statPopupChar:   null,
+    statPopupChar: null,
 
     // Inventário
     inventories: {},   // { charId: [ { id, icon, name } ] }
@@ -41,15 +49,15 @@ const state = {
     activeBgLayer: 'A',
 
     // YouTube
-    ytPlayer:       null,
-    ytReady:        false,
+    ytPlayer: null,
+    ytReady: false,
     pendingVideoId: null,
     pendingSeekTime: 0,
 
     // UI
-    hudVisible:  true,
+    hudVisible: true,
     chatVisible: false,
-    fabOpen:     false,
+    fabOpen: false,
     resultTimer: null,
 }
 
