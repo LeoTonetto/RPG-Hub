@@ -91,8 +91,8 @@ function connectToRoom(url, roomCode) {
     })
 
     // ── Chat ──────────────────────────────────────────────────────────────────
-    state.socket.on('chat_message', ({ playerName: from, message }) => {
-        addChatMessage(from, message, from === state.playerName)
+    state.socket.on('chat_message', ({ playerName: from, message, type, gifUrl }) => {
+        addChatMessage(from, message, from === state.playerName, type || 'text', gifUrl || null)
     })
 
     // ── Cursors ───────────────────────────────────────────────────────────────

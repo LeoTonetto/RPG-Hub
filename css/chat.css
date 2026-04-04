@@ -1,72 +1,530 @@
 /* ══ CHAT TOGGLE ══ */
 #chatToggle {
-    position: fixed; top: 16px; left: 56px;
+    position: fixed;
+    top: 16px;
+    left: 56px;
     z-index: 1010;
-    background: rgba(10,8,6,0.65);
-    border: 1px solid rgba(201,168,76,0.2); border-radius: 3px;
-    color: rgba(201,168,76,0.45); font-size: 14px;
-    width: 34px; height: 34px;
-    cursor: pointer; display: none;
-    align-items: center; justify-content: center;
+    background: rgba(10, 8, 6, 0.65);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 3px;
+    color: rgba(201, 168, 76, 0.45);
+    font-size: 14px;
+    width: 34px;
+    height: 34px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
     backdrop-filter: blur(8px);
     transition: color 0.2s, border-color 0.2s;
 }
-#chatToggle:hover        { color: var(--gold); border-color: rgba(201,168,76,0.5); }
-#chatToggle.chat-active  { color: var(--gold); border-color: rgba(201,168,76,0.5); }
+
+#chatToggle:hover {
+    color: var(--gold);
+    border-color: rgba(201, 168, 76, 0.5);
+}
+
+#chatToggle.chat-active {
+    color: var(--gold);
+    border-color: rgba(201, 168, 76, 0.5);
+}
 
 /* ══ CHAT PANEL ══ */
 #chatPanel {
-    position: fixed; left: 16px; bottom: 24px;
-    width: 260px; z-index: 1001;
-    display: none; flex-direction: column; gap: 6px;
+    position: fixed;
+    left: 16px;
+    bottom: 24px;
+    width: 280px;
+    z-index: 1001;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
     pointer-events: none;
 }
-#chatPanel.chat-visible { pointer-events: all; }
+
+#chatPanel.chat-visible {
+    pointer-events: all;
+}
 
 #chatMessages {
-    display: flex; flex-direction: column; gap: 3px;
-    max-height: 320px; overflow: hidden; justify-content: flex-end;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-height: 320px;
+    overflow: hidden;
+    /* padrão: esconde scroll (chat fechado) */
+    overflow-x: hidden;
+    justify-content: flex-end;
+    /* mensagens ancoradas no fundo */
+}
+
+/* ── Mensagem histórica (não some) ── */
+.chat-msg.chat-history {
+    opacity: 0.72;
+}
+
+/* ── Separador entre histórico e mensagens ao vivo ── */
+.chat-sep {
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(201, 168, 76, 0.28);
+    padding: 5px 0;
+    border-top: 1px solid rgba(201, 168, 76, 0.07);
+    border-bottom: 1px solid rgba(201, 168, 76, 0.07);
+    margin: 3px 0;
+    flex-shrink: 0;
+}
+
+/* ── Scroll habilitado quando chat aberto ──
+   Mantém justify-content: flex-end — mensagens ficam embaixo.
+   Com overflow-y: auto + flex-end: quando tem conteúdo além
+   do max-height, o scroll funciona e a barra aparece. ── */
+#chatPanel.chat-visible #chatMessages {
+    overflow-y: auto;
+    /* NÃO alterar justify-content aqui — flex-end continua */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(201, 168, 76, 0.4) rgba(0, 0, 0, 0.2);
+}
+
+#chatPanel.chat-visible #chatMessages::-webkit-scrollbar {
+    width: 5px;
+}
+
+#chatPanel.chat-visible #chatMessages::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 3px;
+}
+
+#chatPanel.chat-visible #chatMessages::-webkit-scrollbar-thumb {
+    background: rgba(201, 168, 76, 0.4);
+    border-radius: 3px;
+}
+
+#chatPanel.chat-visible #chatMessages::-webkit-scrollbar-thumb:hover {
+    background: rgba(201, 168, 76, 0.7);
 }
 
 .chat-msg {
     font-family: 'Crimson Text', Georgia, serif;
-    font-size: 14px; line-height: 1.35;
-    color: rgba(244,234,213,0.88);
-    background: rgba(8,6,4,0.55);
-    padding: 4px 9px; border-radius: 2px;
+    font-size: 14px;
+    line-height: 1.35;
+    color: rgba(244, 234, 213, 0.88);
+    background: rgba(8, 6, 4, 0.55);
+    padding: 4px 9px;
+    border-radius: 2px;
     word-break: break-word;
     animation: chatFadeIn 0.3s ease both;
     backdrop-filter: blur(4px);
     border-left: 1.5px solid transparent;
 }
-.chat-msg.chat-own        { border-left-color: rgba(201,168,76,0.5); }
-.chat-msg .chat-name      { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.1em; color: var(--gold); margin-right: 5px; }
-.chat-msg.chat-own .chat-name { color: var(--gold-light); }
-.chat-msg.chat-fading     { transition: opacity 1.2s ease; opacity: 0; }
 
-@keyframes chatFadeIn {
-    from { opacity: 0; transform: translateX(-8px); }
-    to   { opacity: 1; transform: translateX(0); }
+.chat-msg.chat-own {
+    border-left-color: rgba(201, 168, 76, 0.5);
 }
 
-#chatInputRow { display: flex; gap: 5px; pointer-events: all; }
+.chat-msg .chat-name {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--gold);
+    margin-right: 4px;
+}
+
+.chat-msg.chat-own .chat-name {
+    color: var(--gold-light, #f5e09a);
+}
+
+.chat-msg.chat-fading {
+    transition: opacity 1.2s ease;
+    opacity: 0;
+}
+
+/* ── GIF no chat ── */
+.chat-msg-gif {
+    padding: 5px 9px;
+}
+
+.chat-gif {
+    display: block;
+    margin-top: 5px;
+    max-width: 100%;
+    max-height: 180px;
+    border-radius: 3px;
+    object-fit: cover;
+    border: 1px solid rgba(201, 168, 76, 0.15);
+}
+
+@keyframes chatFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ══ INPUT ROW ══ */
+#chatInputRow {
+    display: flex;
+    gap: 4px;
+    pointer-events: all;
+    align-items: stretch;
+}
 
 #chatInput {
     flex: 1;
-    background: rgba(8,6,4,0.72);
-    border: 1px solid rgba(201,168,76,0.2); border-radius: 2px;
-    color: var(--parchment); font-family: 'Crimson Text', serif; font-size: 14px;
-    padding: 7px 10px; outline: none;
-    transition: border-color 0.2s; backdrop-filter: blur(8px);
+    background: rgba(8, 6, 4, 0.72);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+    color: var(--parchment);
+    font-family: 'Crimson Text', serif;
+    font-size: 14px;
+    padding: 7px 10px;
+    outline: none;
+    transition: border-color 0.2s;
+    backdrop-filter: blur(8px);
 }
-#chatInput::placeholder { color: rgba(244,234,213,0.2); }
-#chatInput:focus        { border-color: rgba(201,168,76,0.45); }
 
-#chatSendBtn {
-    background: rgba(201,168,76,0.1);
-    border: 1px solid rgba(201,168,76,0.2); border-radius: 2px;
-    color: rgba(201,168,76,0.6); font-size: 14px;
-    width: 34px; cursor: pointer;
-    transition: all 0.2s; backdrop-filter: blur(8px);
+#chatInput::placeholder {
+    color: rgba(244, 234, 213, 0.2);
 }
-#chatSendBtn:hover { background: rgba(201,168,76,0.18); color: var(--gold); border-color: rgba(201,168,76,0.45); }
+
+#chatInput:focus {
+    border-color: rgba(201, 168, 76, 0.45);
+}
+
+/* ── Botão enviar ── */
+#chatSendBtn {
+    background: rgba(201, 168, 76, 0.1);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+    color: rgba(201, 168, 76, 0.6);
+    font-size: 14px;
+    width: 34px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    backdrop-filter: blur(8px);
+}
+
+#chatSendBtn:hover {
+    background: rgba(201, 168, 76, 0.18);
+    color: var(--gold);
+    border-color: rgba(201, 168, 76, 0.45);
+}
+
+/* ── Botões de ação (emoji / GIF) ── */
+.chat-action-btn {
+    background: rgba(8, 6, 4, 0.65);
+    border: 1px solid rgba(201, 168, 76, 0.18);
+    border-radius: 2px;
+    color: rgba(201, 168, 76, 0.5);
+    font-size: 13px;
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    padding: 0 7px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.18s;
+    backdrop-filter: blur(8px);
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.chat-action-btn:hover {
+    background: rgba(201, 168, 76, 0.1);
+    color: var(--gold);
+    border-color: rgba(201, 168, 76, 0.4);
+}
+
+.chat-action-btn.active {
+    color: var(--gold);
+    border-color: rgba(201, 168, 76, 0.5);
+    background: rgba(201, 168, 76, 0.1);
+}
+
+/* ══ PICKER BASE (compartilhado entre emoji e gif) ══ */
+.chat-picker {
+    position: fixed;
+    z-index: 2500;
+    background: linear-gradient(160deg, #1c1610 0%, #0d0a07 100%);
+    border: 1px solid rgba(201, 168, 76, 0.35);
+    border-radius: 5px;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(201, 168, 76, 0.08);
+    flex-direction: column;
+    display: none;
+    user-select: none;
+    /* sem overflow:hidden — cada seção gerencia o próprio overflow */
+}
+
+.chat-picker.picker-open {
+    display: flex;
+    animation: pickerIn 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pickerIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ══ EMOJI PICKER ══ */
+#emojiPicker {
+    width: 280px;
+}
+
+.picker-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 7px 8px 6px;
+    border-bottom: 1px solid rgba(201, 168, 76, 0.1);
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 5px 5px 0 0;
+}
+
+.picker-tab {
+    flex: 1;
+    padding: 5px 2px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    font-size: 16px;
+    cursor: pointer;
+    line-height: 1;
+    transition: all 0.14s;
+}
+
+.picker-tab:hover {
+    background: rgba(201, 168, 76, 0.08);
+    border-color: rgba(201, 168, 76, 0.2);
+}
+
+.picker-tab.active {
+    background: rgba(201, 168, 76, 0.12);
+    border-color: rgba(201, 168, 76, 0.35);
+}
+
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 1px;
+    padding: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(201, 168, 76, 0.2) transparent;
+}
+
+.emoji-grid::-webkit-scrollbar {
+    width: 4px;
+}
+
+.emoji-grid::-webkit-scrollbar-thumb {
+    background: rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+}
+
+.emoji-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 1;
+    font-size: 20px;
+    line-height: 1;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.1s;
+    padding: 0;
+}
+
+.emoji-btn:hover {
+    background: rgba(201, 168, 76, 0.1);
+    border-color: rgba(201, 168, 76, 0.25);
+    transform: scale(1.2);
+}
+
+/* ══ GIF MODAL ══ */
+.gif-modal {
+    width: 340px;
+    max-height: 460px;
+    /* altura máxima — o grid dentro vai scrollar */
+}
+
+.gif-header {
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(201, 168, 76, 0.1);
+    border-radius: 5px 5px 0 0;
+    flex-shrink: 0;
+    /* cabeçalho não encolhe */
+}
+
+.gif-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 3px;
+    padding: 5px 9px;
+    transition: border-color 0.2s;
+}
+
+.gif-search-wrap:focus-within {
+    border-color: rgba(201, 168, 76, 0.45);
+}
+
+.gif-search-icon {
+    font-size: 13px;
+    opacity: 0.5;
+    flex-shrink: 0;
+}
+
+.gif-search-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--parchment);
+    font-family: 'Crimson Text', serif;
+    font-size: 14px;
+}
+
+.gif-search-input::placeholder {
+    color: rgba(244, 234, 213, 0.25);
+}
+
+.gif-clear-btn {
+    background: none;
+    border: none;
+    color: rgba(201, 168, 76, 0.3);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.15s;
+    flex-shrink: 0;
+}
+
+.gif-clear-btn:hover {
+    color: var(--gold);
+}
+
+/* ── Grade de GIFs: layout masonry com CSS columns (igual ao Discord) ── */
+.gif-grid {
+    columns: 2;
+    /* 2 colunas de largura igual */
+    column-gap: 4px;
+    padding: 6px;
+    flex: 1;
+    min-height: 0;
+    /* obrigatório para overflow-y funcionar em flex */
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(201, 168, 76, 0.25) transparent;
+}
+
+.gif-grid::-webkit-scrollbar {
+    width: 4px;
+}
+
+.gif-grid::-webkit-scrollbar-thumb {
+    background: rgba(201, 168, 76, 0.25);
+    border-radius: 2px;
+}
+
+/* ── Item de GIF: sem altura fixa, a imagem define a altura ── */
+.gif-item {
+    display: inline-block;
+    /* necessário para CSS columns funcionar */
+    width: 100%;
+    break-inside: avoid;
+    /* não quebra um GIF entre colunas */
+    margin-bottom: 4px;
+    border-radius: 3px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid rgba(201, 168, 76, 0.08);
+    transition: border-color 0.15s, transform 0.12s;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.gif-item:hover {
+    border-color: rgba(201, 168, 76, 0.5);
+    transform: scale(1.02);
+    z-index: 1;
+}
+
+.gif-item img {
+    width: 100%;
+    height: auto;
+    /* altura natural do GIF — sem corte, sem distorção */
+    display: block;
+}
+
+/* ── Placeholder animado enquanto carrega ── */
+.gif-placeholder {
+    display: inline-block;
+    width: 100%;
+    break-inside: avoid;
+    margin-bottom: 4px;
+    height: 100px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, rgba(201, 168, 76, 0.04) 25%, rgba(201, 168, 76, 0.1) 50%, rgba(201, 168, 76, 0.04) 75%);
+    background-size: 200% 100%;
+    animation: gifShimmer 1.4s infinite;
+}
+
+@keyframes gifShimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.gif-error {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 32px 0;
+    color: rgba(244, 234, 213, 0.3);
+    font-family: 'Crimson Text', serif;
+    font-style: italic;
+    font-size: 14px;
+}
+
+/* ── Atribuição obrigatória do Giphy ── */
+.gif-attrib {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px 7px;
+    border-top: 1px solid rgba(201, 168, 76, 0.08);
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 0 0 5px 5px;
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(244, 234, 213, 0.25);
+    gap: 2px;
+    flex-shrink: 0;
+    /* rodapé não encolhe */
+}

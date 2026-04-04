@@ -1,15 +1,15 @@
-const express  = require('express')
-const path     = require('path')
+const express = require('express')
+const path = require('path')
 const { createServer } = require('http')
-const { Server }       = require('socket.io')
+const { Server } = require('socket.io')
 
-const { setupSceneRoutes }   = require('./server/scenes')
-const { setupSocketHandlers} = require('./server/handlers')
+const { setupSceneRoutes } = require('./server/scenes')
+const { setupSocketHandlers, setupCleanupRoute } = require('./server/handlers')
 const { roomCodes, urlCodes, rooms, normalizeUrl } = require('./server/roomState')
 
-const app        = express()
+const app = express()
 const httpServer = createServer(app)
-const io         = new Server(httpServer, { cors: { origin: '*' } })
+const io = new Server(httpServer, { cors: { origin: '*' } })
 
 // ── Rotas de cena ────────────────────────────────────────────────────────────
 setupSceneRoutes(app, express)
@@ -36,7 +36,7 @@ app.post('/register-room', express.json(), (req, res) => {
 // ── Arquivos estáticos (HTML/CSS/JS do client) ────────────────────────────────
 app.use(express.static(__dirname))
 
-// ── Socket.IO ────────────────────────────────────────────────────────────────
+setupCleanupRoute(app, io)
 setupSocketHandlers(io)
 
 // ── Inicialização ─────────────────────────────────────────────────────────────
