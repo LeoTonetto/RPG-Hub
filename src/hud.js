@@ -14,21 +14,22 @@ function makeDraggable(el, handle) {
     })
     document.addEventListener('mousemove', e => {
         if (!dragging) return
-        const x = Math.max(0, Math.min(e.clientX - ox, window.innerWidth  - el.offsetWidth))
+        const x = Math.max(0, Math.min(e.clientX - ox, window.innerWidth - el.offsetWidth))
         const y = Math.max(0, Math.min(e.clientY - oy, window.innerHeight - el.offsetHeight))
         el.style.left = x + 'px'
-        el.style.top  = y + 'px'
+        el.style.top = y + 'px'
     })
     document.addEventListener('mouseup', () => { dragging = false })
 }
 
 // ── HUD toggle ────────────────────────────────────────────────────────────────
 function initHUD() {
-    const hudToggle  = document.getElementById('hudToggle')
-    const chatToggle = document.getElementById('chatToggle')
-
+    const hudToggle = document.getElementById('hudToggle')
     hudToggle.addEventListener('click', toggleHUD)
-    chatToggle.addEventListener('click', toggleChat)
+
+    // O toggle do chat agora fica no input row
+    const collapseBtn = document.getElementById('chatCollapseBtn')
+    if (collapseBtn) collapseBtn.addEventListener('click', toggleChat)
 
     document.addEventListener('keydown', e => {
         const tag = document.activeElement.tagName
@@ -47,24 +48,38 @@ function toggleHUD() {
 
 function toggleChat() {
     state.chatVisible = !state.chatVisible
-    const panel = document.getElementById('chatPanel')
-    const btn   = document.getElementById('chatToggle')
-    if (panel) panel.classList.toggle('chat-visible', state.chatVisible)
-    if (btn) {
-        btn.classList.toggle('chat-active', state.chatVisible)
-        btn.title = state.chatVisible ? 'Ocultar Chat (C)' : 'Mostrar Chat (C)'
+    const messages = document.getElementById('chatMessages')
+    const collapseBtn = document.getElementById('chatCollapseBtn')
+
+    if (messages) {
+        messages.classList.toggle('chat-collapsed', !state.chatVisible)
+        if (state.chatVisible) {
+            // Snap ao fundo ao abrir
+            messages.scrollTop = messages.scrollHeight
+        }
+    }
+    if (collapseBtn) {
+        collapseBtn.classList.toggle('chat-active', state.chatVisible)
+        collapseBtn.title = state.chatVisible ? 'Ocultar Chat (C)' : 'Mostrar Chat (C)'
     }
     if (state.chatVisible) document.getElementById('chatInput')?.focus()
 }
 
-// Mostra os botões de HUD e chat (chamado quando entra em sala)
+// Mostra os botões de HUD (chamado quando entra em sala)
 function showHUDButtons() {
-    const hudToggle  = document.getElementById('hudToggle')
-    const chatToggle = document.getElementById('chatToggle')
-    if (hudToggle)  { hudToggle.style.display  = 'flex'; hudToggle.style.alignItems = 'center'; hudToggle.style.justifyContent = 'center' }
-    if (chatToggle) { chatToggle.style.display = 'flex'; chatToggle.style.alignItems = 'center'; chatToggle.style.justifyContent = 'center' }
+    const hudToggle = document.getElementById('hudToggle')
+    if (hudToggle) {
+        hudToggle.style.display = 'flex'
+        hudToggle.style.alignItems = 'center'
+        hudToggle.style.justifyContent = 'center'
+    }
+    // O painel do chat fica sempre visível a partir de agora (input sempre acessível)
     const chatPanel = document.getElementById('chatPanel')
     if (chatPanel) chatPanel.style.display = 'flex'
+
+    // Mensagens começam colapsadas até o usuário clicar em 💬
+    const messages = document.getElementById('chatMessages')
+    if (messages && !state.chatVisible) messages.classList.add('chat-collapsed')
 }
 
 module.exports = { makeDraggable, initHUD, toggleHUD, toggleChat, showHUDButtons }

@@ -1,8 +1,5 @@
 const state = require('./state')
 
-const MSG_LIFETIME = 18000
-const MSG_FADE = 1200
-const MAX_LIVE_MSG = 50   // máximo de mensagens ao vivo (histórico não é afetado)
 
 const GIPHY_KEY = 'Mn6Xc5nLEurS5zITCgQIGjR3tVzkP3PW'
 const GIPHY_BASE = 'https://api.giphy.com/v1/gifs'
@@ -86,22 +83,11 @@ function addChatMessage(from, message, isOwn = false, type = 'text', gifUrl = nu
 
     container.appendChild(el)
 
-    // Histórico: sem fade, sem trim, sem auto-scroll forçado
+    // Histórico: sem auto-scroll forçado
     if (isHistory) return
-
-    // ── Trim: só mensagens ao vivo, nunca o histórico ─────────────────────────
-    const liveMsgs = [...container.querySelectorAll('.chat-msg:not(.chat-history)')]
-    while (liveMsgs.length > MAX_LIVE_MSG) liveMsgs.shift().remove()
 
     // ── Auto-scroll apenas se o usuário estava no fundo ───────────────────────
     if (_chatAtBottom) container.scrollTop = container.scrollHeight
-
-    const panel = document.getElementById('chatPanel')
-    if (!state.chatVisible) { panel.style.display = 'flex'; panel.style.pointerEvents = 'none' }
-
-    const fadeTimer = setTimeout(() => { el.classList.add('chat-fading'); setTimeout(() => el.remove(), MSG_FADE) }, MSG_LIFETIME)
-    const observer = new MutationObserver(() => { if (state.chatVisible) { clearTimeout(fadeTimer); el.classList.remove('chat-fading') } })
-    observer.observe(panel, { attributes: true, attributeFilter: ['class'] })
 }
 
 // ── Histórico da sessão ───────────────────────────────────────────────────────
