@@ -39,21 +39,44 @@ function _browserPlay(videoId, seekTime) {
 
     if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
         ytPlayer.loadVideoById({ videoId, startSeconds: Math.floor(seekTime || 0) })
+        ytPlayer.setPlaybackQuality('tiny')
         ytPlayer.setVolume(vol)
         return
     }
 
+    let bufferTimer = null
+
     ytPlayer = new YT.Player('ytPlayer', {
         height: '1', width: '1', videoId,
-        playerVars: { autoplay: 1, controls: 0, loop: 1, playlist: videoId, start: Math.floor(seekTime || 0) },
+        playerVars: {
+            autoplay: 1, controls: 0, loop: 1, playlist: videoId,
+            start: Math.floor(seekTime || 0),
+            vq: 'tiny',
+            modestbranding: 1,
+            rel: 0,
+            iv_load_policy: 3,
+        },
         events: {
             onReady(e) {
+                e.target.setPlaybackQuality('tiny')
                 e.target.setVolume(vol)
                 e.target.playVideo()
             },
             onStateChange(e) {
-                // Garante que desmuta após iniciar (alguns browsers mutam por autoplay)
-                if (e.data === YT.PlayerState.PLAYING) e.target.unMute()
+                // Recuperação automática de buffering prolongado
+                if (e.data === YT.PlayerState.BUFFERING) {
+                    if (bufferTimer) return
+                    bufferTimer = setTimeout(() => {
+                        bufferTimer = null
+                        if (!ytPlayer) return
+                        const t = ytPlayer.getCurrentTime() || 0
+                        console.log('[Música] buffering timeout — recuperando em:', t)
+                        ytPlayer.seekTo(t + 0.1, true)
+                    }, 4000)
+                } else {
+                    if (bufferTimer) { clearTimeout(bufferTimer); bufferTimer = null }
+                    if (e.data === YT.PlayerState.PLAYING) e.target.unMute()
+                }
             },
             onError(e) {
                 console.error('[Música] Erro IFrame API:', e.data)
