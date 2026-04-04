@@ -56,9 +56,20 @@ function createWindow() {
         log(prefix, message)
     })
 
+    // DEPOIS
     win.on('closed', () => {
         const idx = windows.indexOf(win)
         if (idx > -1) windows.splice(idx, 1)
+
+        // Se não há mais janelas visíveis, encerra tudo (incluindo musicWindow)
+        if (windows.length === 0) {
+            stopNgrok()
+            if (musicWindow && !musicWindow.isDestroyed()) {
+                musicWindow.destroy()
+                musicWindow = null
+            }
+            app.quit()
+        }
     })
     return win
 }
