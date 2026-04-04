@@ -213,6 +213,11 @@ function initCharModal() {
     const photoLabelText = document.getElementById('photoLabelText')
     const charSubmitBtn = document.getElementById('charSubmitBtn')
 
+    document.getElementById('charModalClose')?.addEventListener('click', closeCharModal)
+    document.getElementById('charModal').addEventListener('click', e => {
+        if (e.target === document.getElementById('charModal')) closeCharModal()
+    })
+
     charPhotoInput.addEventListener('change', () => {
         const file = charPhotoInput.files[0]
         if (file) { photoLabelText.textContent = file.name; photoUploadLabel.classList.add('has-file') }
