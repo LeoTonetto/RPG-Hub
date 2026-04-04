@@ -139,8 +139,9 @@ function setupSocketHandlers(io) {
         })
 
         // ── Dados ────────────────────────────────────────────────────────────
-        socket.on('dice_roll', ({ result, charName, diceType }) => {
-            io.to(roomCode).emit('dice_result', { result, charName, diceType })
+        // handlers.js — linha do dice_roll
+        socket.on('dice_roll', ({ player, value, sides, label }) => {
+            io.to(roomCode).emit('dice_result', { player, value, sides, label })
         })
 
         // ── Chat ─────────────────────────────────────────────────────────────
