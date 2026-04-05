@@ -19,6 +19,7 @@ log('=== App iniciando ===')
 let mainWindow
 const windows = []
 let musicWindow = null
+let sfxWindow = null
 
 const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) { app.quit(); return }
@@ -152,6 +153,53 @@ ipcMain.on('music-play', (e, { videoId, seekTime }) => playMusic(videoId, seekTi
 ipcMain.on('music-stop', () => stopMusic())
 ipcMain.on('music-volume', (e, { volume }) => setMusicVolume(volume))
 
+// ── Painel de SFX (janela externa) ────────────────────────────────────────
+function openSfxPanel() {
+    if (sfxWindow && !sfxWindow.isDestroyed()) {
+        sfxWindow.focus()
+        return
+    }
+
+    log('[SFX] Criando janela de efeitos sonoros...')
+    sfxWindow = new BrowserWindow({
+        width: 720,
+        height: 500,
+        minWidth: 400,
+        minHeight: 300,
+        frame: false,
+        titleBarStyle: 'hidden',
+        transparent: false,
+        backgroundColor: '#0f0c09',
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+            webSecurity: false,
+            backgroundThrottling: false
+        }
+    })
+
+    sfxWindow.loadURL('http://localhost:3001/sfx-panel.html')
+
+    sfxWindow.webContents.on('console-message', (e, level, message) => {
+        log('[SFXWin]', message)
+    })
+
+    sfxWindow.on('closed', () => {
+        log('[SFX] Janela de SFX fechada')
+        sfxWindow = null
+    })
+}
+
+ipcMain.on('open-sfx-panel', () => openSfxPanel())
+
+ipcMain.on('sfx-play', (event, data) => {
+    log('[SFX] Play recebido do painel:', data.sfxName)
+    // Encaminha para a janela principal (renderer) que tem o socket
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('sfx-trigger', data)
+    }
+})
+
 // ── Ngrok ─────────────────────────────────────────────────────────────────────
 let ngrokProcess = null
 
@@ -192,6 +240,10 @@ app.on('window-all-closed', () => {
     if (musicWindow && !musicWindow.isDestroyed()) {
         musicWindow.destroy()
         musicWindow = null
+    }
+    if (sfxWindow && !sfxWindow.isDestroyed()) {
+        sfxWindow.destroy()
+        sfxWindow = null
     }
     app.quit()
 })

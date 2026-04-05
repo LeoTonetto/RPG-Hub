@@ -12,6 +12,7 @@ const { initRoom } = require('./src/room')
 // (event listeners aplicados direto nos elementos existentes)
 require('./src/statPopup')
 require('./src/inventory')
+require('./src/sfx')
 require('./src/npc')      // registra handlers; initNPC() é chamado pelo socket.js
 
 // ── Inicialização ─────────────────────────────────────────────────────────────

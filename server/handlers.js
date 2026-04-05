@@ -77,6 +77,14 @@ function setupSocketHandlers(io) {
             console.log(`[Música] ${stoppedBy} parou a música na sala ${roomCode}`)
         })
 
+        // ── Efeitos Sonoros ─────────────────────────────────────────────────
+        socket.on('play_sfx', ({ audioUrl, sfxName }) => {
+            if (roomMasters[roomCode] !== socket.id) return
+            if (!audioUrl || typeof audioUrl !== 'string') return
+            io.to(roomCode).emit('play_sfx', { audioUrl, sfxName })
+            console.log(`[SFX] ${sfxName} tocado na sala ${roomCode}`)
+        })
+
         // ── Cena ─────────────────────────────────────────────────────────────
         socket.on('scene_change', ({ url, mimeType }) => {
             if (roomMasters[roomCode] !== socket.id) return

@@ -9,6 +9,7 @@ const { initChat, addChatMessage } = require('./chat')
 const { showHUDButtons } = require('./hud')
 const { handleInventoryUpdate } = require('./inventory')
 const { initNPC, handleNPCSummon, handleNPCDismiss } = require('./npc')
+const { initSfxPanel, playSfxAudio } = require('./sfx')
 
 function connectToRoom(url, roomCode) {
     state.currentRoomCode = (roomCode || 'DEFAULT').toString().trim().toUpperCase()
@@ -34,6 +35,7 @@ function connectToRoom(url, roomCode) {
         state.isRoomMaster = isMaster
         initMusicPanel()   // mostra/oculta controles do mestre
         initNPC()          // configura painel de NPC (mestre) ou apenas listeners (players)
+        initSfxPanel()      // mostra/oculta painel de efeitos sonoros
     })
 
     state.socket.on('connect_error', err => {
@@ -54,6 +56,12 @@ function connectToRoom(url, roomCode) {
     state.socket.on('music_stop', () => {
         stopYouTubeVideo()
         hideMusicActive()
+    })
+
+    // ── Efeitos Sonoros ───────────────────────────────────────────────────────
+    state.socket.on('play_sfx', ({ audioUrl, sfxName }) => {
+        console.log('[Socket] play_sfx recebido —', sfxName)
+        playSfxAudio(audioUrl)
     })
 
     // ── Cena de fundo ─────────────────────────────────────────────────────────
