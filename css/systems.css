@@ -1,0 +1,598 @@
+/* ══ SYSTEM SELECTOR (criação) ══ */
+.system-selector {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.system-btn {
+    flex: 1;
+    min-width: 100px;
+    padding: 10px 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 3px;
+    color: rgba(244, 234, 213, 0.5);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.system-btn:hover {
+    border-color: rgba(201, 168, 76, 0.5);
+    color: rgba(244, 234, 213, 0.8);
+    background: rgba(201, 168, 76, 0.05);
+}
+
+.system-btn.active {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(201, 168, 76, 0.1);
+    box-shadow: 0 0 12px rgba(201, 168, 76, 0.1);
+}
+
+/* ══ SYSTEM FIELDS (criação) ══ */
+.system-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.system-info-box {
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border-left: 2px solid rgba(201, 168, 76, 0.3);
+    border-radius: 0 3px 3px 0;
+    font-size: 13px;
+    color: rgba(244, 234, 213, 0.6);
+    line-height: 1.5;
+}
+
+.attr-remaining {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: rgba(201, 168, 76, 0.7);
+}
+
+.attr-remaining.done {
+    color: rgba(150, 255, 160, 0.7);
+}
+
+.attr-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+}
+
+.attr-icon {
+    font-size: 16px;
+    width: 22px;
+    text-align: center;
+}
+
+.attr-label {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    color: rgba(244, 234, 213, 0.75);
+    width: 80px;
+    letter-spacing: 0.06em;
+}
+
+.attr-value {
+    font-family: 'Cinzel', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gold);
+    width: 28px;
+    text-align: center;
+}
+
+.attr-adj-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    color: var(--gold);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    line-height: 1;
+}
+
+.attr-adj-btn:hover:not(:disabled) {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.1);
+    transform: scale(1.1);
+}
+
+.attr-adj-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+}
+
+/* ══ CARD EXTRAS ══ */
+.char-card-extra {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    color: rgba(244, 234, 213, 0.55);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════ */
+/* ══ STAT POPUP — COMPACT ══                                                  */
+/* ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Top row (Vida + Dinheiro) ───────────────────────────────────────────── */
+.sp-top-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    margin-bottom: 6px;
+}
+
+.sp-hp-wrap,
+.sp-money-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.sp-hp-wrap {
+    flex: 1;
+}
+
+.sp-money-wrap {
+    flex-shrink: 0;
+}
+
+.sp-mini-label {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    color: var(--gold-dim);
+    text-transform: uppercase;
+}
+
+.sp-inline-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.sp-sep {
+    color: rgba(201, 168, 76, 0.3);
+    font-size: 12px;
+    margin: 0 1px;
+}
+
+/* ── +/- buttons ──────────────────────────────────────────────────────────── */
+.sp-adj-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    color: var(--gold);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.12s;
+    line-height: 1;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.sp-adj-btn:hover:not(:disabled) {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.1);
+}
+
+.sp-adj-btn:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+}
+
+.sp-adj-xs {
+    width: 18px;
+    height: 18px;
+    font-size: 10px;
+}
+
+.sp-adj-sm {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+}
+
+/* ── Numeric input ────────────────────────────────────────────────────────── */
+.sp-stat-input {
+    width: 40px;
+    padding: 3px 2px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+    color: var(--parchment);
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.15s;
+    -moz-appearance: textfield;
+}
+
+.sp-stat-input::-webkit-inner-spin-button,
+.sp-stat-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.sp-stat-input:focus {
+    border-color: var(--gold-dim);
+}
+
+.sp-stat-input:disabled {
+    opacity: 0.5;
+}
+
+.sp-input-xs {
+    width: 30px;
+    font-size: 11px;
+    padding: 2px 1px;
+}
+
+/* ── Combat stats row ─────────────────────────────────────────────────────── */
+.sp-combat-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.sp-cbadge {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 5px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(201, 168, 76, 0.08);
+    border-radius: 3px;
+    flex-wrap: wrap;
+}
+
+.sp-cbadge-icon {
+    font-size: 10px;
+    flex-shrink: 0;
+}
+
+.sp-cbadge-name {
+    font-family: 'Cinzel', serif;
+    font-size: 7px;
+    letter-spacing: 0.04em;
+    color: rgba(201, 168, 76, 0.5);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.sp-cbadge-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+}
+
+/* ── Sub-panel buttons row ────────────────────────────────────────────────── */
+.sp-subpanel-row {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 4px;
+}
+
+.sp-subpanel-btn {
+    flex: 1;
+    padding: 7px 4px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(201, 168, 76, 0.15);
+    border-radius: 3px;
+    color: rgba(201, 168, 76, 0.6);
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+}
+
+.sp-subpanel-btn:hover {
+    border-color: rgba(201, 168, 76, 0.4);
+    color: var(--gold);
+    background: rgba(201, 168, 76, 0.05);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════ */
+/* ══ SUB-PANELS (Atributos, Antecedentes, Habilidades) ══                     */
+/* Mesma estética do inventário                                                 */
+/* ══════════════════════════════════════════════════════════════════════════════ */
+
+.subpanel {
+    position: fixed;
+    z-index: 1050;
+    background: linear-gradient(160deg, rgba(20, 16, 12, 0.98) 0%, rgba(10, 8, 5, 0.99) 100%);
+    border: 1px solid var(--gold-dim);
+    border-radius: 4px;
+    min-width: 220px;
+    max-width: 280px;
+    box-shadow: 0 6px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(201, 168, 76, 0.08);
+    display: none;
+}
+
+.subpanel.visible {
+    display: block;
+}
+
+.subpanel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid rgba(201, 168, 76, 0.12);
+    cursor: grab;
+    user-select: none;
+}
+
+.subpanel-header:active {
+    cursor: grabbing;
+}
+
+.subpanel-title {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+}
+
+.subpanel-close {
+    background: none;
+    border: none;
+    color: rgba(201, 168, 76, 0.4);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0 2px;
+    transition: color 0.15s;
+    line-height: 1;
+}
+
+.subpanel-close:hover {
+    color: var(--gold);
+}
+
+.subpanel-body {
+    padding: 8px 10px 10px;
+    max-height: 340px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold-dim) transparent;
+}
+
+.subpanel-body::-webkit-scrollbar {
+    width: 3px;
+}
+
+.subpanel-body::-webkit-scrollbar-thumb {
+    background: var(--gold-dim);
+    border-radius: 2px;
+}
+
+/* ── Row inside sub-panels (Atributos & Antecedentes) ─────────────────────── */
+.subp-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+    border-bottom: 1px solid rgba(201, 168, 76, 0.06);
+}
+
+.subp-row:last-child {
+    border-bottom: none;
+}
+
+.subp-icon {
+    font-size: 14px;
+    flex-shrink: 0;
+    width: 18px;
+    text-align: center;
+}
+
+.subp-name {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: rgba(244, 234, 213, 0.7);
+    letter-spacing: 0.04em;
+    flex: 1;
+    min-width: 0;
+}
+
+.subp-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.subp-val {
+    font-family: 'Cinzel', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--gold);
+    min-width: 20px;
+    text-align: center;
+}
+
+.subp-empty {
+    font-size: 12px;
+    color: rgba(244, 234, 213, 0.3);
+    text-align: center;
+    padding: 16px 0;
+}
+
+/* ── Habilidades inside sub-panel ─────────────────────────────────────────── */
+.subp-hab-item {
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(201, 168, 76, 0.06);
+    border-radius: 3px;
+    margin-bottom: 5px;
+}
+
+.subp-hab-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.subp-hab-name {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: 0.06em;
+}
+
+.subp-hab-del {
+    background: none;
+    border: none;
+    color: rgba(201, 168, 76, 0.3);
+    font-size: 10px;
+    cursor: pointer;
+    padding: 0 2px;
+    transition: color 0.15s;
+}
+
+.subp-hab-del:hover {
+    color: var(--blood);
+}
+
+.subp-hab-desc {
+    font-size: 11px;
+    color: rgba(244, 234, 213, 0.5);
+    margin-top: 3px;
+    line-height: 1.4;
+}
+
+.subp-add-btn {
+    width: 100%;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px dashed rgba(201, 168, 76, 0.2);
+    border-radius: 3px;
+    color: rgba(201, 168, 76, 0.5);
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 4px;
+}
+
+.subp-add-btn:hover {
+    border-color: rgba(201, 168, 76, 0.5);
+    color: var(--gold);
+}
+
+.subp-hab-form {
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(201, 168, 76, 0.15);
+    border-radius: 3px;
+    margin-bottom: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.subp-hab-input {
+    width: 100%;
+    padding: 5px 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+    color: var(--parchment);
+    font-family: 'Crimson Text', serif;
+    font-size: 13px;
+    outline: none;
+}
+
+.subp-hab-input::placeholder,
+.subp-hab-textarea::placeholder {
+    color: rgba(244, 234, 213, 0.2);
+}
+
+.subp-hab-textarea {
+    width: 100%;
+    padding: 5px 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+    color: var(--parchment);
+    font-family: 'Crimson Text', serif;
+    font-size: 12px;
+    outline: none;
+    resize: vertical;
+    min-height: 36px;
+}
+
+.subp-hab-btns {
+    display: flex;
+    gap: 6px;
+}
+
+.subp-hab-save,
+.subp-hab-cancel {
+    flex: 1;
+    padding: 4px;
+    border-radius: 2px;
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.subp-hab-save {
+    background: rgba(201, 168, 76, 0.1);
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    color: var(--gold);
+}
+
+.subp-hab-save:hover {
+    background: rgba(201, 168, 76, 0.2);
+}
+
+.subp-hab-cancel {
+    background: transparent;
+    border: 1px solid rgba(201, 168, 76, 0.15);
+    color: rgba(244, 234, 213, 0.4);
+}
+
+.subp-hab-cancel:hover {
+    color: rgba(244, 234, 213, 0.7);
+}

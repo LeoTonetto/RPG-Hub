@@ -7,9 +7,10 @@ const roomMusic = {}  // { roomCode: { videoId, startedBy, startTime } | null }
 const roomMasters = {}  // { roomCode: socketId }
 const roomScene = {}  // { roomCode: { url, mimeType } | null }
 const roomNPCs = {}  // { roomCode: { npcId: npcData } }  — NPCs ativos na cena
+const roomReputation = {}  // { roomCode: number (-10 a +10) }
 
 function normalizeUrl(url) {
     return url.toLowerCase().replace(/\/$/, '')
 }
 
-module.exports = { rooms, roomCodes, urlCodes, roomChars, roomMusic, roomMasters, roomScene, roomNPCs, normalizeUrl }
+module.exports = { rooms, roomCodes, urlCodes, roomChars, roomMusic, roomMasters, roomScene, roomNPCs, roomReputation, normalizeUrl }

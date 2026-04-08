@@ -14,6 +14,7 @@ require('./src/statPopup')
 require('./src/inventory')
 require('./src/sfx')
 require('./src/npc')      // registra handlers; initNPC() é chamado pelo socket.js
+require('./src/reputation')  // barra de reputação; initReputation() é chamado pelo socket.js
 
 // ── Inicialização ─────────────────────────────────────────────────────────────
 initHUD()         // botões HUD/chat + atalhos de teclado

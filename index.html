@@ -17,6 +17,8 @@
     <link rel="stylesheet" href="css/popups.css">
     <link rel="stylesheet" href="css/npc.css">
     <link rel="stylesheet" href="css/sfx.css">
+    <link rel="stylesheet" href="css/systems.css">
+    <link rel="stylesheet" href="css/reputation.css">
 </head>
 
 <body>
@@ -24,6 +26,29 @@
     <!-- ══ CAMADAS DE FUNDO ══ -->
     <div id="bgA" class="bg-layer"></div>
     <div id="bgB" class="bg-layer"></div>
+
+    <!-- ══ BARRA DE REPUTAÇÃO ══ -->
+    <div id="reputationBar">
+        <div class="rep-title">Barra de Reputação</div>
+        <div class="rep-bar-wrap">
+            <div class="rep-bar-track"></div>
+            <div class="rep-ticks">
+                <span class="rep-tick" style="left:0%"></span>
+                <span class="rep-tick" style="left:25%"></span>
+                <span class="rep-tick rep-tick-center" style="left:50%"></span>
+                <span class="rep-tick" style="left:75%"></span>
+                <span class="rep-tick" style="left:100%"></span>
+            </div>
+            <div class="rep-pointer" id="repPointer" style="left:50%">
+                <span class="rep-pointer-val" id="repValueLabel">0</span>
+            </div>
+        </div>
+        <div class="rep-labels">
+            <span class="rep-label-bad">Má Reputação</span>
+            <span class="rep-label-center">0</span>
+            <span class="rep-label-good">Boa Reputação</span>
+        </div>
+    </div>
 
     <!-- ══ CONTROLES DE HUD ══ -->
     <button id="hudToggle" title="Mostrar/Ocultar HUD (H)">👁</button>
@@ -120,21 +145,6 @@
                     <span class="input-label">Nome do Personagem</span>
                     <input class="room-input" id="charName" type="text" placeholder="Como é chamado?" />
                 </div>
-                <div class="input-row">
-                    <div class="input-wrap">
-                        <span class="input-label">Vida Máx (HP)</span>
-                        <input class="room-input small" id="charHp" type="number" placeholder="100" min="0" />
-                    </div>
-                    <div class="input-wrap">
-                        <span class="input-label">Sanidade Máx</span>
-                        <input class="room-input small" id="charSanity" type="number" placeholder="—" min="0" />
-                    </div>
-                    <div class="input-wrap">
-                        <span class="input-label">Balas <span
-                                style="font-size:8px; opacity:0.5; letter-spacing:0.1em;">(opcional)</span></span>
-                        <input class="room-input small" id="charBullets" type="number" placeholder="—" min="0" />
-                    </div>
-                </div>
                 <div class="input-wrap">
                     <span class="input-label">Foto do Personagem</span>
                     <label class="photo-upload-label" for="charPhoto" id="photoUploadLabel">
@@ -143,6 +153,11 @@
                         <input id="charPhoto" type="file" accept="image/*" style="display:none;" />
                     </label>
                 </div>
+                <div class="input-wrap" id="systemSelectorWrap">
+                    <span class="input-label">Sistema de Jogo</span>
+                    <div id="systemSelector" class="system-selector"></div>
+                </div>
+                <div id="systemFields" class="system-fields" style="display:none;"></div>
             </div>
 
             <button class="btn-primary" id="charSubmitBtn">⚔ Invocar Personagem</button>
@@ -198,6 +213,15 @@
                 accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" style="display:none;" />
             <button id="sfxOpenBtn" style="display:none;">🔊 Efeitos Sonoros</button>
             <hr class="panel-divider">
+            <div id="repMasterControls">
+                <div class="rep-master-wrap">
+                    <span class="rep-master-label">⚖ Rep</span>
+                    <input type="range" id="repSlider" class="rep-master-slider" min="-10" max="10" value="0" />
+                    <span class="rep-master-val" id="repSliderVal">0</span>
+                    <button class="rep-master-send" id="repSendBtn">Exibir</button>
+                </div>
+            </div>
+            <hr class="panel-divider">
             <div class="npc-panel-wrap" id="npcPanelWrap">
                 <button id="npcInvokeBtn">👤 Invocar NPC</button>
                 <div id="npcPicker"></div>
@@ -229,34 +253,7 @@
             <button class="stat-popup-close" id="statPopupClose">✕</button>
         </div>
         <div class="stat-popup-body" id="statTabStats">
-            <div class="stat-row" id="statRowHp">
-                <span class="stat-row-label">❤ Vida</span>
-                <div class="stat-row-controls">
-                    <button class="stat-adj-btn" data-field="hp" data-delta="-1">−</button>
-                    <input class="stat-val-input" id="statHpVal" type="number" min="0" />
-                    <span class="stat-max-sep">/</span>
-                    <input class="stat-max-input" id="statHpMax" type="number" min="0" />
-                    <button class="stat-adj-btn" data-field="hp" data-delta="+1">+</button>
-                </div>
-            </div>
-            <div class="stat-row" id="statRowSan">
-                <span class="stat-row-label">🧠 Sanidade</span>
-                <div class="stat-row-controls">
-                    <button class="stat-adj-btn" data-field="sanity" data-delta="-1">−</button>
-                    <input class="stat-val-input" id="statSanVal" type="number" min="0" />
-                    <span class="stat-max-sep">/</span>
-                    <input class="stat-max-input" id="statSanMax" type="number" min="0" />
-                    <button class="stat-adj-btn" data-field="sanity" data-delta="+1">+</button>
-                </div>
-            </div>
-            <div class="stat-row" id="statRowBullets">
-                <span class="stat-row-label">🔫 Balas</span>
-                <div class="stat-row-controls">
-                    <button class="stat-adj-btn" data-field="bullets" data-delta="-1">−</button>
-                    <input class="stat-val-input" id="statBulletsVal" type="number" min="0" />
-                    <button class="stat-adj-btn" data-field="bullets" data-delta="+1">+</button>
-                </div>
-            </div>
+            <div id="statDynamicRows"></div>
             <button class="stat-inv-btn" id="openInventoryBtn">📦 Inventário</button>
         </div>
         <!-- ══ GESTÃO DE PERSONAGEM (card próprio) ══ -->
@@ -303,6 +300,29 @@
 
     <!-- ══ NPC CARD MODAL ══ -->
     <div id="npcCardModal"></div>
+
+    <!-- ══ SUB-PAINÉIS (Atributos, Antecedentes, Habilidades) ══ -->
+    <div id="attrPanel" class="subpanel">
+        <div class="subpanel-header" id="attrPanelHeader">
+            <span class="subpanel-title">📊 Atributos</span>
+            <button class="subpanel-close" id="attrPanelClose">✕</button>
+        </div>
+        <div class="subpanel-body" id="attrPanelBody"></div>
+    </div>
+    <div id="antPanel" class="subpanel">
+        <div class="subpanel-header" id="antPanelHeader">
+            <span class="subpanel-title">📜 Antecedentes</span>
+            <button class="subpanel-close" id="antPanelClose">✕</button>
+        </div>
+        <div class="subpanel-body" id="antPanelBody"></div>
+    </div>
+    <div id="habPanel" class="subpanel">
+        <div class="subpanel-header" id="habPanelHeader">
+            <span class="subpanel-title">⚡ Habilidades</span>
+            <button class="subpanel-close" id="habPanelClose">✕</button>
+        </div>
+        <div class="subpanel-body" id="habPanelBody"></div>
+    </div>
 
     <script src="renderer.js"></script>
 </body>
