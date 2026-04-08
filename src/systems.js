@@ -8,7 +8,7 @@ const SYSTEMS = {
             defesa: 5,
             iniciativa: 1,
             acoes_combate: 1,
-            dinheiro: 50,
+            dinheiro: 150,
             fisico: 0, intelecto: 0, agilidade: 0, coragem: 0,
             // Antecedentes
             combate: 0, labuta: 0, negocios: 0, montaria: 0,

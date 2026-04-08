@@ -109,6 +109,11 @@ function buildCharCard(char, ownerName) {
 
     card.appendChild(info)
 
+    // Indicador de morte (HP = 0)
+    if ((stats.hp ?? 1) <= 0) {
+        card.classList.add('char-dead')
+    }
+
     card.addEventListener('click', e => {
         e.stopPropagation()
         if (!state.isRoomMaster && ownerName !== state.playerName) return
@@ -165,6 +170,11 @@ function updateCardStat(charId, field, value) {
             const el = card.querySelector(`[data-stat-field="${field}"]`)
             if (el) el.textContent = `${extraDef.label} ${value}`
         }
+    }
+
+    // Indicador de morte
+    if (field === 'hp') {
+        card.classList.toggle('char-dead', value <= 0)
     }
 }
 

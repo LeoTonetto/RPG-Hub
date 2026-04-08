@@ -25,6 +25,10 @@ document.addEventListener('click', e => {
     }
 })
 
+// Impede que cliques no footer/dropdown propaguem e fechem o modal
+invModalFooter.addEventListener('mousedown', e => e.stopPropagation())
+invModalFooter.addEventListener('click', e => e.stopPropagation())
+
 document.getElementById('openInventoryBtn').addEventListener('click', () => {
     if (!state.statPopupChar) return
     openInventoryModal(state.statPopupChar)

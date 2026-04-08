@@ -77,9 +77,19 @@ function showHUDButtons() {
     const chatPanel = document.getElementById('chatPanel')
     if (chatPanel) chatPanel.style.display = 'flex'
 
-    // Mensagens começam colapsadas até o usuário clicar em 💬
+    // Chat começa aberto
     const messages = document.getElementById('chatMessages')
-    if (messages && !state.chatVisible) messages.classList.add('chat-collapsed')
+    if (!state.chatVisible) {
+        state.chatVisible = true
+    }
+    if (messages) {
+        messages.classList.remove('chat-collapsed')
+    }
+    const collapseBtn = document.getElementById('chatCollapseBtn')
+    if (collapseBtn) {
+        collapseBtn.classList.add('chat-active')
+        collapseBtn.title = 'Ocultar Chat (C)'
+    }
 }
 
 module.exports = { makeDraggable, initHUD, toggleHUD, toggleChat, showHUDButtons }

@@ -24,6 +24,8 @@ function connectToRoom(url, roomCode) {
         document.getElementById('diceFab').style.display = 'block'
         document.getElementById('roomBadge').style.display = 'block'
         document.getElementById('roomBadgeCode').textContent = state.currentRoomCode
+        const leaveBtn = document.getElementById('leaveRoomBtn')
+        if (leaveBtn) leaveBtn.style.display = 'block'
         showHUDButtons()
         initMusicPanel()
         initChat()

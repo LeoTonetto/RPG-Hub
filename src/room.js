@@ -5,14 +5,14 @@ const { connectToRoom } = require('./socket')
 function setRoomInfo(msg, type = '') {
     const el = document.getElementById('roomInfo')
     el.textContent = msg
-    el.className   = 'info-box visible ' + type
+    el.className = 'info-box visible ' + type
 }
 
 function initRoom() {
-    const createBtn   = document.getElementById('createRoomButton')
-    const joinBtn     = document.getElementById('joinRoomButton')
+    const createBtn = document.getElementById('createRoomButton')
+    const joinBtn = document.getElementById('joinRoomButton')
     const roomCodeInput = document.getElementById('roomCodeInput')
-    const roomBadge   = document.getElementById('roomBadge')
+    const roomBadge = document.getElementById('roomBadge')
     const roomBadgeCode = document.getElementById('roomBadgeCode')
 
     createBtn.addEventListener('click', () => {
@@ -22,9 +22,9 @@ function initRoom() {
     })
 
     ipcRenderer.on('room-created', async (event, data) => {
-        state.isRoomMaster  = true
+        state.isRoomMaster = true
         state.currentRoomCode = data.roomCode
-        state.serverUrl     = data.publicUrl
+        state.serverUrl = data.publicUrl
         state.rooms[data.roomCode.toLowerCase()] = data.publicUrl
         clipboard.writeText(data.publicUrl)
 
@@ -64,15 +64,15 @@ function initRoom() {
             roomUrl = input; roomCode = input
         } else {
             const code = input.toUpperCase()
-            roomCode   = code
-            roomUrl    = state.rooms[input.toLowerCase()] || null
+            roomCode = code
+            roomUrl = state.rooms[input.toLowerCase()] || null
 
             if (!roomUrl) {
                 try {
                     const r = await fetch(`http://localhost:3001/resolve-code/${code}`, { headers: { 'ngrok-skip-browser-warning': 'true' } })
                     const j = await r.json()
                     if (j.url) roomUrl = j.url
-                } catch (e) {}
+                } catch (e) { }
             }
 
             if (!roomUrl && state.supabase) {
@@ -101,6 +101,35 @@ function initRoom() {
         roomBadgeCode.textContent = `${state.currentRoomCode} ✓`
         setTimeout(() => { roomBadgeCode.textContent = state.currentRoomCode }, 2000)
     })
+
+    // Botão sair da sala
+    const leaveBtn = document.getElementById('leaveRoomBtn')
+    if (leaveBtn) {
+        leaveBtn.addEventListener('click', () => {
+            if (!state.socket) return
+            state.socket.disconnect()
+            state.socket = null
+            state.currentRoomCode = null
+            state.serverUrl = null
+            state.isRoomMaster = false
+            state.playerCharacters = []
+            state.allCharsCache = []
+            state.activeCharacterId = null
+
+            // Esconde HUD de jogo
+            document.getElementById('diceFab').style.display = 'none'
+            document.getElementById('roomBadge').style.display = 'none'
+            document.getElementById('leaveRoomBtn').style.display = 'none'
+            document.getElementById('characterBar').style.display = 'none'
+            document.getElementById('characterBar').innerHTML = ''
+            document.getElementById('chatPanel').style.display = 'none'
+            document.getElementById('hudToggle').style.display = 'none'
+            document.getElementById('musicPanel')?.classList?.remove('visible')
+
+            // Mostra tela de sala
+            document.getElementById('connectScreen').style.display = 'flex'
+        })
+    }
 }
 
 module.exports = { initRoom, setRoomInfo }
