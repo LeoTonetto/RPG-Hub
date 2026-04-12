@@ -1,0 +1,740 @@
+/* ══ LOCKPICKING — VELHO OESTE ══ */
+
+/* ── Overlay do jogo ── */
+.lp-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    background:
+        radial-gradient(ellipse at 50% 55%, rgba(26, 16, 8, 0.85) 0%, rgba(5, 4, 3, 0.97) 100%);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: crosshair;
+    user-select: none;
+}
+
+.lp-overlay.active {
+    display: flex;
+    animation: lpFadeIn 0.5s ease both;
+}
+
+@keyframes lpFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* ── Shakes ── */
+.lp-overlay.shake {
+    animation: lpShakeLight 0.1s ease;
+}
+
+.lp-overlay.shake-hard {
+    animation: lpShakeHard 0.4s ease;
+}
+
+@keyframes lpShakeLight {
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    25% {
+        transform: translate(-2px, 1px);
+    }
+
+    75% {
+        transform: translate(1px, -1px);
+    }
+}
+
+@keyframes lpShakeHard {
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    10% {
+        transform: translate(-6px, 3px);
+    }
+
+    20% {
+        transform: translate(5px, -4px);
+    }
+
+    30% {
+        transform: translate(-4px, -2px);
+    }
+
+    40% {
+        transform: translate(3px, 5px);
+    }
+
+    50% {
+        transform: translate(-5px, -3px);
+    }
+
+    60% {
+        transform: translate(4px, 2px);
+    }
+
+    70% {
+        transform: translate(-3px, 4px);
+    }
+
+    80% {
+        transform: translate(2px, -3px);
+    }
+}
+
+/* ══ TIMER ══ */
+.lp-timer-wrap {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 260px;
+    z-index: 4;
+}
+
+.lp-timer-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: rgba(160, 136, 88, 0.5);
+    text-transform: uppercase;
+}
+
+.lp-timer-outer {
+    width: 100%;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid rgba(138, 114, 72, 0.15);
+}
+
+.lp-timer-inner {
+    height: 100%;
+    border-radius: 3px;
+    width: 100%;
+    background: #a08858;
+    transition: width 0.1s linear, background 0.5s;
+}
+
+.lp-timer-wrap.lp-timer-urgent .lp-timer-label {
+    color: #8b1a1a;
+    animation: lpTimerPulse 0.8s infinite;
+}
+
+@keyframes lpTimerPulse {
+
+    0%,
+    100% {
+        opacity: 0.6;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* ══ HUD ══ */
+.lp-hud {
+    position: absolute;
+    top: 50px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 32px;
+    z-index: 2;
+}
+
+.lp-hud-name {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    color: #a08858;
+    text-transform: uppercase;
+    text-shadow: 0 0 15px rgba(160, 136, 88, 0.25);
+}
+
+.lp-hud-picks {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+}
+
+.lp-pick-icon {
+    font-size: 15px;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 0 3px rgba(160, 136, 88, 0.3));
+}
+
+.lp-pick-icon.broken {
+    filter: grayscale(1) brightness(0.25);
+    opacity: 0.25;
+    transform: rotate(35deg) scale(0.75);
+}
+
+/* ══ BARRA DE VIDA DA GAZUA ══ */
+.lp-health-wrap {
+    width: 320px;
+    margin-bottom: 14px;
+}
+
+.lp-health-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.lp-health-title {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(160, 136, 88, 0.35);
+}
+
+.lp-health-pct {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(244, 234, 213, 0.55);
+    letter-spacing: 0.05em;
+}
+
+.lp-health-outer {
+    width: 100%;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid rgba(138, 114, 72, 0.1);
+}
+
+.lp-health-inner {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.12s, background 0.3s;
+    width: 100%;
+    background: #5a7a3e;
+}
+
+/* ══ LOCK AREA ══ */
+.lp-lock-area {
+    position: relative;
+    width: 320px;
+    height: 320px;
+}
+
+/* ══ INSTRUÇÕES ══ */
+.lp-instructions {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-family: 'Crimson Text', serif;
+    font-size: 13px;
+    color: rgba(160, 136, 88, 0.22);
+    letter-spacing: 0.03em;
+}
+
+.lp-inst-hint {
+    font-style: italic;
+    color: rgba(160, 136, 88, 0.18);
+    font-size: 12px;
+}
+
+/* ══ BREAK FLASH ══ */
+.lp-break-flash {
+    position: fixed;
+    inset: 0;
+    z-index: 3001;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(139, 26, 26, 0.55) 0%, transparent 70%);
+    opacity: 0;
+}
+
+.lp-break-flash.active {
+    animation: lpFlash 0.4s ease-out forwards;
+}
+
+@keyframes lpFlash {
+    0% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+/* ══ BREAK TEXT ══ */
+.lp-break-text {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3002;
+    font-family: 'Cinzel', serif;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #b03020;
+    text-shadow:
+        0 0 25px rgba(176, 48, 32, 0.5),
+        0 2px 6px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+    opacity: 0;
+}
+
+.lp-break-text.active {
+    animation: lpBreakIn 1.5s ease both;
+}
+
+@keyframes lpBreakIn {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.7);
+    }
+
+    12% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.08);
+    }
+
+    22% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    65% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+/* ══ RESULTADO ══ */
+.lp-result {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5, 4, 3, 0.8);
+    animation: lpResultIn 0.4s ease both;
+    z-index: 5;
+}
+
+@keyframes lpResultIn {
+    from {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.lp-result-icon {
+    font-size: 56px;
+    margin-bottom: 14px;
+    filter: drop-shadow(0 0 16px rgba(160, 136, 88, 0.3));
+}
+
+.lp-result-text {
+    font-family: 'Cinzel', serif;
+    font-size: 26px;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+}
+
+.lp-result-text.success {
+    color: #5a7a3e;
+    text-shadow: 0 0 25px rgba(90, 122, 62, 0.4);
+}
+
+.lp-result-text.fail {
+    color: #8b1a1a;
+    text-shadow: 0 0 25px rgba(139, 26, 26, 0.4);
+}
+
+.lp-result-sub {
+    font-family: 'Crimson Text', serif;
+    font-size: 15px;
+    color: rgba(244, 234, 213, 0.4);
+    margin-top: 8px;
+    font-style: italic;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ── PICKER DO MESTRE ─────────────────────────────────────────────────────── */
+
+.lp-picker-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3100;
+    background: rgba(5, 4, 3, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: lpFadeIn 0.2s ease both;
+}
+
+.lp-picker-card {
+    background: linear-gradient(165deg, #211a10 0%, #110d08 55%, #1a1208 100%);
+    border: 1px solid #3a2a18;
+    border-radius: 4px;
+    padding: 28px 32px 24px;
+    width: 380px;
+    max-height: 82vh;
+    overflow-y: auto;
+    box-shadow:
+        0 0 0 1px rgba(138, 114, 72, 0.08),
+        0 8px 48px rgba(0, 0, 0, 0.85),
+        inset 0 1px 0 rgba(138, 114, 72, 0.1);
+    animation: cardIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+    scrollbar-width: thin;
+    scrollbar-color: #3a2a18 transparent;
+}
+
+.lp-picker-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.lp-picker-icon {
+    font-size: 28px;
+    margin-bottom: 4px;
+    filter: drop-shadow(0 0 8px rgba(160, 136, 88, 0.25));
+}
+
+.lp-picker-title {
+    font-family: 'Cinzel', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #a08858;
+    letter-spacing: 0.14em;
+    text-shadow: 0 0 15px rgba(160, 136, 88, 0.2);
+}
+
+.lp-picker-subtitle {
+    font-family: 'Crimson Text', serif;
+    font-size: 14px;
+    color: rgba(244, 234, 213, 0.28);
+    font-style: italic;
+    margin-top: 3px;
+}
+
+/* ── Sections ── */
+.lp-section {
+    margin-bottom: 16px;
+}
+
+.lp-section-label {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(160, 136, 88, 0.4);
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(138, 114, 72, 0.08);
+}
+
+/* ── Dificuldade ── */
+.lp-diff-row {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 8px;
+}
+
+.lp-diff-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--diff-color, #3a2a18);
+    color: var(--diff-color, #a08858);
+    border-radius: 3px;
+    padding: 7px 6px;
+    cursor: pointer;
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    opacity: 0.35;
+    text-align: center;
+}
+
+.lp-diff-btn:hover {
+    opacity: 0.6;
+}
+
+.lp-diff-btn.active {
+    opacity: 1;
+    background: color-mix(in srgb, var(--diff-color) 10%, transparent);
+    box-shadow: 0 0 10px color-mix(in srgb, var(--diff-color) 15%, transparent);
+}
+
+.lp-diff-desc {
+    font-family: 'Crimson Text', serif;
+    font-size: 12px;
+    color: rgba(244, 234, 213, 0.22);
+    font-style: italic;
+    text-align: center;
+    min-height: 18px;
+}
+
+/* ── Seletor de gazuas ── */
+.lp-picks-selector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+}
+
+.lp-adj-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(138, 114, 72, 0.06);
+    border: 1px solid rgba(138, 114, 72, 0.2);
+    color: #a08858;
+    font-family: 'Cinzel', serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.lp-adj-btn:hover {
+    background: rgba(138, 114, 72, 0.12);
+    border-color: #a08858;
+}
+
+.lp-picks-val {
+    font-family: 'Cinzel', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #a08858;
+    min-width: 32px;
+    text-align: center;
+}
+
+/* ── Lista de personagens ── */
+.lp-char-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.lp-char-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(138, 114, 72, 0.1);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.lp-char-item:hover {
+    border-color: rgba(138, 114, 72, 0.3);
+    background: rgba(138, 114, 72, 0.05);
+}
+
+.lp-char-item:hover .lp-char-arrow {
+    opacity: 1;
+    transform: translateX(2px);
+}
+
+.lp-char-thumb {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: rgba(160, 136, 88, 0.25);
+    flex-shrink: 0;
+    border: 1px solid rgba(138, 114, 72, 0.12);
+}
+
+.lp-char-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lp-char-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.lp-char-name {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: #a08858;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lp-char-owner {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    color: rgba(160, 136, 88, 0.3);
+    text-transform: uppercase;
+}
+
+.lp-char-arrow {
+    color: rgba(160, 136, 88, 0.2);
+    font-size: 14px;
+    opacity: 0;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+/* ══ OVERLAY DE ESPERA ══ */
+.lp-waiting {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    background: rgba(5, 4, 3, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: lpFadeIn 0.4s ease both;
+}
+
+.lp-waiting-card {
+    text-align: center;
+    padding: 40px;
+}
+
+.lp-waiting-icon {
+    font-size: 42px;
+    margin-bottom: 14px;
+    animation: float 3s ease-in-out infinite;
+}
+
+.lp-waiting-name {
+    font-family: 'Cinzel', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #a08858;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-shadow: 0 0 15px rgba(160, 136, 88, 0.25);
+}
+
+.lp-waiting-sub {
+    font-family: 'Crimson Text', serif;
+    font-size: 15px;
+    color: rgba(244, 234, 213, 0.35);
+    font-style: italic;
+    margin-top: 5px;
+}
+
+.lp-waiting-diff {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: rgba(160, 136, 88, 0.28);
+    text-transform: uppercase;
+    margin-top: 10px;
+}
+
+.lp-waiting-dots {
+    margin-top: 18px;
+    font-size: 22px;
+    color: rgba(160, 136, 88, 0.3);
+}
+
+.lp-waiting-dots span {
+    animation: dotPulse 1.4s infinite;
+    display: inline-block;
+}
+
+.lp-waiting-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.lp-waiting-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes dotPulse {
+
+    0%,
+    80%,
+    100% {
+        opacity: 0.2;
+        transform: scale(0.8);
+    }
+
+    40% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+}
+
+/* ══ BOTÃO DO MESTRE ══ */
+#lockpickMasterBtn {
+    background: rgba(138, 114, 72, 0.06);
+    border: 1px solid rgba(138, 114, 72, 0.2);
+    border-radius: 3px;
+    color: rgba(160, 136, 88, 0.5);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 7px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    text-align: center;
+}
+
+#lockpickMasterBtn:hover {
+    border-color: rgba(138, 114, 72, 0.4);
+    color: #a08858;
+    background: rgba(138, 114, 72, 0.1);
+}

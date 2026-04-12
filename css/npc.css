@@ -29,8 +29,8 @@
 
 /* ── Foto ── */
 #npcIntroPhoto {
-    width: 210px;
-    height: 280px;
+    width: 320px;
+    height: 420px;
     flex-shrink: 0;
     border-radius: 4px 0 0 4px;
     border: 1px solid rgba(201, 168, 76, 0.3);
@@ -61,7 +61,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 64px;
+    font-size: 80px;
     opacity: 0.3;
 }
 
@@ -76,38 +76,38 @@
     border-radius: 0 4px 4px 0;
     display: flex;
     flex-direction: column;
-    height: 280px;
+    height: 420px;
     box-shadow: 4px 8px 40px rgba(0, 0, 0, 0.75);
 }
 
 #npcIntroCard.visible {
-    width: 270px;
+    width: 380px;
     opacity: 1;
 }
 
 .npc-card-inner {
-    padding: 18px 16px 10px;
+    padding: 24px 22px 14px;
     flex: 1;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 14px;
 }
 
 .npc-card-name {
     font-family: 'Cinzel', serif;
-    font-size: 14px;
+    font-size: 18px;
     font-weight: 700;
     color: var(--gold);
     letter-spacing: 0.07em;
     border-bottom: 1px solid rgba(201, 168, 76, 0.18);
-    padding-bottom: 9px;
+    padding-bottom: 12px;
 }
 
 .npc-card-desc {
     font-family: 'Crimson Text', serif;
-    font-size: 13.5px;
-    line-height: 1.6;
+    font-size: 15px;
+    line-height: 1.7;
     color: rgba(220, 200, 160, 0.82);
     overflow-y: auto;
     flex: 1;
@@ -124,7 +124,7 @@
 }
 
 .npc-card-footer {
-    padding: 7px 14px 12px;
+    padding: 10px 20px 14px;
     border-top: 1px solid rgba(201, 168, 76, 0.1);
     display: flex;
     gap: 6px;
@@ -132,13 +132,13 @@
 
 .npc-close-intro-btn {
     flex: 1;
-    padding: 6px;
+    padding: 8px;
     background: rgba(201, 168, 76, 0.06);
     border: 1px solid rgba(201, 168, 76, 0.2);
     border-radius: 3px;
     color: rgba(201, 168, 76, 0.55);
     font-family: 'Cinzel', serif;
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     cursor: pointer;
@@ -309,8 +309,8 @@
 }
 
 .npc-modal-photo {
-    width: 170px;
-    height: 230px;
+    width: 260px;
+    height: 340px;
     flex-shrink: 0;
     background: rgba(8, 6, 4, 0.97);
     border: 1px solid rgba(201, 168, 76, 0.2);
@@ -331,42 +331,42 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 52px;
+    font-size: 72px;
     opacity: 0.3;
 }
 
 .npc-modal-body {
-    width: 250px;
+    width: 340px;
     background: linear-gradient(160deg, rgba(18, 14, 10, 0.98), rgba(10, 8, 6, 0.99));
     border: 1px solid rgba(201, 168, 76, 0.2);
     display: flex;
     flex-direction: column;
-    height: 230px;
+    height: 340px;
 }
 
 .npc-modal-inner {
-    padding: 15px 15px 8px;
+    padding: 20px 20px 10px;
     flex: 1;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
 
 .npc-modal-name {
     font-family: 'Cinzel', serif;
-    font-size: 13px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--gold);
     letter-spacing: 0.07em;
     border-bottom: 1px solid rgba(201, 168, 76, 0.18);
-    padding-bottom: 7px;
+    padding-bottom: 9px;
 }
 
 .npc-modal-desc {
     font-family: 'Crimson Text', serif;
-    font-size: 13px;
-    line-height: 1.55;
+    font-size: 15px;
+    line-height: 1.65;
     color: rgba(220, 200, 160, 0.8);
     overflow-y: auto;
     flex: 1;

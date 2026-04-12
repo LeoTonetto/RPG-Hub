@@ -47,6 +47,26 @@ function setupSocketHandlers(io) {
         socket.on('npc_summon', (npc) => { if (roomMasters[roomCode] !== socket.id) return; if (!npc || !npc.id || !npc.name) return; if (!roomNPCs[roomCode]) roomNPCs[roomCode] = {}; roomNPCs[roomCode][npc.id] = { id: npc.id, name: npc.name, photo: npc.photo || null, description: npc.description || '' }; io.to(roomCode).emit('npc_summon', roomNPCs[roomCode][npc.id]); console.log(`[NPC] "${npc.name}" invocado na sala ${roomCode}`) })
         socket.on('npc_dismiss', ({ npcId }) => { if (roomMasters[roomCode] !== socket.id) return; if (roomNPCs[roomCode]) delete roomNPCs[roomCode][npcId]; io.to(roomCode).emit('npc_dismiss', { npcId }); console.log(`[NPC] ${npcId} dispensado da sala ${roomCode}`) })
 
+        // ── Lockpicking ─────────────────────────────────────────────────────────
+        socket.on('lockpick_start', (data) => {
+            if (roomMasters[roomCode] !== socket.id) return
+            io.to(roomCode).emit('lockpick_start', data)
+            console.log(`[Lockpick] ${data.startedBy} iniciou lockpicking para ${data.charName} (${data.diffLabel}, ${data.picks} gazuas) na sala ${roomCode}`)
+        })
+
+        socket.on('lockpick_result', ({ charId, charName, success }) => {
+            io.to(roomCode).emit('lockpick_result', { charId, charName, success })
+            const msg = success
+                ? `🔓 ${charName} abriu o cofre com sucesso!`
+                : `💔 ${charName} falhou ao abrir o cofre...`
+            io.to(roomCode).emit('chat_message', {
+                playerName: '⚙ Sistema',
+                message: msg,
+                type: 'text'
+            })
+            console.log(`[Lockpick] ${charName} → ${success ? 'SUCESSO' : 'FALHA'} na sala ${roomCode}`)
+        })
+
         // ── Personagens ─────────────────────────────────────────────────────
         socket.on('share_characters', ({ playerName, characters }) => { roomChars[roomCode][socket.id] = { playerName, characters: characters || [] }; console.log(`[Chars] ${playerName} — ${characters?.length} personagem(ns) na sala ${roomCode}`); broadcastRoomChars(io, roomCode) })
 
@@ -73,6 +93,20 @@ function setupSocketHandlers(io) {
 
         // ── Dados ────────────────────────────────────────────────────────────
         socket.on('dice_roll', ({ player, value, sides, label }) => { io.to(roomCode).emit('dice_result', { player, value, sides, label }) })
+
+        // ── Mostrar item a todos ─────────────────────────────────────────────
+        socket.on('item_show', ({ playerName, item }) => {
+            if (!playerName || !item) return
+            io.to(roomCode).emit('item_show', { playerName, item })
+            console.log(`[Item] ${playerName} mostrou "${item.name}" na sala ${roomCode}`)
+        })
+
+        // ── Transferir item ──────────────────────────────────────────────────
+        socket.on('item_transferred', ({ toCharId, item }) => {
+            if (!toCharId || !item) return
+            io.to(roomCode).emit('item_transferred', { toCharId, item })
+            console.log(`[Item] "${item.name}" transferido para char ${toCharId} na sala ${roomCode}`)
+        })
 
         // ── Chat ─────────────────────────────────────────────────────────────
         socket.on('chat_message', ({ playerName, message, type, gifUrl }) => { if (!message || typeof message !== 'string' || !message.trim()) return; io.to(roomCode).emit('chat_message', { playerName, message: message.trim(), type: type || 'text', gifUrl: gifUrl || null }) })

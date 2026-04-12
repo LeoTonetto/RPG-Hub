@@ -17,10 +17,12 @@ document.getElementById('inventoryClose').addEventListener('click', () => {
 })
 document.addEventListener('click', e => {
     const statPopup = document.getElementById('statPopup')
+    const transferPicker = document.getElementById('transferPicker')
     if (inventoryModal.classList.contains('visible')
         && !inventoryModal.contains(e.target)
         && !statPopup.contains(e.target)
-        && !document.getElementById('invLightbox')?.contains(e.target)) {
+        && !document.getElementById('invLightbox')?.contains(e.target)
+        && !(transferPicker && transferPicker.contains(e.target))) {
         inventoryModal.classList.remove('visible')
     }
 })
@@ -36,6 +38,8 @@ document.getElementById('openInventoryBtn').addEventListener('click', () => {
 
 // ── Cache de itens da tabela `items` ─────────────────────────────────────────
 let allItemsCache = []
+let currentInvIsOwn = false
+let currentInvCharId = null
 
 async function loadAllItems() {
     if (!state.supabase || allItemsCache.length > 0) return
@@ -208,7 +212,6 @@ function buildMasterFooter() {
         const qty = Math.max(1, parseInt(qtyInput.value) || 1)
         addBtn.disabled = true
         addBtn.textContent = '…'
-        // Passa o selectedItem direto — não precisa rebuscar do banco
         await addItemToInventory(state.statPopupChar.id, selectedItem, qty)
         searchInput.value = ''
         clearSelection()
@@ -218,12 +221,9 @@ function buildMasterFooter() {
 }
 
 // ── Adicionar item ao inventário ──────────────────────────────────────────────
-// Salva no Supabase e monta o objeto em memória a partir do `item` que já temos.
-// Não depende de join/FK para montar o payload do socket.
 async function addItemToInventory(charId, item, quantity = 1) {
     if (!state.supabase) return
     try {
-        // Verifica se já existe (para somar quantidade)
         const { data: existing, error: selErr } = await state.supabase
             .from('inventory')
             .select('id, quantity')
@@ -241,8 +241,6 @@ async function addItemToInventory(charId, item, quantity = 1) {
                 .from('inventory').update({ quantity: newQty }).eq('id', existing.id)
             if (error) throw error
             inventoryId = existing.id
-
-            // Atualiza quantidade no cache local
             const entry = (state.inventories[charId] || []).find(i => i.inventoryId === existing.id)
             if (entry) entry.quantity = newQty
         } else {
@@ -254,27 +252,17 @@ async function addItemToInventory(charId, item, quantity = 1) {
             if (error) throw error
             inventoryId = inserted.id
 
-            // Adiciona ao cache local com todos os campos já disponíveis
             if (!state.inventories[charId]) state.inventories[charId] = []
             state.inventories[charId].push({
-                inventoryId,
-                quantity,
-                id: item.id,
-                name: item.name,
-                photo: item.photo,
-                icon: item.icon,
-                viewable: item.viewable,
+                inventoryId, quantity,
+                id: item.id, name: item.name, photo: item.photo, icon: item.icon, viewable: item.viewable,
             })
         }
 
         renderInvGrid(charId)
 
-        // Emite para a sala — items já está correto em memória
         if (state.socket) {
-            state.socket.emit('inventory_update', {
-                charId,
-                items: state.inventories[charId]
-            })
+            state.socket.emit('inventory_update', { charId, items: state.inventories[charId] })
         }
 
         console.log(`[Inventory] "${item.name}" ×${quantity} adicionado ao char ${charId}`)
@@ -303,6 +291,8 @@ async function removeItemFromInventory(charId, inventoryId) {
 // ── Abrir modal ───────────────────────────────────────────────────────────────
 async function openInventoryModal(char) {
     invModalCharName.textContent = char.name
+    currentInvCharId = char.id
+    currentInvIsOwn = state.playerCharacters.some(c => c.id === char.id)
 
     if (state.isRoomMaster) {
         buildMasterFooter()
@@ -311,22 +301,18 @@ async function openInventoryModal(char) {
         invModalFooter.style.display = 'none'
     }
 
-    // Usa o cache do socket se já tiver — não rebusca do banco
     invGrid.querySelectorAll('.inv-item-tile').forEach(el => el.remove())
     invGridEmpty.style.display = 'block'
 
     const cached = state.inventories[char.id]
     if (cached !== undefined) {
-        // Temos dados (podem ser array vazio) — renderiza o que há
         renderInvGrid(char.id)
     } else {
-        // Primeira vez sem cache: busca do banco (fallback)
         const items = await loadCharInventoryFromDB(char.id)
         state.inventories[char.id] = items
         renderInvGrid(char.id)
     }
 
-    // Posicionamento ao lado do statPopup
     inventoryModal.style.visibility = 'hidden'
     inventoryModal.classList.add('visible')
 
@@ -347,8 +333,7 @@ async function openInventoryModal(char) {
     })
 }
 
-// ── Fallback: busca do banco com join ─────────────────────────────────────────
-// Só usado na primeira abertura sem cache. Se o join falhar (sem FK), retorna [].
+// ── Fallback: busca do banco ─────────────────────────────────────────────────
 async function loadCharInventoryFromDB(charId) {
     if (!state.supabase) return []
     try {
@@ -359,19 +344,12 @@ async function loadCharInventoryFromDB(charId) {
 
         if (error) { console.error('[Inventory] DB fallback error:', error.message); return [] }
 
-        const rows = data || []
-        console.log('[Inventory] DB fallback raw:', JSON.stringify(rows))
-
-        return rows
-            .filter(row => row.item) // ignora linhas sem join resolvido
+        return (data || [])
+            .filter(row => row.item)
             .map(row => ({
-                inventoryId: row.id,
-                quantity: row.quantity,
-                id: row.item.id,
-                name: row.item.name,
-                photo: row.item.photo,
-                icon: row.item.icon,
-                viewable: row.item.viewable,
+                inventoryId: row.id, quantity: row.quantity,
+                id: row.item.id, name: row.item.name, photo: row.item.photo,
+                icon: row.item.icon, viewable: row.item.viewable,
             }))
     } catch (e) { console.error('[Inventory] loadCharInventoryFromDB:', e); return [] }
 }
@@ -425,6 +403,34 @@ function buildInvTile(item, charId) {
         tile.title = 'Clique para visualizar'
         tile.style.cursor = 'zoom-in'
         tile.addEventListener('click', e => { e.stopPropagation(); openLightbox(item) })
+    }
+
+    // Ações do dono: mostrar a todos / transferir
+    if (currentInvIsOwn && !state.isRoomMaster) {
+        const actions = document.createElement('div')
+        actions.className = 'inv-item-actions'
+
+        const showBtn = document.createElement('button')
+        showBtn.className = 'inv-action-btn'
+        showBtn.title = 'Mostrar a todos'
+        showBtn.textContent = '👁'
+        showBtn.addEventListener('click', e => {
+            e.stopPropagation()
+            showItemToAll(item)
+        })
+        actions.appendChild(showBtn)
+
+        const transferBtn = document.createElement('button')
+        transferBtn.className = 'inv-action-btn'
+        transferBtn.title = 'Transferir para...'
+        transferBtn.textContent = '↗'
+        transferBtn.addEventListener('click', e => {
+            e.stopPropagation()
+            openTransferPicker(charId, item, tile)
+        })
+        actions.appendChild(transferBtn)
+
+        tile.appendChild(actions)
     }
 
     return tile
@@ -508,4 +514,204 @@ function updateInventoryBadge(charId, count) {
     badge.textContent = `📦 ${count}`
 }
 
-module.exports = { openInventoryModal, renderInvGrid, handleInventoryUpdate }
+// ══════════════════════════════════════════════════════════════════════════════
+// ── MOSTRAR ITEM A TODOS ─────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+function showItemToAll(item) {
+    if (!state.socket) return
+    state.socket.emit('item_show', {
+        playerName: state.playerName,
+        item: { name: item.name, icon: item.icon, photo: item.photo, viewable: item.viewable }
+    })
+}
+
+function handleItemShow({ playerName, item }) {
+    document.getElementById('invLightbox')?.remove()
+
+    const overlay = document.createElement('div')
+    overlay.id = 'invLightbox'
+    overlay.style.cssText = `
+        position:fixed;inset:0;z-index:9999;
+        background:rgba(0,0,0,0.88);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        cursor:pointer;
+    `
+
+    if (item.viewable && item.photo) {
+        const img = document.createElement('img')
+        img.src = item.photo
+        img.alt = item.name
+        img.style.cssText = `
+            max-width:min(88vw,820px);max-height:70vh;
+            border-radius:8px;border:1px solid rgba(201,168,76,0.25);
+            box-shadow:0 8px 80px rgba(0,0,0,0.8);object-fit:contain;
+        `
+        overlay.appendChild(img)
+    } else {
+        const iconWrap = document.createElement('div')
+        iconWrap.style.cssText = 'font-size:80px;line-height:1;margin-bottom:8px;'
+        iconWrap.appendChild(buildItemIcon(item, 80))
+        overlay.appendChild(iconWrap)
+    }
+
+    const caption = document.createElement('div')
+    caption.style.cssText = 'margin-top:14px;font-family:"Cinzel",serif;font-size:16px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;'
+    caption.textContent = item.name
+    overlay.appendChild(caption)
+
+    const shownBy = document.createElement('div')
+    shownBy.style.cssText = 'margin-top:6px;font-family:"Crimson Text",serif;font-size:14px;color:rgba(244,234,213,0.45);font-style:italic;'
+    shownBy.textContent = `Mostrado por ${playerName}`
+    overlay.appendChild(shownBy)
+
+    const closeBtn = document.createElement('button')
+    closeBtn.textContent = '✕'
+    closeBtn.style.cssText = 'position:absolute;top:18px;right:22px;background:none;border:none;color:rgba(201,168,76,0.5);font-size:22px;cursor:pointer;padding:4px 8px;transition:color .15s;'
+    closeBtn.addEventListener('mouseenter', () => { closeBtn.style.color = 'rgba(201,168,76,1)' })
+    closeBtn.addEventListener('mouseleave', () => { closeBtn.style.color = 'rgba(201,168,76,0.5)' })
+    overlay.appendChild(closeBtn)
+
+    document.body.appendChild(overlay)
+
+    const close = () => overlay.remove()
+    overlay.addEventListener('click', e => { if (e.target === overlay) close() })
+    closeBtn.addEventListener('click', close)
+    const timer = setTimeout(close, 10000)
+    const onEsc = e => { if (e.key === 'Escape') { close(); clearTimeout(timer); document.removeEventListener('keydown', onEsc) } }
+    document.addEventListener('keydown', onEsc)
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── TRANSFERIR ITEM ──────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+function openTransferPicker(fromCharId, item, tileEl) {
+    document.getElementById('transferPicker')?.remove()
+
+    const targets = state.allCharsCache.filter(e =>
+        e.character.id !== fromCharId && e.playerName !== state.playerName
+    )
+
+    if (targets.length === 0) return
+
+    const picker = document.createElement('div')
+    picker.id = 'transferPicker'
+    picker.className = 'transfer-picker'
+
+    const title = document.createElement('div')
+    title.className = 'transfer-picker-title'
+    title.textContent = `Transferir "${item.name}" para:`
+    picker.appendChild(title)
+
+    targets.forEach(({ playerName: owner, character: char }) => {
+        const opt = document.createElement('div')
+        opt.className = 'transfer-picker-opt'
+
+        if (char.photo) {
+            const img = document.createElement('img')
+            img.src = char.photo
+            img.className = 'transfer-picker-photo'
+            opt.appendChild(img)
+        } else {
+            const ph = document.createElement('div')
+            ph.className = 'transfer-picker-ph'
+            ph.textContent = '⚔'
+            opt.appendChild(ph)
+        }
+
+        const info = document.createElement('div')
+        info.className = 'transfer-picker-info'
+        info.innerHTML = `<div class="transfer-picker-name">${char.name}</div><div class="transfer-picker-owner">${owner}</div>`
+        opt.appendChild(info)
+
+        opt.addEventListener('click', async e => {
+            e.stopPropagation()
+            picker.remove()
+            await transferItemTo(fromCharId, char.id, item)
+        })
+        picker.appendChild(opt)
+    })
+
+    // Fecha ao clicar fora
+    const closePicker = e => {
+        if (!picker.contains(e.target)) {
+            picker.remove()
+            document.removeEventListener('click', closePicker, true)
+        }
+    }
+    setTimeout(() => document.addEventListener('click', closePicker, true), 10)
+
+    document.body.appendChild(picker)
+    requestAnimationFrame(() => {
+        const tileRect = tileEl.getBoundingClientRect()
+        const pw = picker.offsetWidth
+        const ph = picker.offsetHeight
+
+        let left = tileRect.right + 8
+        if (left + pw > window.innerWidth - 8) left = tileRect.left - pw - 8
+        left = Math.max(8, left)
+        let top = Math.max(8, Math.min(tileRect.top, window.innerHeight - ph - 8))
+
+        picker.style.left = left + 'px'
+        picker.style.top = top + 'px'
+    })
+}
+
+// ── Executar transferência (FIX: não mexe no cache do destinatário) ───────────
+async function transferItemTo(fromCharId, toCharId, item) {
+    if (!state.supabase || !state.socket) return
+    try {
+        // 1. Atualiza no banco: muda character_id
+        const { error } = await state.supabase
+            .from('inventory')
+            .update({ character_id: toCharId })
+            .eq('id', item.inventoryId)
+        if (error) throw error
+
+        // 2. Remove do cache LOCAL do remetente
+        state.inventories[fromCharId] = (state.inventories[fromCharId] || []).filter(i => i.inventoryId !== item.inventoryId)
+
+        // 3. Re-renderiza se o inventário do remetente está aberto
+        if (inventoryModal.classList.contains('visible') && currentInvCharId === fromCharId) {
+            renderInvGrid(fromCharId)
+        }
+
+        // 4. Emite inventory_update APENAS pro remetente (temos o cache completo)
+        state.socket.emit('inventory_update', { charId: fromCharId, items: state.inventories[fromCharId] })
+
+        // 5. Emite item_transferred — o servidor faz broadcast e CADA cliente
+        //    adiciona o item ao cache do destinatário localmente
+        state.socket.emit('item_transferred', { toCharId, item })
+
+        // 6. Mensagem no chat
+        const toEntry = state.allCharsCache.find(e => e.character.id === toCharId)
+        const toName = toEntry?.character?.name || 'alguém'
+        state.socket.emit('chat_message', {
+            playerName: '⚙ Sistema',
+            message: `${state.playerName} transferiu "${item.name}" para ${toName}.`,
+            type: 'text'
+        })
+
+        console.log(`[Transfer] "${item.name}" transferido de ${fromCharId} para ${toCharId}`)
+    } catch (e) {
+        console.error('[Transfer] Erro:', e)
+    }
+}
+
+// ── Receber item transferido (todos os clientes) ─────────────────────────────
+function handleItemTransferred({ toCharId, item }) {
+    // Adiciona ao cache do destinatário sem apagar os itens existentes
+    if (!state.inventories[toCharId]) state.inventories[toCharId] = []
+    state.inventories[toCharId].push(item)
+
+    // Re-renderiza se o inventário do destinatário está aberto
+    if (inventoryModal.classList.contains('visible') && state.statPopupChar?.id === toCharId) {
+        renderInvGrid(toCharId)
+    }
+
+    // Atualiza badge
+    updateInventoryBadge(toCharId, state.inventories[toCharId].length)
+}
+
+module.exports = { openInventoryModal, renderInvGrid, handleInventoryUpdate, handleItemShow, handleItemTransferred }

@@ -7,10 +7,11 @@ const { renderCharacterBar, updateCardStat, flashCard, loadAndShareCharacters } 
 const { showDiceResult } = require('./dice')
 const { initChat, addChatMessage } = require('./chat')
 const { showHUDButtons } = require('./hud')
-const { handleInventoryUpdate } = require('./inventory')
+const { handleInventoryUpdate, handleItemShow, handleItemTransferred } = require('./inventory')
 const { initNPC, handleNPCSummon, handleNPCDismiss } = require('./npc')
 const { initSfxPanel, playSfxAudio } = require('./sfx')
 const { showReputation, initReputation } = require('./reputation')
+const { initLockpicking, handleLockpickStart, handleLockpickResult } = require('./lockpicking')
 
 function connectToRoom(url, roomCode) {
     state.currentRoomCode = (roomCode || 'DEFAULT').toString().trim().toUpperCase()
@@ -29,12 +30,27 @@ function connectToRoom(url, roomCode) {
         showHUDButtons()
         initMusicPanel()
         initChat()
+        initLockpicking()
         await loadAndShareCharacters()
     })
+
+    // ── Lockpicking ──────────────────────────────────────────────────────────
+    state.socket.on('lockpick_start', data => handleLockpickStart(data))
+    state.socket.on('lockpick_result', data => handleLockpickResult(data))
 
     state.socket.on('master_status', isMaster => {
         state.isRoomMaster = isMaster
         initMusicPanel(); initNPC(); initSfxPanel(); initReputation()
+
+        const { openLockpickPicker } = require('./lockpicking')
+        const lockBtn = document.getElementById('lockpickMasterBtn')
+        if (lockBtn) {
+            lockBtn.style.display = isMaster ? 'block' : 'none'
+            if (!lockBtn.dataset.inited) {
+                lockBtn.dataset.inited = '1'
+                lockBtn.addEventListener('click', openLockpickPicker)
+            }
+        }
     })
 
     state.socket.on('connect_error', err => {
@@ -81,6 +97,8 @@ function connectToRoom(url, roomCode) {
 
     // ── Inventário / NPCs / Chat ─────────────────────────────────────────────
     state.socket.on('inventory_update', ({ charId, items }) => { handleInventoryUpdate({ charId, items }) })
+    state.socket.on('item_show', ({ playerName, item }) => { handleItemShow({ playerName, item }) })
+    state.socket.on('item_transferred', ({ toCharId, item }) => { handleItemTransferred({ toCharId, item }) })
     state.socket.on('npc_summon', npc => handleNPCSummon(npc))
     state.socket.on('npc_dismiss', ({ npcId }) => handleNPCDismiss({ npcId }))
     state.socket.on('chat_message', ({ playerName: from, message, type, gifUrl }) => { addChatMessage(from, message, from === state.playerName, type || 'text', gifUrl || null) })
