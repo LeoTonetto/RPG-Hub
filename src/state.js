@@ -57,6 +57,9 @@ const state = {
     // NPCs ativos na cena
     activeNPCs: {},   // { npcId: { id, name, photo, description } }
 
+    // Missões
+    missions: [],   // [{ id, room_code, objective, status, show_objective, sort_order }]
+
     // UI
     hudVisible: true,
     chatVisible: false,

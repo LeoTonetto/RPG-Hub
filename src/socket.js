@@ -12,6 +12,7 @@ const { initNPC, handleNPCSummon, handleNPCDismiss } = require('./npc')
 const { initSfxPanel, playSfxAudio } = require('./sfx')
 const { showReputation, initReputation } = require('./reputation')
 const { initLockpicking, handleLockpickStart, handleLockpickResult } = require('./lockpicking')
+const { showJournalButtons, handleMissionsSync, showObjectiveBanner, hideObjectiveBanner, loadMissions } = require('./journal')
 
 function connectToRoom(url, roomCode) {
     state.currentRoomCode = (roomCode || 'DEFAULT').toString().trim().toUpperCase()
@@ -28,11 +29,17 @@ function connectToRoom(url, roomCode) {
         const leaveBtn = document.getElementById('leaveRoomBtn')
         if (leaveBtn) leaveBtn.style.display = 'block'
         showHUDButtons()
+        showJournalButtons()
         initMusicPanel()
         initChat()
         initLockpicking()
         await loadAndShareCharacters()
     })
+
+    // ── Jornal de Missões ────────────────────────────────────────────────────
+    state.socket.on('missions_sync', ({ missions }) => handleMissionsSync(missions))
+    state.socket.on('mission_objective_show', ({ objective }) => showObjectiveBanner(objective))
+    state.socket.on('mission_objective_hide', () => hideObjectiveBanner())
 
     // ── Lockpicking ──────────────────────────────────────────────────────────
     state.socket.on('lockpick_start', data => handleLockpickStart(data))
@@ -41,6 +48,7 @@ function connectToRoom(url, roomCode) {
     state.socket.on('master_status', isMaster => {
         state.isRoomMaster = isMaster
         initMusicPanel(); initNPC(); initSfxPanel(); initReputation()
+        showJournalButtons()
 
         const { openLockpickPicker } = require('./lockpicking')
         const lockBtn = document.getElementById('lockpickMasterBtn')

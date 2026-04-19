@@ -14,6 +14,7 @@ function initRoom() {
     const roomCodeInput = document.getElementById('roomCodeInput')
     const roomBadge = document.getElementById('roomBadge')
     const roomBadgeCode = document.getElementById('roomBadgeCode')
+    const { hideJournalButtons } = require('./journal')
 
     createBtn.addEventListener('click', () => {
         setRoomInfo('Preparando a taverna...')
@@ -115,6 +116,8 @@ function initRoom() {
             state.playerCharacters = []
             state.allCharsCache = []
             state.activeCharacterId = null
+
+            hideJournalButtons()
 
             // Esconde HUD de jogo
             document.getElementById('diceFab').style.display = 'none'

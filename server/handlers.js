@@ -1,6 +1,7 @@
 const {
     rooms, roomCodes, urlCodes, roomChars,
-    roomMusic, roomMasters, roomScene, roomNPCs, roomReputation, normalizeUrl
+    roomMusic, roomMasters, roomScene, roomNPCs,
+    roomReputation, roomMissions, normalizeUrl
 } = require('./roomState')
 
 function broadcastRoomChars(io, roomCode) {
@@ -32,6 +33,10 @@ function setupSocketHandlers(io) {
         if (roomMusic[roomCode]) { const elapsed = (Date.now() - roomMusic[roomCode].startTime) / 1000; socket.emit('music_play', { ...roomMusic[roomCode], seekTime: elapsed }) }
         if (roomScene[roomCode]) { socket.emit('scene_change', roomScene[roomCode]) }
         if (roomNPCs[roomCode]) { Object.values(roomNPCs[roomCode]).forEach(npc => { socket.emit('npc_summon', { ...npc, silent: true }) }) }
+
+        if (roomMissions[roomCode]) {
+            socket.emit('missions_sync', { missions: roomMissions[roomCode] })
+        }
 
         // ── Música ──────────────────────────────────────────────────────────
         socket.on('play_music', ({ videoId, startedBy }) => { if (roomMasters[roomCode] !== socket.id) return; if (!videoId || typeof videoId !== 'string' || !videoId.trim()) return; roomMusic[roomCode] = { videoId: videoId.trim(), startedBy: startedBy || 'unknown', startTime: Date.now() }; io.to(roomCode).emit('music_play', roomMusic[roomCode]); console.log(`[Música] ${startedBy} tocou ${videoId} na sala ${roomCode}`) })
@@ -118,6 +123,26 @@ function setupSocketHandlers(io) {
             roomReputation[roomCode] = v
             io.to(roomCode).emit('reputation_show', { value: v })
             console.log(`[Reputação] Valor ${v} exibido na sala ${roomCode}`)
+        })
+
+        // ── Missões / Jornal ────────────────────────────────────────────────
+        socket.on('missions_sync', ({ missions }) => {
+            if (roomMasters[roomCode] !== socket.id) return
+            roomMissions[roomCode] = missions || []
+            socket.to(roomCode).emit('missions_sync', { missions: roomMissions[roomCode] })
+            console.log(`[Missões] Sync — ${missions?.length || 0} missões na sala ${roomCode}`)
+        })
+
+        socket.on('mission_objective_show', ({ objective }) => {
+            if (roomMasters[roomCode] !== socket.id) return
+            io.to(roomCode).emit('mission_objective_show', { objective })
+            console.log(`[Missões] Objetivo exibido na sala ${roomCode}`)
+        })
+
+        socket.on('mission_objective_hide', () => {
+            if (roomMasters[roomCode] !== socket.id) return
+            io.to(roomCode).emit('mission_objective_hide')
+            console.log(`[Missões] Objetivo ocultado na sala ${roomCode}`)
         })
 
         // ── Cursores ─────────────────────────────────────────────────────────

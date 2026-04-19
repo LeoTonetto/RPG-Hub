@@ -7,6 +7,8 @@ const { initAuth, checkSession } = require('./src/auth')
 const { initCharModal } = require('./src/characters')
 const { initDice } = require('./src/dice')
 const { initRoom } = require('./src/room')
+const { initJournal } = require('./src/journal')
+const state = require('./src/state')
 
 // Módulos que se auto-registram no DOM ao ser importados
 // (event listeners aplicados direto nos elementos existentes)
@@ -16,12 +18,14 @@ require('./src/sfx')
 require('./src/npc')      // registra handlers; initNPC() é chamado pelo socket.js
 require('./src/reputation')  // barra de reputação; initReputation() é chamado pelo socket.js
 
+
 // ── Inicialização ─────────────────────────────────────────────────────────────
 initHUD()         // botões HUD/chat + atalhos de teclado
 initAuth()        // login, registro, logout
 initCharModal()   // modal de criação de personagem
 initDice()        // FAB de dados
 initRoom()        // criar/entrar na sala, badge
+initJournal()     // jornal de missões
 
 checkSession()    // tenta restaurar sessão ativa automaticamente
 

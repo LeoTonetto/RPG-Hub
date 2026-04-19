@@ -1,0 +1,501 @@
+/* ══════════════════════════════════════════════════════════════════════════════ */
+/* ══ JORNAL DE MISSÕES ══                                                      */
+/* Estética de livro / caderno de anotações medieval                            */
+/* ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Botão do Jornal (ao lado do 👁 HUD toggle) ── */
+#journalToggle {
+    position: fixed;
+    top: 16px;
+    left: 56px;
+    z-index: 1010;
+    background: rgba(10, 8, 6, 0.65);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 3px;
+    color: rgba(201, 168, 76, 0.45);
+    font-size: 15px;
+    width: 34px;
+    height: 34px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    transition: color 0.2s, border-color 0.2s, box-shadow 0.3s;
+    line-height: 1;
+}
+
+#journalToggle:hover {
+    color: var(--gold);
+    border-color: rgba(201, 168, 76, 0.5);
+    box-shadow: 0 0 12px rgba(201, 168, 76, 0.1);
+}
+
+#journalToggle.has-new {
+    animation: journalPulse 2s ease-in-out infinite;
+}
+
+@keyframes journalPulse {
+
+    0%,
+    100% {
+        border-color: rgba(201, 168, 76, 0.2);
+    }
+
+    50% {
+        border-color: rgba(201, 168, 76, 0.6);
+        box-shadow: 0 0 14px rgba(201, 168, 76, 0.15);
+    }
+}
+
+/* ── Botão do Mestre: Exibir/Ocultar Objetivo (abaixo do HUD toggle) ── */
+#missionObjectiveToggle {
+    position: fixed;
+    top: 56px;
+    left: 16px;
+    z-index: 1010;
+    background: rgba(10, 8, 6, 0.65);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 3px;
+    color: rgba(201, 168, 76, 0.35);
+    font-size: 11px;
+    width: 34px;
+    height: 34px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    transition: color 0.2s, border-color 0.2s;
+    line-height: 1;
+    font-family: 'Cinzel', serif;
+}
+
+#missionObjectiveToggle:hover {
+    color: var(--gold);
+    border-color: rgba(201, 168, 76, 0.5);
+}
+
+#missionObjectiveToggle.active {
+    color: var(--gold);
+    border-color: rgba(201, 168, 76, 0.45);
+    background: rgba(10, 8, 6, 0.8);
+}
+
+/* ── Banner do objetivo flutuante (visível a todos quando mestre ativa) ── */
+#missionObjectiveBanner {
+    position: fixed;
+    top: 56px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999;
+    background: linear-gradient(160deg, rgba(20, 16, 10, 0.92) 0%, rgba(12, 9, 6, 0.95) 100%);
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    border-radius: 3px;
+    padding: 8px 20px;
+    max-width: 500px;
+    text-align: center;
+    font-family: 'Crimson Text', Georgia, serif;
+    font-size: 14px;
+    font-style: italic;
+    color: rgba(220, 200, 160, 0.85);
+    letter-spacing: 0.02em;
+    line-height: 1.5;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    display: none;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+#missionObjectiveBanner.visible {
+    display: block;
+    opacity: 1;
+}
+
+#missionObjectiveBanner::before {
+    content: '— Objetivo Atual —';
+    display: block;
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    font-style: normal;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(201, 168, 76, 0.5);
+    margin-bottom: 4px;
+}
+
+/* ── Overlay do Jornal ── */
+#journalOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#journalOverlay.open {
+    display: flex;
+    opacity: 1;
+}
+
+/* ── Livro / Caderno ── */
+.journal-book {
+    position: relative;
+    width: 480px;
+    max-width: 92vw;
+    max-height: 80vh;
+    background: linear-gradient(165deg,
+            #2a2318 0%,
+            #1e1a12 20%,
+            #18140d 60%,
+            #120f0a 100%);
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    border-radius: 4px;
+    box-shadow:
+        inset 0 0 60px rgba(0, 0, 0, 0.3),
+        0 0 0 1px rgba(201, 168, 76, 0.08),
+        0 20px 60px rgba(0, 0, 0, 0.8),
+        -4px 0 12px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: journalOpen 0.35s ease-out;
+}
+
+@keyframes journalOpen {
+    from {
+        transform: scale(0.92) rotateY(-5deg);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1) rotateY(0deg);
+        opacity: 1;
+    }
+}
+
+/* Lombada do livro (decoração lateral) */
+.journal-book::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 28px;
+    background: linear-gradient(90deg,
+            rgba(201, 168, 76, 0.06) 0%,
+            rgba(201, 168, 76, 0.02) 60%,
+            transparent 100%);
+    border-right: 1px solid rgba(201, 168, 76, 0.08);
+    pointer-events: none;
+}
+
+/* Cantos decorativos */
+.journal-book::after {
+    content: '';
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 14px;
+    height: 14px;
+    border-top: 1px solid rgba(201, 168, 76, 0.4);
+    border-right: 1px solid rgba(201, 168, 76, 0.4);
+    pointer-events: none;
+}
+
+/* ── Cabeçalho do Jornal ── */
+.journal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px 40px;
+    border-bottom: 1px solid rgba(201, 168, 76, 0.15);
+    flex-shrink: 0;
+}
+
+.journal-title {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.journal-title-icon {
+    font-size: 16px;
+    opacity: 0.7;
+}
+
+.journal-close {
+    background: none;
+    border: none;
+    color: rgba(201, 168, 76, 0.35);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 2px 4px;
+    transition: color 0.15s;
+    line-height: 1;
+}
+
+.journal-close:hover {
+    color: var(--gold);
+}
+
+/* ── Corpo do Jornal (lista de missões) ── */
+.journal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 18px 14px 40px;
+    min-height: 200px;
+}
+
+.journal-body::-webkit-scrollbar {
+    width: 4px;
+}
+
+.journal-body::-webkit-scrollbar-thumb {
+    background: rgba(201, 168, 76, 0.15);
+    border-radius: 2px;
+}
+
+.journal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(201, 168, 76, 0.3);
+}
+
+/* Mensagem de vazio */
+.journal-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(201, 168, 76, 0.25);
+    font-family: 'Crimson Text', serif;
+    font-size: 15px;
+    font-style: italic;
+}
+
+.journal-empty-icon {
+    font-size: 28px;
+    display: block;
+    margin-bottom: 10px;
+    opacity: 0.4;
+}
+
+/* ── Item de missão ── */
+.mission-item {
+    position: relative;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(201, 168, 76, 0.1);
+    border-left: 3px solid rgba(201, 168, 76, 0.3);
+    border-radius: 2px;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.mission-item:hover {
+    border-color: rgba(201, 168, 76, 0.2);
+    border-left-color: rgba(201, 168, 76, 0.5);
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.mission-item.completed {
+    border-left-color: rgba(80, 160, 80, 0.4);
+    opacity: 0.6;
+}
+
+.mission-item.completed .mission-objective {
+    text-decoration: line-through;
+    text-decoration-color: rgba(201, 168, 76, 0.3);
+}
+
+/* Status badge */
+.mission-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 2px;
+    margin-bottom: 8px;
+}
+
+.mission-status.in-progress {
+    color: rgba(220, 180, 80, 0.8);
+    background: rgba(220, 180, 80, 0.08);
+    border: 1px solid rgba(220, 180, 80, 0.15);
+}
+
+.mission-status.completed {
+    color: rgba(80, 180, 80, 0.8);
+    background: rgba(80, 180, 80, 0.08);
+    border: 1px solid rgba(80, 180, 80, 0.15);
+}
+
+.mission-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.mission-status.in-progress .mission-status-dot {
+    background: rgba(220, 180, 80, 0.7);
+    box-shadow: 0 0 6px rgba(220, 180, 80, 0.3);
+}
+
+.mission-status.completed .mission-status-dot {
+    background: rgba(80, 180, 80, 0.7);
+}
+
+/* Texto do objetivo */
+.mission-objective {
+    font-family: 'Crimson Text', Georgia, serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: rgba(220, 200, 160, 0.85);
+    word-break: break-word;
+}
+
+/* ── Controles do mestre (dentro de cada missão) ── */
+.mission-master-controls {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(201, 168, 76, 0.08);
+}
+
+.mission-ctrl-btn {
+    padding: 4px 8px;
+    background: rgba(201, 168, 76, 0.04);
+    border: 1px solid rgba(201, 168, 76, 0.15);
+    border-radius: 2px;
+    color: rgba(201, 168, 76, 0.45);
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.mission-ctrl-btn:hover {
+    background: rgba(201, 168, 76, 0.08);
+    color: var(--gold);
+    border-color: rgba(201, 168, 76, 0.35);
+}
+
+.mission-ctrl-btn.delete {
+    border-color: rgba(192, 57, 43, 0.2);
+    color: rgba(192, 57, 43, 0.45);
+}
+
+.mission-ctrl-btn.delete:hover {
+    background: rgba(192, 57, 43, 0.08);
+    color: rgba(220, 80, 60, 0.85);
+    border-color: rgba(192, 57, 43, 0.4);
+}
+
+/* ── Rodapé do mestre (adicionar missão) ── */
+.journal-footer-master {
+    padding: 10px 18px 14px 40px;
+    border-top: 1px solid rgba(201, 168, 76, 0.12);
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.journal-footer-master.visible {
+    display: flex;
+}
+
+.journal-add-row {
+    display: flex;
+    gap: 7px;
+}
+
+.journal-add-input {
+    flex: 1;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.18);
+    border-radius: 3px;
+    color: var(--parchment);
+    font-family: 'Crimson Text', serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.journal-add-input::placeholder {
+    color: rgba(201, 168, 76, 0.2);
+    font-style: italic;
+}
+
+.journal-add-input:focus {
+    border-color: rgba(201, 168, 76, 0.4);
+}
+
+.journal-add-btn {
+    padding: 8px 14px;
+    background: linear-gradient(135deg, #2a1f0f 0%, #1a1208 100%);
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    border-radius: 3px;
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.journal-add-btn:hover {
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(201, 168, 76, 0.15);
+}
+
+/* ── Separador decorativo ── */
+.journal-divider {
+    text-align: center;
+    margin: 6px 0 10px;
+    color: rgba(201, 168, 76, 0.15);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.5em;
+    user-select: none;
+}
+
+/* ── Esconde jornal quando HUD está oculta ── */
+body.hud-hidden #journalToggle {
+    opacity: 0.25;
+}
+
+body.hud-hidden #journalToggle:hover {
+    opacity: 1;
+}
+
+body.hud-hidden #missionObjectiveToggle {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+body.hud-hidden #missionObjectiveBanner {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}

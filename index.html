@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="css/systems.css">
     <link rel="stylesheet" href="css/reputation.css">
     <link rel="stylesheet" href="css/lockpicking.css">
+    <link rel="stylesheet" href="css/journal.css">
 </head>
 
 <body>
@@ -53,6 +54,15 @@
 
     <!-- ══ CONTROLES DE HUD ══ -->
     <button id="hudToggle" title="Mostrar/Ocultar HUD (H)">👁</button>
+
+    <!-- ══ JORNAL DE MISSÕES ══ -->
+    <button id="journalToggle" title="Jornal de Missões (J)">📜</button>
+    <button id="missionObjectiveToggle" title="Exibir/Ocultar Objetivo">🎯</button>
+
+    <!-- ══ BANNER DE OBJETIVO ══ -->
+    <div id="missionObjectiveBanner">
+        <span class="objective-text"></span>
+    </div>
 
     <!-- ══ CHAT ══ -->
     <div id="chatPanel">
@@ -326,6 +336,32 @@
             <button class="subpanel-close" id="habPanelClose">✕</button>
         </div>
         <div class="subpanel-body" id="habPanelBody"></div>
+    </div>
+
+    <!-- ══ JORNAL DE MISSÕES (overlay) ══ -->
+    <div id="journalOverlay" style="display:none">
+        <div class="journal-book">
+            <div class="journal-header">
+                <div class="journal-title">
+                    <span class="journal-title-icon">📖</span>
+                    Jornal de Missões
+                </div>
+                <button class="journal-close" id="journalCloseBtn" title="Fechar (J)">✕</button>
+            </div>
+            <div class="journal-body" id="journalBody">
+                <div class="journal-empty">
+                    <span class="journal-empty-icon">📜</span>
+                    Carregando missões…
+                </div>
+            </div>
+            <div class="journal-footer-master" id="journalFooterMaster">
+                <div class="journal-add-row">
+                    <input class="journal-add-input" id="journalAddInput" placeholder="Descreva a missão…"
+                        maxlength="500" autocomplete="off" spellcheck="false" />
+                    <button class="journal-add-btn" id="journalAddBtn">+ Missão</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="renderer.js"></script>
