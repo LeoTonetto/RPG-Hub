@@ -112,7 +112,7 @@ function openLockpickPicker() {
     card.innerHTML = `
         <div class="lp-picker-header">
             <div class="lp-picker-icon">⚙</div>
-            <div class="lp-picker-title">Arrombar Cofre</div>
+            <div class="lp-picker-title">Arrombar a Fechadura</div>
             <div class="lp-picker-subtitle">Escolha o alvo e a dificuldade</div>
         </div>
     `
@@ -284,7 +284,7 @@ function _showWaitingOverlay(charName, diffLabel, timer) {
         <div class="lp-waiting-card">
             <div class="lp-waiting-icon">⚙</div>
             <div class="lp-waiting-name">${charName}</div>
-            <div class="lp-waiting-sub">está tentando arrombar o cofre...</div>
+            <div class="lp-waiting-sub">está tentando arrombar a fechadura...</div>
             <div class="lp-waiting-diff">${diffLabel}${timer ? ` · ⏱ ${timer}s` : ''}</div>
             <div class="lp-waiting-dots"><span>.</span><span>.</span><span>.</span></div>
         </div>
@@ -359,7 +359,7 @@ function _buildOverlayHTML() {
                     </filter>
                 </defs>
 
-                <!-- Placa do cofre (fundo texturizado) -->
+                <!-- Placa da fechadura (fundo texturizado) -->
                 <circle cx="160" cy="160" r="145" fill="#1a1008" stroke="#3a2a18" stroke-width="3"/>
                 <circle cx="160" cy="160" r="140" fill="url(#lpSafeGrad)" stroke="#5a4a30" stroke-width="1.5"/>
 
@@ -367,7 +367,7 @@ function _buildOverlayHTML() {
                 <circle cx="160" cy="160" r="130" fill="none" stroke="#4a3a25" stroke-width="2" stroke-dasharray="2 8"/>
                 <circle cx="160" cy="160" r="122" fill="none" stroke="rgba(138,114,72,0.15)" stroke-width="1"/>
 
-                <!-- Rebites (parafusos do cofre) -->
+                <!-- Rebites (parafusos da fechadura) -->
                 ${_generateRivets()}
 
                 <!-- Marcas de posição (como um dial de cofre) -->
@@ -813,7 +813,7 @@ function _onResult(success) {
     const subEl = document.getElementById('lockpickResultSub')
 
     iconEl.textContent = success ? '🔓' : '💔'
-    textEl.textContent = success ? 'COFRE ABERTO!' : 'FALHOU!'
+    textEl.textContent = success ? 'FECHADURA ABERTA!' : 'FALHOU!'
     textEl.className = 'lp-result-text ' + (success ? 'success' : 'fail')
     subEl.textContent = success
         ? `${targetCharName} abriu a fechadura com maestria!`
