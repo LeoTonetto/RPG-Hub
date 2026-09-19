@@ -1,4 +1,8 @@
-# Colocar o Hub-RPG na VPS da Hostinger
+# Colocar o Hub-RPG na VPS da Hostinger — instalação direta
+
+> **Prefere container?** Use [DOCKER.md](DOCKER.md). É o caminho recomendado:
+> deixa o projeto isolado, não espalha Node e dependências pela VPS, e convive
+> melhor com outros projetos. Os dois chegam no mesmo lugar — siga **um** só.
 
 Guia do começo ao fim. São uns 20 minutos, quase tudo copiar e colar.
 

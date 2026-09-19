@@ -1,0 +1,29 @@
+# Nada disto entra na imagem do servidor.
+# O backend precisa só de package*.json, server.js e server/ — ver Dockerfile.
+
+node_modules/
+dist/
+out/
+build/
+scenes/
+cenas/
+
+# Cliente Electron: não roda no servidor
+src/
+css/
+assets/
+*.html
+renderer.js
+main.js
+
+# Repositório e ferramentas
+.git/
+.gitignore
+.vscode/
+*.log
+*.exe
+
+# Documentação e scripts que não fazem parte da execução
+deploy/
+sql/
+*.md

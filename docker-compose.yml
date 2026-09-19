@@ -1,0 +1,52 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# Hub-RPG — servidor de salas
+#
+#   docker compose up -d --build     sobe (ou atualiza) o servidor
+#   docker compose logs -f           acompanha os logs
+#   docker compose restart           reinicia
+#   docker compose down              derruba (as cenas ficam salvas no volume)
+#
+# Guia completo: deploy/DOCKER.md
+# ══════════════════════════════════════════════════════════════════════════════
+
+services:
+  hub-rpg:
+    build: .
+    image: hub-rpg:latest
+    container_name: hub-rpg
+
+    # Volta sozinho depois de um crash ou de um reboot da VPS
+    restart: unless-stopped
+
+    # host:container — mude só o lado esquerdo se a 3001 já estiver ocupada
+    ports:
+      - "3001:3001"
+
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      SCENES_DIR: /dados/cenas
+      # Teto de cada arquivo de cena, em MB
+      SCENE_MAX_MB: 150
+      # Quantas cenas guardar antes de podar as mais antigas
+      SCENE_KEEP: 30
+
+    volumes:
+      # As cenas sobrevivem a `down`, rebuild e atualização
+      - cenas:/dados/cenas
+
+    # Um servidor de sala para 6 pessoas não precisa de mais que isto, e o teto
+    # impede que um vazamento derrube os outros containers da VPS
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  cenas:
