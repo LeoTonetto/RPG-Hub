@@ -1,0 +1,30 @@
+# Serviço systemd do Hub-RPG. Instalação:
+#   cp deploy/hub-rpg.service /etc/systemd/system/
+#   mkdir -p /var/lib/hub-rpg/cenas
+#   systemctl daemon-reload && systemctl enable --now hub-rpg
+#
+# Ajuste WorkingDirectory se você clonou em outro lugar.
+
+[Unit]
+Description=Hub-RPG — servidor de salas
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/hub-rpg
+ExecStart=/usr/bin/node server/standalone.js
+Restart=always
+RestartSec=5
+User=root
+
+Environment=NODE_ENV=production
+Environment=PORT=3001
+Environment=SCENES_DIR=/var/lib/hub-rpg/cenas
+Environment=SCENE_MAX_MB=150
+Environment=SCENE_KEEP=30
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

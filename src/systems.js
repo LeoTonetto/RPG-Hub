@@ -49,6 +49,43 @@ const SYSTEMS = {
         ],
     },
 
+    // ── Calico — homebrew de Ordem Paranormal II para Velho Oeste (1890) ─────
+    // Sistema de dados (d4…d12), não de pontos. A criação de ficha e a ficha em
+    // si são renderizadas por calicoCreate.js / calicoSheet.js — é isso que a
+    // flag `module` sinaliza para characters.js e statPopup.js.
+    //
+    // PV usa hp/hp_max e PD usa sanity/sanity_max de propósito: assim o Calico
+    // reaproveita a barra do card, o flash, o socket stat_update e o indicador
+    // de morte que já existem. Só os rótulos mudam.
+    'calico': {
+        label: 'Calico',
+        module: 'calico',
+        defaultStats: {
+            sistema: 'calico-v1', nivel: 1,
+            hp: 12, hp_max: 12, sanity: 10, sanity_max: 10,
+            fisico: 'd8', mente: 'd6', emocao: 'd6',
+            pericias: {}, habilidades: [], armas: [], condicoes: [],
+            testes_morte: { vigor: 0, disciplina: 0 },
+        },
+        attributePoints: 0,
+        attributes: [],
+        antecedentes: [],
+        hasHabilidades: false,   // habilidades têm painel próprio no Calico
+        hasDinheiro: false,      // o sistema não usa dinheiro como stat
+        cardBars: [
+            { key: 'hp', maxKey: 'hp_max', label: 'PV', fillClass: 'hp-fill' },
+            // §14 — o PD recebe o mesmo destaque visual do PV, nunca menos
+            { key: 'sanity', maxKey: 'sanity_max', label: 'PD', fillClass: 'pd-fill' },
+        ],
+        cardExtras: [
+            { label: 'NV', key: 'nivel' },
+        ],
+        popupStats: [
+            { key: 'hp', maxKey: 'hp_max', label: '❤ PV', hasMax: true, flashField: 'hp' },
+            { key: 'sanity', maxKey: 'sanity_max', label: '🕯 PD', hasMax: true, flashField: 'sanity' },
+        ],
+    },
+
     'coc': {
         label: 'Call of Cthulhu',
         defaultStats: { hp: 10, hp_max: 10, sanity: 50, sanity_max: 50, bullets: null },
@@ -102,6 +139,6 @@ const SYSTEMS = {
     },
 }
 
-const SYSTEM_ORDER = ['som-das-seis', 'coc', 'dnd', 'op']
+const SYSTEM_ORDER = ['som-das-seis', 'calico', 'coc', 'dnd', 'op']
 
 module.exports = { SYSTEMS, SYSTEM_ORDER }

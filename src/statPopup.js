@@ -1,5 +1,5 @@
 const state = require('./state')
-const { makeDraggable } = require('./hud')
+const { makeDraggable, clicouEmCamadaFlutuante } = require('./hud')
 const { updateCardStat, flashCard } = require('./characters')
 const { SYSTEMS } = require('./systems')
 
@@ -31,12 +31,9 @@ document.getElementById('antPanelClose').addEventListener('click', () => antPane
 document.getElementById('habPanelClose').addEventListener('click', () => habPanel.classList.remove('visible'))
 
 document.addEventListener('click', e => {
-    if (statPopup.classList.contains('visible')
-        && !statPopup.contains(e.target)
-        && !inventoryModal.contains(e.target)
-        && !attrPanel.contains(e.target)
-        && !antPanel.contains(e.target)
-        && !habPanel.contains(e.target)) {
+    // Fecha só quando o clique cai fora de TODAS as camadas flutuantes — ver
+    // CAMADAS_FLUTUANTES em hud.js
+    if (statPopup.classList.contains('visible') && !clicouEmCamadaFlutuante(e.target)) {
         closeStatPopup()
     }
 })
@@ -73,8 +70,17 @@ function openStatPopup(char, ownerName, cardEl) {
     const sysDef = SYSTEMS[char.system] || null
 
     statDynamicRows.innerHTML = ''
+    statDynamicRows.className = ''
 
-    if (sysDef) {
+    // A ficha do Calico carrega mais coisa que as outras (PV, PD, nivel, tres
+    // atributos e os painéis), então o card ganha um pouco mais de largura
+    statPopup.classList.toggle('calico', !!(sysDef && sysDef.module === 'calico'))
+
+    if (sysDef && sysDef.module === 'calico') {
+        // Calico tem ficha própria: dados em vez de números, PV e PD com o mesmo
+        // peso, painéis de perícias/armas/condições e rolador de teste.
+        require('./calicoSheet').buildSheet(statDynamicRows, stats, canEdit)
+    } else if (sysDef) {
         buildMainPopup(sysDef, stats, canEdit)
     } else {
         statDynamicRows.innerHTML = '<div style="padding:8px;color:rgba(244,234,213,0.5);font-size:13px;">Sistema não definido</div>'
@@ -412,6 +418,7 @@ function closeStatPopup() {
     attrPanel.classList.remove('visible')
     antPanel.classList.remove('visible')
     habPanel.classList.remove('visible')
+    require('./calicoSheet').fecharPaineis()
     if (statCharMgmt) statCharMgmt.style.display = 'none'
     if (statSwitchPanel) statSwitchPanel.style.display = 'none'
     state.statPopupCharId = null

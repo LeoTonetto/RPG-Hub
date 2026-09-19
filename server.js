@@ -1,22 +1,62 @@
+// ══════════════════════════════════════════════════════════════════════════════
+// server.js — Express + Socket.IO
+//
+// O MESMO servidor roda em dois lugares:
+//
+//   • dentro do app do mestre (modo ngrok) — main.js chama startServer()
+//   • numa VPS (modo servidor)             — server/standalone.js é o entrypoint
+//
+// Nada aqui depende do Electron. A única parte que dependia era o diretório de
+// cenas, que agora se resolve sozinho (ver server/scenes.js).
+// ══════════════════════════════════════════════════════════════════════════════
+
 const express = require('express')
-const path = require('path')
 const { createServer } = require('http')
 const { Server } = require('socket.io')
+const crypto = require('crypto')
 
 const { setupSceneRoutes } = require('./server/scenes')
 const { setupSocketHandlers } = require('./server/handlers')
-const { roomCodes, urlCodes, rooms, normalizeUrl } = require('./server/roomState')
+const {
+    roomCodes, urlCodes, rooms, roomOwners,
+    normalizeUrl, limparSalasVencidas,
+} = require('./server/roomState')
+
+const PORTA = parseInt(process.env.PORT, 10) || 3001
 
 const app = express()
 const httpServer = createServer(app)
+
+// CORS aberto: os clientes são apps Electron, que não têm origem web fixa.
+// Quem controla o acesso é o código da sala mais o masterToken.
 const io = new Server(httpServer, { cors: { origin: '*' } })
+
+// Atrás de um proxy reverso (nginx), confia no X-Forwarded-For para os logs
+app.set('trust proxy', true)
 
 // ── Rotas de cena ────────────────────────────────────────────────────────────
 setupSceneRoutes(app, express)
 
-// ── Rotas da API ─────────────────────────────────────────────────────────────
+// ── Saúde, para o systemd e para você conferir do navegador ──────────────────
+app.get('/health', (req, res) => {
+    res.json({
+        ok: true,
+        salas: Object.keys(roomOwners).length,
+        conectados: Object.values(rooms).reduce((n, r) => n + Object.keys(r).length, 0),
+        uptime: Math.round(process.uptime()),
+    })
+})
+
 app.get('/debug', (req, res) => {
-    res.json({ roomCodes, urlCodes, rooms: Object.keys(rooms) })
+    // Não devolve tokens: só o que ajuda a diagnosticar
+    res.json({
+        roomCodes,
+        urlCodes,
+        rooms: Object.keys(rooms),
+        salas: Object.fromEntries(Object.entries(roomOwners).map(([code, s]) => [code, {
+            ownerId: s.ownerId, url: s.url, createdAt: s.createdAt, lastSeen: s.lastSeen,
+        }])),
+    })
 })
 
 app.get('/resolve-code/:code', (req, res) => {
@@ -24,28 +64,80 @@ app.get('/resolve-code/:code', (req, res) => {
     res.json({ url: roomCodes[code] || null })
 })
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ── Criar / registrar sala ───────────────────────────────────────────────────
+//
+// Devolve o masterToken, que é como o app do mestre prova quem é ao conectar.
+// Reentrante: o mesmo dono pode registrar a mesma sala de novo (reconexão,
+// reinício do app) e recebe o mesmo token. Dono diferente é recusado, para
+// ninguém sequestrar um código em uso.
+// ══════════════════════════════════════════════════════════════════════════════
 app.post('/register-room', express.json(), (req, res) => {
-    const data = req.body
-    const norm = normalizeUrl(data.url)
-    roomCodes[data.code.toUpperCase()] = data.url
-    urlCodes[norm] = data.code.toUpperCase()
-    console.log('Sala registrada:', data.code, '->', data.url)
+    const { code, url, ownerId } = req.body || {}
+
+    if (!code || typeof code !== 'string' || !/^[A-Z0-9]{4,12}$/i.test(code)) {
+        return res.status(400).json({ error: 'Código de sala inválido' })
+    }
+    const sala = code.toUpperCase()
+    const existente = roomOwners[sala]
+
+    if (existente && ownerId && existente.ownerId && existente.ownerId !== ownerId) {
+        console.log(`[Sala] ${sala} recusada: já pertence a outro dono`)
+        return res.status(409).json({ error: 'Este código já está em uso por outra mesa. Crie a sala de novo.' })
+    }
+
+    const token = existente ? existente.token : crypto.randomBytes(24).toString('hex')
+
+    roomOwners[sala] = {
+        token,
+        ownerId: ownerId || (existente && existente.ownerId) || null,
+        url: url || (existente && existente.url) || null,
+        createdAt: (existente && existente.createdAt) || Date.now(),
+        lastSeen: Date.now(),
+    }
+
+    if (url) {
+        roomCodes[sala] = url
+        urlCodes[normalizeUrl(url)] = sala
+    }
+
+    console.log(`[Sala] ${sala} registrada${url ? ' -> ' + url : ''}${existente ? ' (reaproveitando token)' : ''}`)
+    res.json({ ok: true, code: sala, masterToken: token })
+})
+
+// Encerrar a sala ao fechar o app (renderer.js chama no beforeunload)
+app.post('/cleanup-room', express.json(), (req, res) => {
+    const { roomCode, masterToken } = req.body || {}
+    const sala = (roomCode || '').toUpperCase()
+    const dono = roomOwners[sala]
+    // Só o dono encerra. Sem token, ignora em silêncio — o TTL recicla depois.
+    if (!dono || !masterToken || masterToken !== dono.token) return res.json({ ok: false })
+
+    dono.lastSeen = 0            // vence na próxima varredura
+    console.log(`[Sala] ${sala} marcada para reciclagem pelo dono`)
     res.json({ ok: true })
 })
 
 // ── Arquivos estáticos (HTML/CSS/JS do client) ────────────────────────────────
+// Na VPS isso serve só o music-player/sfx-panel, que não são usados remotamente,
+// mas não atrapalha e mantém os dois modos idênticos.
 app.use(express.static(__dirname))
 
 setupSocketHandlers(io)
 
+// Varre salas abandonadas de hora em hora
+const varredura = setInterval(limparSalasVencidas, 60 * 60 * 1000)
+varredura.unref?.()
+
 // ── Inicialização ─────────────────────────────────────────────────────────────
-function startServer() {
-    return new Promise((resolve) => {
-        httpServer.listen(3001, () => {
-            console.log('Servidor na porta 3001')
-            resolve()
+function startServer(porta = PORTA) {
+    return new Promise((resolve, reject) => {
+        httpServer.once('error', reject)
+        httpServer.listen(porta, () => {
+            console.log(`Servidor na porta ${porta}`)
+            resolve(httpServer)
         })
     })
 }
 
-module.exports = { startServer }
+module.exports = { startServer, app, io, httpServer, PORTA }

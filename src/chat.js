@@ -39,6 +39,8 @@ function initChat() {
     document.getElementById('chatGifBtn')?.addEventListener('click', e => { e.stopPropagation(); closeEmojiPicker(); toggleGifModal() })
 
     document.addEventListener('click', e => {
+        // Os pickers do chat fecham ao clicar em qualquer lugar que não seja
+        // eles mesmos — inclusive noutra camada flutuante, que é o esperado aqui
         if (_emojiOpen && !e.target.closest('#emojiPicker') && !e.target.closest('#chatEmojiBtn')) closeEmojiPicker()
         if (_gifOpen && !e.target.closest('#gifModal') && !e.target.closest('#chatGifBtn')) closeGifModal()
     })
@@ -59,7 +61,7 @@ function initChat() {
 // ══════════════════════════════════════════════════════════════════════════════
 //  MENSAGENS
 // ══════════════════════════════════════════════════════════════════════════════
-function addChatMessage(from, message, isOwn = false, type = 'text', gifUrl = null, isHistory = false) {
+function addChatMessage(from, message, isOwn = false, type = 'text', gifUrl = null, isHistory = false, meta = null) {
     const container = document.getElementById('chatMessages')
     if (!container) return
 
@@ -67,6 +69,33 @@ function addChatMessage(from, message, isOwn = false, type = 'text', gifUrl = nu
     el.className = 'chat-msg'
         + (isOwn ? ' chat-own' : '')
         + (isHistory ? ' chat-history' : '')
+
+    // ── Linha de rolagem de dados ────────────────────────────────────────────
+    // Não leva o prefixo com o nome do remetente: o próprio texto já diz quem
+    // rolou, e assim a linha fica mais curta e se distingue da conversa.
+    if (type === 'roll') {
+        const m = meta || {}
+        el.classList.add('chat-msg-roll')
+        if (m.critico) el.classList.add('roll-crit')
+        if (m.falha) el.classList.add('roll-fail')
+        if (m.secreto) el.classList.add('roll-secreto')
+
+        const icone = document.createElement('span')
+        icone.className = 'chat-roll-icon'
+        icone.textContent = m.secreto ? '🙈' : '🎲'
+        if (m.secreto) icone.title = 'Rolagem secreta — só você viu isto'
+        el.appendChild(icone)
+
+        const texto = document.createElement('span')
+        texto.className = 'chat-roll-text'
+        texto.textContent = message
+        el.appendChild(texto)
+
+        container.appendChild(el)
+        if (isHistory) return
+        if (_chatAtBottom) container.scrollTop = container.scrollHeight
+        return
+    }
 
     const nameSpan = document.createElement('span')
     nameSpan.className = 'chat-name'; nameSpan.textContent = from + ':'

@@ -1,5 +1,52 @@
 const state = require('./state')
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ── CAMADAS FLUTUANTES ───────────────────────────────────────────────────────
+//
+// Tudo que flutua por cima da cena. Um clique dentro de qualquer uma destas não
+// deve fechar as outras.
+//
+// Antes, cada tela tinha o seu próprio handler de "clique fora" com uma lista de
+// exceções escrita à mão — e as listas foram ficando desatualizadas conforme
+// telas novas entravam. Resultado: escolher um item no inventário, abrir o
+// lightbox ou usar o picker de transferência fechava o popup inteiro, porque
+// aquele elemento não estava na lista de quem checava.
+//
+// Agora a lista é uma só. Tela nova? Acrescente o seletor aqui e todos os
+// handlers passam a respeitá-la.
+// ══════════════════════════════════════════════════════════════════════════════
+const CAMADAS_FLUTUANTES = [
+    // Ficha e seus painéis
+    '#statPopup', '.subpanel', '.calico-panel',
+    // Inventário e o que nasce dele
+    '#inventoryModal', '#invLightbox', '#transferPicker',
+    // NPCs
+    '#npcPanelWrap', '#npcPicker', '#npcCardModal', '#npcOverlay', '#npcSceneBar',
+    // Chat
+    '#emojiPicker', '#gifModal', '#chatPanel',
+    // Painéis do mestre
+    '#musicPanel', '#sfxOpenBtn', '#sfxPanel', '#repMasterControls',
+    '#lockpickPicker', '#lockpickOverlay', '#lockpickMasterBtn',
+    // Jornal, dados, configurações
+    '#journalOverlay', '#journalToggle', '#missionObjectiveToggle',
+    '#diceFab', '#configPanel', '#configToggle',
+    // Modais de tela cheia
+    '#charModal',
+]
+
+/**
+ * O clique caiu dentro de alguma camada flutuante?
+ *
+ * `exceto` permite que uma tela ignore a si mesma — útil para um handler que
+ * quer fechar o próprio painel quando o clique foi em qualquer outro lugar.
+ */
+function clicouEmCamadaFlutuante(target, exceto = []) {
+    if (!target || typeof target.closest !== 'function') return false
+    return CAMADAS_FLUTUANTES
+        .filter(sel => !exceto.includes(sel))
+        .some(sel => target.closest(sel))
+}
+
 // ── Drag genérico ─────────────────────────────────────────────────────────────
 function makeDraggable(el, handle) {
     let dragging = false, ox = 0, oy = 0
@@ -92,4 +139,7 @@ function showHUDButtons() {
     }
 }
 
-module.exports = { makeDraggable, initHUD, toggleHUD, toggleChat, showHUDButtons }
+module.exports = {
+    makeDraggable, initHUD, toggleHUD, toggleChat, showHUDButtons,
+    clicouEmCamadaFlutuante, CAMADAS_FLUTUANTES,
+}

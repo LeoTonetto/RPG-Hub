@@ -51,6 +51,7 @@ async function handleLogin(username, password) {
         state.playerName = profile?.user || username
     } catch (e) { state.playerName = username }
     localStorage.setItem('playerName', state.playerName)
+    await require('./config').carregarPreferencias()
     enterLobby(state.playerName)
 }
 
@@ -84,6 +85,7 @@ async function checkSession() {
             const { data: profile } = await state.supabase.from('profiles').select('user').eq('id', session.user.id).single()
             if (profile?.user) { state.playerName = profile.user; localStorage.setItem('playerName', state.playerName) }
         } catch (e) {}
+        await require('./config').carregarPreferencias()
         enterLobby(state.playerName)
     } catch (e) { console.error('[Session] Erro:', e) }
 }

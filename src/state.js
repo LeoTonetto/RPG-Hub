@@ -26,6 +26,12 @@ const state = {
     isRoomMaster: false,
     rooms: {},   // mapa local código→url
 
+    // Onde a sala é hospedada: 'ngrok' (túnel a partir da máquina do mestre)
+    // ou 'vps' (servidor próprio, sempre no ar). Ver src/backend.js
+    backendMode: 'ngrok',
+    vpsUrl: '',
+    masterToken: null,   // prova que este app é o dono da sala
+
     // Personagens
     playerCharacters: [],
     allCharsCache: [],
@@ -59,6 +65,10 @@ const state = {
 
     // Missões
     missions: [],   // [{ id, room_code, objective, status, show_objective, sort_order }]
+
+    // Preferencias do jogador (ver config.js)
+    cursorColor: null,     // cor do proprio cursor, vista pelos outros
+    veuOpacidade: 1,       // escurecido por cima da cena; 0 = limpo
 
     // UI
     hudVisible: true,

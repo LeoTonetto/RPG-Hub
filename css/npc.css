@@ -155,8 +155,9 @@
 #npcSceneBar {
     position: fixed;
     right: 16px;
+    /* Valor inicial apenas: src/npc.js mede o painel de música de verdade e
+       reposiciona, porque a altura dele muda quando há música tocando. */
     top: 290px;
-    /* abaixo do painel de música */
     display: flex;
     flex-direction: column;
     gap: 10px;

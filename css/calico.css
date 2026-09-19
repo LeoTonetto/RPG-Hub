@@ -1,0 +1,2087 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   CALICO — criação de ficha, ficha e rolador
+   Segue a paleta do Hub-RPG (base.css): --gold, --parchment, --blood, --ember.
+   O PD ganha um roxo-vela próprio, com o mesmo peso visual do PV (spec §14).
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    --pd: #7d5ba6;
+    --pd-dim: #4a3466;
+    --calico-ok: #6ba368;
+}
+
+/* Barra de PD no card do personagem */
+.pd-fill {
+    background: linear-gradient(90deg, #4a3466, #7d5ba6);
+}
+
+/* No Calico, 0 PV não é morte — é o gatilho dos testes de Vigor (§7.9).
+   O ✕ padrão do Hub-RPG diria a coisa errada para a mesa, então o card
+   passa a avisar que o personagem está caindo, não que já foi. */
+.char-card[data-system="calico"].char-dead::after {
+    content: '0 PV';
+    font-size: 18px;
+    letter-spacing: 0.16em;
+    color: rgba(224, 87, 74, 0.95);
+    background: rgba(0, 0, 0, 0.62);
+    text-shadow: 0 0 18px rgba(192, 57, 43, 0.7);
+    animation: calicoCaindo 1.4s ease-in-out infinite;
+}
+
+.char-card[data-system="calico"].char-dead.char-active::after {
+    content: '0 PV';
+    font-size: 18px;
+}
+
+@keyframes calicoCaindo {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ CRIAÇÃO DE PERSONAGEM ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* O criador do Calico precisa de mais largura que os outros sistemas */
+#charModal .connect-card.calico-mode {
+    width: 640px;
+    padding: 40px 36px 36px;
+}
+
+.calico-create {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    text-align: left;
+}
+
+.calico-intro {
+    text-align: left;
+}
+
+.calico-intro-line {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    color: var(--gold);
+    letter-spacing: 0.04em;
+}
+
+.calico-intro-sub {
+    font-size: 12px;
+    color: rgba(244, 234, 213, 0.45);
+    margin-top: 3px;
+}
+
+/* ── Seções ─────────────────────────────────────────────────────────────── */
+.calico-sec {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(201, 168, 76, 0.1);
+}
+
+.calico-sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.calico-sec-title {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.calico-sec-sub {
+    font-size: 11px;
+    color: rgba(244, 234, 213, 0.35);
+}
+
+.calico-hint {
+    font-size: 11px;
+    color: rgba(244, 234, 213, 0.38);
+    line-height: 1.5;
+    font-style: italic;
+}
+
+/* ── Arranjos de atributos ──────────────────────────────────────────────── */
+.calico-arranjos {
+    display: flex;
+    gap: 8px;
+}
+
+.calico-arranjo-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(201, 168, 76, 0.18);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.calico-arranjo-btn:hover {
+    border-color: rgba(201, 168, 76, 0.45);
+    background: rgba(201, 168, 76, 0.04);
+}
+
+.calico-arranjo-btn.active {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.1);
+}
+
+.calico-arranjo-nome {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(244, 234, 213, 0.6);
+}
+
+.calico-arranjo-btn.active .calico-arranjo-nome {
+    color: var(--gold);
+}
+
+.calico-arranjo-dados {
+    font-family: 'Cinzel', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+}
+
+/* ── Linhas de atributo ─────────────────────────────────────────────────── */
+.calico-attr-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.calico-attr-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+}
+
+.calico-attr-icon {
+    font-size: 16px;
+    width: 22px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.calico-attr-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.calico-attr-label {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: rgba(244, 234, 213, 0.8);
+}
+
+.calico-attr-escala {
+    font-size: 10px;
+    color: rgba(244, 234, 213, 0.32);
+}
+
+/* ── Botões de dado ─────────────────────────────────────────────────────── */
+.calico-die-opts {
+    display: flex;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.calico-die-btn {
+    min-width: 32px;
+    padding: 4px 5px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.18);
+    border-radius: 2px;
+    color: rgba(244, 234, 213, 0.45);
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.calico-die-btn:hover:not(:disabled) {
+    border-color: rgba(201, 168, 76, 0.5);
+    color: var(--parchment);
+}
+
+.calico-die-btn.active {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.15);
+    color: var(--gold);
+}
+
+.calico-die-btn:disabled {
+    opacity: 0.18;
+    cursor: not-allowed;
+}
+
+.calico-die-static {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gold);
+    min-width: 32px;
+    text-align: center;
+}
+
+/* ── Cartões de escolha (perfil / ocupação) ─────────────────────────────── */
+.calico-choice-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.calico-ocupacoes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.calico-choice {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 9px 11px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(201, 168, 76, 0.14);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    font-family: inherit;
+}
+
+.calico-choice:hover {
+    border-color: rgba(201, 168, 76, 0.4);
+    background: rgba(201, 168, 76, 0.04);
+}
+
+.calico-choice.active {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.09);
+    box-shadow: inset 0 0 0 1px rgba(201, 168, 76, 0.12);
+}
+
+.calico-choice-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.calico-choice-icon {
+    font-size: 14px;
+}
+
+.calico-choice-nome {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: 0.06em;
+}
+
+.calico-choice-desc {
+    font-size: 12px;
+    color: rgba(244, 234, 213, 0.5);
+    line-height: 1.4;
+}
+
+.calico-choice-hab {
+    font-size: 11px;
+    color: rgba(244, 234, 213, 0.62);
+    line-height: 1.45;
+    padding-left: 8px;
+    border-left: 2px solid rgba(201, 168, 76, 0.22);
+}
+
+.calico-choice.compact .calico-choice-hab {
+    font-size: 10.5px;
+}
+
+.calico-tag-placeholder {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ember);
+    border: 1px solid rgba(212, 98, 42, 0.35);
+    border-radius: 2px;
+    padding: 1px 4px;
+    cursor: help;
+}
+
+/* ── Orçamento de perícias ──────────────────────────────────────────────── */
+.calico-budget {
+    display: flex;
+    gap: 8px;
+}
+
+.calico-budget-badge {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(201, 168, 76, 0.15);
+    border-radius: 3px;
+    transition: all 0.2s;
+}
+
+.calico-budget-badge.done {
+    border-color: rgba(107, 163, 104, 0.5);
+    background: rgba(107, 163, 104, 0.07);
+}
+
+.calico-budget-label {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(244, 234, 213, 0.45);
+}
+
+.calico-budget-val {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gold);
+}
+
+.calico-budget-badge.done .calico-budget-val {
+    color: var(--calico-ok);
+}
+
+/* ── Grade de perícias na criação ───────────────────────────────────────── */
+.calico-pericia-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold-dim) transparent;
+}
+
+.calico-pericia-grid::-webkit-scrollbar {
+    width: 3px;
+}
+
+.calico-pericia-grid::-webkit-scrollbar-thumb {
+    background: var(--gold-dim);
+    border-radius: 2px;
+}
+
+.calico-pericia-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 7px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    transition: all 0.12s;
+}
+
+.calico-pericia-row:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.calico-pericia-row.marcada {
+    background: rgba(201, 168, 76, 0.06);
+    border-color: rgba(201, 168, 76, 0.2);
+}
+
+.calico-pericia-icon {
+    font-size: 13px;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.calico-pericia-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.calico-pericia-nome-wrap {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.calico-pericia-nome {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: rgba(244, 234, 213, 0.82);
+    letter-spacing: 0.04em;
+}
+
+.calico-pericia-attr {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    color: rgba(201, 168, 76, 0.4);
+}
+
+.calico-pericia-gratis {
+    font-size: 8px;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--calico-ok);
+    border: 1px solid rgba(107, 163, 104, 0.35);
+    border-radius: 2px;
+    padding: 0 3px;
+    cursor: help;
+}
+
+.calico-pericia-aviso {
+    font-size: 10px;
+    color: var(--ember);
+    cursor: help;
+}
+
+.calico-pericia-desc {
+    font-size: 10px;
+    color: rgba(244, 234, 213, 0.26);
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.calico-pericia-val-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex-shrink: 0;
+    min-width: 54px;
+}
+
+.calico-pericia-val {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: rgba(244, 234, 213, 0.35);
+    line-height: 1.1;
+}
+
+.calico-pericia-val.up {
+    color: var(--gold);
+}
+
+.calico-pericia-escala {
+    font-size: 8px;
+    color: rgba(244, 234, 213, 0.25);
+    letter-spacing: 0.04em;
+}
+
+.calico-pericia-acoes {
+    display: flex;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+.calico-slot-btn {
+    width: 30px;
+    padding: 5px 0;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.18);
+    border-radius: 2px;
+    color: rgba(244, 234, 213, 0.45);
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.calico-slot-btn:hover:not(:disabled) {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.calico-slot-btn.active {
+    background: rgba(201, 168, 76, 0.2);
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.calico-slot-btn:disabled {
+    opacity: 0.16;
+    cursor: not-allowed;
+}
+
+/* ── Especialização de Aptidão ──────────────────────────────────────────── */
+.calico-espec {
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.28);
+    border-left: 2px solid var(--gold-dim);
+    border-radius: 0 3px 3px 0;
+}
+
+.calico-espec-title {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 6px;
+}
+
+.calico-espec-opts {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.calico-espec-btn {
+    padding: 4px 9px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.18);
+    border-radius: 2px;
+    color: rgba(244, 234, 213, 0.5);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.calico-espec-btn:hover {
+    border-color: rgba(201, 168, 76, 0.5);
+    color: var(--parchment);
+}
+
+.calico-espec-btn.active {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.15);
+    color: var(--gold);
+}
+
+/* ── Armas na criação ───────────────────────────────────────────────────── */
+.calico-arma-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.calico-arma {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 9px 11px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(201, 168, 76, 0.14);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+    font-family: inherit;
+}
+
+.calico-arma:hover {
+    border-color: rgba(201, 168, 76, 0.4);
+}
+
+.calico-arma.active {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.09);
+}
+
+.calico-arma-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.calico-arma-nome {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.04em;
+}
+
+.calico-arma-dano {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ember);
+    flex-shrink: 0;
+}
+
+.calico-arma-meta {
+    font-size: 10px;
+    color: rgba(244, 234, 213, 0.4);
+}
+
+.calico-arma-nota {
+    font-size: 10px;
+    color: rgba(244, 234, 213, 0.28);
+    font-style: italic;
+    line-height: 1.35;
+}
+
+/* ── Derivados (PV / PD / Nível) ────────────────────────────────────────── */
+.calico-derivados {
+    display: flex;
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(201, 168, 76, 0.1);
+}
+
+.calico-deriv {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    padding: 9px 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(201, 168, 76, 0.12);
+    border-radius: 3px;
+}
+
+.calico-deriv.pv {
+    border-color: rgba(192, 57, 43, 0.3);
+}
+
+.calico-deriv.pd {
+    border-color: rgba(125, 91, 166, 0.35);
+}
+
+.calico-deriv-label {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(244, 234, 213, 0.45);
+}
+
+.calico-deriv-val {
+    font-family: 'Cinzel', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1.15;
+}
+
+.calico-deriv.pv .calico-deriv-val {
+    color: #e0574a;
+}
+
+.calico-deriv.pd .calico-deriv-val {
+    color: #a884d4;
+}
+
+.calico-deriv-formula {
+    font-size: 9px;
+    color: rgba(244, 234, 213, 0.28);
+    text-align: center;
+}
+
+/* ── Status da validação ────────────────────────────────────────────────── */
+.calico-status {
+    padding: 9px 12px;
+    border-radius: 3px;
+    border-left: 3px solid;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.calico-status.ok {
+    background: rgba(107, 163, 104, 0.08);
+    border-color: var(--calico-ok);
+    color: rgba(190, 230, 185, 0.85);
+}
+
+.calico-status.pending {
+    background: rgba(201, 168, 76, 0.06);
+    border-color: var(--gold-dim);
+    color: rgba(244, 234, 213, 0.6);
+}
+
+.calico-status.error {
+    background: rgba(139, 26, 26, 0.1);
+    border-color: var(--blood);
+    color: rgba(255, 190, 185, 0.8);
+}
+
+.calico-status-line + .calico-status-line {
+    margin-top: 3px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ FICHA (stat popup) ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* O card do Calico é um pouco mais largo que o padrão de 260px: PV e PD com
+   valores de 3 dígitos, mais os três atributos, não cabiam com folga. */
+#statPopup.calico {
+    width: 290px;
+}
+
+.calico-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    /* Sem isto, um filho de conteudo largo estica o popup e vaza do card */
+    min-width: 0;
+}
+
+.calico-sheet > * {
+    min-width: 0;
+}
+
+/* ── PV e PD, um por linha ───────────────────────────────────────────────────
+   Estavam lado a lado, o que não cabia: o popup tem 260px e sobram 232px depois
+   do padding, mas cada bloco precisa de ~126px (dois botões, dois campos e a
+   barra) — com valores de 3 dígitos os campos estouravam para fora do card.
+
+   Empilhados, cada um ocupa a largura toda e continua com o mesmo peso visual
+   que a spec §14 exige para o PD. Layout de cada linha:
+
+       ❤ PV            [−] [999] / [999] [+]
+       ▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░░░░░░░
+   ────────────────────────────────────────────────────────────────────────── */
+.cs-recursos {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.cs-recurso {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 5px;
+    padding: 7px 9px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(201, 168, 76, 0.1);
+    border-radius: 3px;
+    min-width: 0;
+}
+
+/* Barra e aviso ocupam a linha inteira, abaixo dos controles */
+.cs-recurso-track,
+.cs-recurso-zero {
+    grid-column: 1 / -1;
+}
+
+.cs-recurso.pv {
+    border-left: 2px solid rgba(192, 57, 43, 0.6);
+}
+
+.cs-recurso.pd {
+    border-left: 2px solid rgba(125, 91, 166, 0.65);
+}
+
+.cs-recurso.zerado {
+    animation: csPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes csPulse {
+    0%, 100% { background: rgba(0, 0, 0, 0.3); }
+    50% { background: rgba(139, 26, 26, 0.18); }
+}
+
+.cs-recurso-head {
+    grid-column: 1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cs-recurso-icon {
+    font-size: 10px;
+}
+
+.cs-recurso-label {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--gold-dim);
+}
+
+.cs-recurso.pv .cs-recurso-label {
+    color: rgba(224, 87, 74, 0.75);
+}
+
+.cs-recurso.pd .cs-recurso-label {
+    color: rgba(168, 132, 212, 0.8);
+}
+
+.cs-recurso-ctrl {
+    grid-column: 2;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.cs-recurso-ctrl .sp-stat-input {
+    width: 46px;
+    font-size: 13px;
+    min-width: 0;
+}
+
+.cs-recurso-sep {
+    color: rgba(201, 168, 76, 0.3);
+    font-size: 11px;
+}
+
+.cs-recurso-track {
+    height: 3px;
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.cs-recurso-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+}
+
+.cs-recurso.pv .cs-recurso-fill {
+    background: linear-gradient(90deg, #7b1818, #c0392b);
+}
+
+.cs-recurso.pd .cs-recurso-fill {
+    background: linear-gradient(90deg, #4a3466, #7d5ba6);
+}
+
+.cs-recurso-zero {
+    font-size: 9px;
+    color: var(--ember);
+    letter-spacing: 0.04em;
+}
+
+/* ── Identidade ─────────────────────────────────────────────────────────── */
+.cs-ident {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cs-nivel {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    flex-shrink: 0;
+}
+
+.cs-nivel-label {
+    font-family: 'Cinzel', serif;
+    font-size: 7px;
+    letter-spacing: 0.15em;
+    color: var(--gold-dim);
+}
+
+.cs-nivel-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.cs-nivel-val {
+    font-family: 'Cinzel', serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--gold);
+    min-width: 16px;
+    text-align: center;
+}
+
+.cs-ident-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    flex: 1;
+    justify-content: flex-end;
+}
+
+.cs-ident-tag {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    color: rgba(244, 234, 213, 0.6);
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(201, 168, 76, 0.15);
+    border-radius: 2px;
+    padding: 3px 6px;
+    cursor: help;
+}
+
+/* ── Atributos na ficha ─────────────────────────────────────────────────── */
+.cs-attr-row {
+    display: flex;
+    gap: 4px;
+}
+
+.cs-attr-chip {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 4px 3px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(201, 168, 76, 0.1);
+    border-radius: 3px;
+    transition: all 0.12s;
+}
+
+.cs-attr-chip.editavel {
+    cursor: pointer;
+}
+
+.cs-attr-chip.editavel:hover {
+    border-color: rgba(201, 168, 76, 0.4);
+    background: rgba(201, 168, 76, 0.05);
+}
+
+.cs-attr-chip-icon {
+    font-size: 10px;
+}
+
+.cs-attr-chip-label {
+    font-family: 'Cinzel', serif;
+    font-size: 7px;
+    letter-spacing: 0.1em;
+    color: rgba(201, 168, 76, 0.45);
+}
+
+.cs-attr-chip-val {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1.2;
+}
+
+/* ── Botão de rolar ─────────────────────────────────────────────────────── */
+.cs-roll-btn {
+    width: 100%;
+    padding: 8px;
+    background: linear-gradient(180deg, rgba(201, 168, 76, 0.16), rgba(201, 168, 76, 0.07));
+    border: 1px solid var(--gold-dim);
+    border-radius: 3px;
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.cs-roll-btn:hover {
+    border-color: var(--gold);
+    background: linear-gradient(180deg, rgba(201, 168, 76, 0.26), rgba(201, 168, 76, 0.12));
+    box-shadow: 0 0 14px rgba(201, 168, 76, 0.15);
+}
+
+/* ── Condições ativas no topo da ficha ──────────────────────────────────── */
+.cs-cond-row {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.cs-cond-chip {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    color: rgba(255, 190, 185, 0.85);
+    background: rgba(139, 26, 26, 0.2);
+    border: 1px solid rgba(139, 26, 26, 0.5);
+    border-radius: 2px;
+    padding: 2px 6px;
+    cursor: help;
+}
+
+/* ── Alerta de testes de morte ──────────────────────────────────────────── */
+.cs-morte-alerta {
+    padding: 6px 9px;
+    background: rgba(139, 26, 26, 0.14);
+    border: 1px solid rgba(139, 26, 26, 0.45);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.cs-morte-alerta:hover {
+    background: rgba(139, 26, 26, 0.22);
+}
+
+.cs-morte-line {
+    font-size: 10px;
+    color: rgba(255, 190, 185, 0.85);
+    line-height: 1.5;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ PAINÉIS DO CALICO ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.calico-panel.wide {
+    min-width: 300px;
+    max-width: 340px;
+}
+
+.calico-panel .subpanel-body {
+    max-height: 60vh;
+}
+
+.calico-panel-note {
+    font-size: 10px;
+    color: rgba(244, 234, 213, 0.3);
+    line-height: 1.5;
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 1px solid rgba(201, 168, 76, 0.08);
+    font-style: italic;
+}
+
+.calico-panel-flash {
+    font-size: 10.5px;
+    color: rgba(255, 190, 185, 0.9);
+    background: rgba(139, 26, 26, 0.18);
+    border: 1px solid rgba(139, 26, 26, 0.45);
+    border-radius: 2px;
+    padding: 5px 7px;
+    margin-bottom: 7px;
+    line-height: 1.4;
+}
+
+.calico-panel-flash.piscar {
+    animation: calicoFlash 0.5s ease;
+}
+
+@keyframes calicoFlash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+}
+
+/* Linhas com seletor de dado */
+.calico-die-row-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.calico-die-row-escala {
+    font-size: 9px;
+    color: rgba(244, 234, 213, 0.26);
+    letter-spacing: 0.03em;
+}
+
+.calico-pericia-sheet-row {
+    gap: 6px;
+}
+
+.calico-pericia-sheet-row .calico-die-btn {
+    min-width: 26px;
+    padding: 3px 3px;
+    font-size: 10px;
+}
+
+.calico-mini-roll {
+    background: none;
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+    color: rgba(201, 168, 76, 0.55);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 3px 5px;
+    flex-shrink: 0;
+    transition: all 0.12s;
+}
+
+.calico-mini-roll:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(201, 168, 76, 0.08);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ ROLADOR ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.cr-select {
+    width: 100%;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+    color: var(--parchment);
+    font-family: 'Crimson Text', serif;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+}
+
+.cr-select:focus {
+    border-color: var(--gold-dim);
+}
+
+.cr-select option {
+    background: #14100c;
+    color: var(--parchment);
+}
+
+/* ── Modificadores ──────────────────────────────────────────────────────── */
+.cr-mod {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 4px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.cr-mod:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.cr-mod input[type="checkbox"] {
+    accent-color: var(--gold);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.cr-mod-passos {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 20px;
+    text-align: center;
+    flex-shrink: 0;
+    color: rgba(244, 234, 213, 0.5);
+}
+
+.cr-mod-label {
+    font-size: 10.5px;
+    color: rgba(244, 234, 213, 0.55);
+    line-height: 1.35;
+    flex: 1;
+}
+
+/* ── Resultado ──────────────────────────────────────────────────────────── */
+.cr-saida:empty {
+    display: none;
+}
+
+.cr-saida {
+    margin-top: 10px;
+    padding: 9px;
+    border-radius: 3px;
+    border: 1px solid rgba(201, 168, 76, 0.15);
+    background: rgba(0, 0, 0, 0.3);
+    animation: crIn 0.3s ease both;
+}
+
+@keyframes crIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* Sem veredito de sucesso/falha: o app não julga mais o teste. Só crítico e
+   falha crítica ganham destaque, porque não dependem de DT (§1.6). */
+.cr-saida.neutro { border-color: rgba(201, 168, 76, 0.25); }
+.cr-saida.critico { border-color: var(--gold); box-shadow: 0 0 20px rgba(201, 168, 76, 0.2); }
+.cr-saida.falha-critica { border-color: var(--blood); box-shadow: 0 0 20px rgba(139, 26, 26, 0.3); }
+
+.cr-cabecalho {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(201, 168, 76, 0.6);
+    text-align: center;
+    margin-bottom: 7px;
+}
+
+.cr-dados {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.cr-die {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--gold-dim);
+    border-radius: 3px;
+}
+
+.cr-die.descartado {
+    opacity: 0.32;
+    border-style: dashed;
+}
+
+.cr-die-val {
+    font-family: 'Cinzel', serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--gold-light);
+    line-height: 1;
+}
+
+.cr-die-tipo {
+    font-family: 'Cinzel', serif;
+    font-size: 7px;
+    color: rgba(201, 168, 76, 0.45);
+    letter-spacing: 0.05em;
+}
+
+.cr-res-linha {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-bottom: 7px;
+}
+
+.cr-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3px 7px;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 2px;
+    min-width: 38px;
+}
+
+.cr-chip-label {
+    font-family: 'Cinzel', serif;
+    font-size: 7px;
+    letter-spacing: 0.12em;
+    color: rgba(201, 168, 76, 0.45);
+}
+
+.cr-chip-val {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: rgba(244, 234, 213, 0.85);
+}
+
+.cr-chip.soma .cr-chip-val {
+    font-size: 17px;
+    color: var(--gold);
+}
+
+.cr-veredito {
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
+.cr-saida.critico .cr-veredito { color: var(--gold-light); text-shadow: 0 0 12px rgba(232, 201, 106, 0.5); }
+.cr-saida.falha-critica .cr-veredito { color: #e05a52; text-shadow: 0 0 12px rgba(139, 26, 26, 0.6); }
+
+.cr-nota {
+    font-size: 10px;
+    color: rgba(244, 234, 213, 0.4);
+    text-align: center;
+    margin-top: 5px;
+    line-height: 1.4;
+    font-style: italic;
+}
+
+.cr-fc-btn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 7px;
+    background: rgba(139, 26, 26, 0.2);
+    border: 1px solid rgba(139, 26, 26, 0.6);
+    border-radius: 2px;
+    color: rgba(255, 190, 185, 0.9);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.cr-fc-btn:hover {
+    background: rgba(139, 26, 26, 0.35);
+}
+
+.cr-fc-result {
+    margin-top: 8px;
+    padding: 7px 9px;
+    background: rgba(139, 26, 26, 0.14);
+    border-left: 2px solid var(--blood);
+    border-radius: 0 2px 2px 0;
+}
+
+.cr-fc-nome {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: #e05a52;
+    letter-spacing: 0.08em;
+}
+
+.cr-fc-efeito {
+    font-size: 11px;
+    color: rgba(244, 234, 213, 0.6);
+    line-height: 1.45;
+    margin-top: 3px;
+}
+
+.cr-fc-aplicado {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: var(--ember);
+    margin-top: 4px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ ARMAS E MUNIÇÃO ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.ca-arma {
+    padding: 8px 9px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(201, 168, 76, 0.1);
+    border-radius: 3px;
+    margin-bottom: 6px;
+}
+
+.ca-arma-head {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.ca-arma-nome {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.04em;
+    flex: 1;
+    min-width: 0;
+}
+
+.ca-arma-dano {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: var(--ember);
+    flex-shrink: 0;
+}
+
+.ca-municao {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.ca-contador {
+    display: flex;
+    align-items: baseline;
+    gap: 1px;
+    min-width: 42px;
+    justify-content: center;
+}
+
+.ca-contador-val {
+    font-family: 'Cinzel', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1;
+}
+
+.ca-contador.vazia .ca-contador-val {
+    color: var(--blood);
+}
+
+.ca-contador-cap {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: rgba(201, 168, 76, 0.4);
+}
+
+.ca-recarregar {
+    flex: 1;
+    padding: 4px 6px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+    color: rgba(201, 168, 76, 0.7);
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.ca-recarregar:hover:not(:disabled) {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.ca-recarregar:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+}
+
+.ca-tambor {
+    display: flex;
+    gap: 2px;
+    margin-top: 6px;
+    flex-wrap: wrap;
+}
+
+.ca-bala {
+    width: 6px;
+    height: 12px;
+    border-radius: 2px 2px 1px 1px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(201, 168, 76, 0.15);
+    transition: all 0.2s;
+}
+
+.ca-bala.cheia {
+    background: linear-gradient(180deg, #d4a040, #8a6520);
+    border-color: rgba(201, 168, 76, 0.5);
+}
+
+.ca-add {
+    margin-top: 8px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ CONDIÇÕES ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.cc-cond {
+    padding: 7px 9px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(201, 168, 76, 0.08);
+    border-radius: 3px;
+    margin-bottom: 5px;
+    transition: all 0.15s;
+}
+
+.cc-cond.ativa {
+    background: rgba(139, 26, 26, 0.14);
+    border-color: rgba(139, 26, 26, 0.45);
+}
+
+.cc-cond-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cc-cond-icon {
+    font-size: 12px;
+}
+
+.cc-cond-nome {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: rgba(244, 234, 213, 0.8);
+    letter-spacing: 0.05em;
+    flex: 1;
+}
+
+.cc-toggle {
+    padding: 3px 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+    color: rgba(201, 168, 76, 0.6);
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.cc-toggle:hover:not(:disabled) {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.cc-toggle.on {
+    background: rgba(139, 26, 26, 0.35);
+    border-color: var(--blood);
+    color: rgba(255, 190, 185, 0.9);
+}
+
+.cc-toggle:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.cc-cond-efeito {
+    font-size: 10.5px;
+    color: rgba(244, 234, 213, 0.45);
+    line-height: 1.45;
+    margin-top: 4px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ TESTES DE MORTE ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.cm-card {
+    padding: 8px 10px;
+    background: rgba(139, 26, 26, 0.09);
+    border: 1px solid rgba(139, 26, 26, 0.3);
+    border-radius: 3px;
+    margin-bottom: 7px;
+}
+
+.cm-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.cm-nome {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+}
+
+.cm-dt {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #e05a52;
+}
+
+.cm-gatilho {
+    font-size: 10px;
+    color: rgba(244, 234, 213, 0.4);
+    margin-top: 3px;
+    line-height: 1.4;
+}
+
+.cm-falha {
+    font-size: 10px;
+    color: rgba(255, 150, 145, 0.7);
+    margin-top: 2px;
+}
+
+.cm-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 7px;
+}
+
+.cm-contador {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    color: rgba(244, 234, 213, 0.4);
+    flex: 1;
+}
+
+.cm-rolar,
+.cm-reset {
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+    color: rgba(201, 168, 76, 0.7);
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.cm-rolar:hover:not(:disabled),
+.cm-reset:hover:not(:disabled) {
+    border-color: var(--gold);
+    color: var(--gold);
+}
+
+.cm-rolar:disabled,
+.cm-reset:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ HABILIDADES ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.ch-origem {
+    font-family: 'Cinzel', serif;
+    font-size: 7px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(201, 168, 76, 0.5);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 2px;
+    padding: 1px 4px;
+}
+
+.ch-placeholder {
+    font-size: 9px;
+    color: var(--ember);
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ OVERLAY DE ROLAGEM PARA A SALA ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+#calicoRollOverlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    z-index: 3000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 20px 30px;
+    background: linear-gradient(160deg, rgba(20, 16, 12, 0.97), rgba(8, 6, 4, 0.99));
+    border: 1px solid var(--gold-dim);
+    border-radius: 5px;
+    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.9);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#calicoRollOverlay.show {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+#calicoRollOverlay.critico {
+    border-color: var(--gold);
+    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.9), 0 0 50px rgba(201, 168, 76, 0.25);
+}
+
+#calicoRollOverlay.falha-critica {
+    border-color: var(--blood);
+    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.9), 0 0 50px rgba(139, 26, 26, 0.35);
+}
+
+#calicoRollOverlay.sucesso {
+    border-color: rgba(107, 163, 104, 0.55);
+}
+
+.cro-quem {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.cro-teste {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: rgba(244, 234, 213, 0.4);
+    text-transform: uppercase;
+}
+
+.cro-dados {
+    display: flex;
+    gap: 7px;
+    margin: 8px 0 4px;
+}
+
+.cro-die {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid var(--gold-dim);
+    border-radius: 4px;
+}
+
+.cro-die.descartado {
+    opacity: 0.3;
+    border-style: dashed;
+}
+
+.cro-die-val {
+    font-family: 'Cinzel', serif;
+    font-size: 21px;
+    font-weight: 700;
+    color: var(--gold-light);
+    line-height: 1;
+}
+
+.cro-die-tipo {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    color: rgba(201, 168, 76, 0.45);
+}
+
+.cro-nums {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.cro-soma {
+    font-family: 'Cinzel', serif;
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--parchment);
+    line-height: 1;
+}
+
+.cro-vs {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: rgba(244, 234, 213, 0.35);
+    letter-spacing: 0.08em;
+}
+
+.cro-ra-rb {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: rgba(201, 168, 76, 0.55);
+}
+
+.cro-veredito {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    margin-top: 4px;
+}
+
+#calicoRollOverlay.sucesso .cro-veredito { color: var(--calico-ok); }
+#calicoRollOverlay.falha .cro-veredito { color: rgba(244, 234, 213, 0.45); }
+#calicoRollOverlay.critico .cro-veredito { color: var(--gold-light); text-shadow: 0 0 16px rgba(232, 201, 106, 0.6); }
+#calicoRollOverlay.falha-critica .cro-veredito { color: #e05a52; text-shadow: 0 0 16px rgba(139, 26, 26, 0.7); }
+
+/* ══ ROLAGEM SECRETA NO ROLADOR DO CALICO ══ */
+.cr-mod.cr-secreto {
+    margin-top: 8px;
+    padding: 6px 7px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px dashed rgba(125, 91, 166, 0.4);
+    border-radius: 2px;
+}
+
+.cr-mod.cr-secreto.ativo {
+    background: rgba(40, 28, 58, 0.5);
+    border-color: rgba(125, 91, 166, 0.8);
+}
+
+.cr-mod.cr-secreto.ativo .cr-mod-label {
+    color: rgba(201, 178, 232, 0.92);
+}
+
+.cr-mod.cr-secreto input[type="checkbox"] {
+    accent-color: #7d5ba6;
+}
+
+.cr-saida.secreto {
+    border-style: dashed;
+    border-color: rgba(125, 91, 166, 0.7);
+}
+
+.cr-secreto-tag {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(201, 178, 232, 0.85);
+    text-align: center;
+    margin-bottom: 7px;
+    padding-bottom: 5px;
+    border-bottom: 1px dashed rgba(125, 91, 166, 0.35);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ PERÍCIAS & TESTES — a tela fundida ══
+   Cada perícia é uma linha com o seu dadinho de rolar. Sem lista de
+   modificadores e sem DT: o mestre anuncia na mesa.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Atributos: mostram o dado e permitem forçar um em vez do base ───────── */
+.ct-attrs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 7px;
+}
+
+.ct-attr {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 5px 3px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(201, 168, 76, 0.15);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.ct-attr:hover {
+    border-color: rgba(201, 168, 76, 0.45);
+}
+
+.ct-attr.fixado {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.14);
+}
+
+.ct-attr-icon {
+    font-size: 11px;
+    line-height: 1.3;
+}
+
+.ct-attr-label {
+    font-family: 'Cinzel', serif;
+    font-size: 7px;
+    letter-spacing: 0.1em;
+    color: rgba(201, 168, 76, 0.5);
+}
+
+.ct-attr.fixado .ct-attr-label {
+    color: var(--gold);
+}
+
+.ct-attr-dado {
+    font-family: 'Cinzel', serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1.2;
+}
+
+.ct-aviso {
+    font-size: 10px;
+    color: var(--gold);
+    background: rgba(201, 168, 76, 0.08);
+    border-left: 2px solid var(--gold-dim);
+    border-radius: 0 2px 2px 0;
+    padding: 4px 7px;
+    margin-bottom: 7px;
+    line-height: 1.4;
+}
+
+/* ── Controle de passos ──────────────────────────────────────────────────── */
+.ct-passos {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(201, 168, 76, 0.1);
+    border-radius: 2px;
+    margin-bottom: 6px;
+}
+
+.ct-passos.ativo {
+    border-color: rgba(201, 168, 76, 0.45);
+    background: rgba(201, 168, 76, 0.07);
+}
+
+.ct-passos-label {
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+    flex-shrink: 0;
+}
+
+.ct-passos-val {
+    font-family: 'Cinzel', serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: rgba(244, 234, 213, 0.45);
+    min-width: 22px;
+    text-align: center;
+}
+
+.ct-passos.ativo .ct-passos-val {
+    color: var(--gold);
+}
+
+.ct-passos-dica {
+    font-size: 9px;
+    color: rgba(244, 234, 213, 0.3);
+    flex: 1;
+    text-align: right;
+    line-height: 1.3;
+}
+
+/* ── Lista de perícias ───────────────────────────────────────────────────── */
+.ct-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin-top: 8px;
+}
+
+.ct-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 5px;
+    border-radius: 2px;
+    border-bottom: 1px solid rgba(201, 168, 76, 0.05);
+    transition: background 0.1s;
+}
+
+.ct-row:last-child {
+    border-bottom: none;
+}
+
+.ct-row:hover {
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.ct-row-icon {
+    font-size: 13px;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.ct-row-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.ct-row-nome {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: rgba(244, 234, 213, 0.8);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ct-row-attr {
+    font-family: 'Cinzel', serif;
+    font-size: 7.5px;
+    letter-spacing: 0.1em;
+    color: rgba(201, 168, 76, 0.4);
+}
+
+/* Quando o mestre fixa um atributo, fica claro que saiu do base */
+.ct-row-attr.forcado {
+    color: var(--gold);
+}
+
+.ct-row-dado {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gold);
+    min-width: 30px;
+    text-align: center;
+    flex-shrink: 0;
+    cursor: help;
+}
+
+.ct-row .calico-die-btn {
+    min-width: 24px;
+    padding: 3px 2px;
+    font-size: 9.5px;
+}
+
+/* O dadinho de rolar — é o que o jogador usa */
+.ct-roll {
+    flex-shrink: 0;
+    width: 30px;
+    height: 26px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    border-radius: 2px;
+    color: var(--gold);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.ct-roll:hover {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.14);
+    transform: scale(1.08);
+}
+
+.ct-roll.secreto {
+    border-color: rgba(125, 91, 166, 0.7);
+    background: rgba(40, 28, 58, 0.5);
+}
+
+.ct-roll.secreto:hover {
+    border-color: #7d5ba6;
+    background: rgba(125, 91, 166, 0.25);
+}

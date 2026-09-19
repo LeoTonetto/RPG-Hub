@@ -522,3 +522,53 @@
     flex-shrink: 0;
     /* rodapé não encolhe */
 }
+
+/* ══ LINHAS DE ROLAGEM DE DADOS ══ */
+/* Toda rolagem da sala vira uma linha aqui, para o mestre ter o registro de
+   quem rolou o quê. Visual distinto da conversa: monoespaçada e discreta. */
+.chat-msg.chat-msg-roll {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-family: 'Cinzel', serif;
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+    color: rgba(201, 168, 76, 0.82);
+    background: rgba(20, 15, 6, 0.6);
+    border-left-color: rgba(201, 168, 76, 0.45);
+    padding: 5px 9px;
+}
+
+.chat-roll-icon {
+    flex-shrink: 0;
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.chat-roll-text {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.4;
+}
+
+/* Crítico e falha crítica saltam à vista no histórico */
+.chat-msg.chat-msg-roll.roll-crit {
+    color: var(--gold-light);
+    background: rgba(201, 168, 76, 0.14);
+    border-left-color: var(--gold);
+    text-shadow: 0 0 10px rgba(232, 201, 106, 0.35);
+}
+
+.chat-msg.chat-msg-roll.roll-fail {
+    color: rgba(255, 150, 145, 0.9);
+    background: rgba(139, 26, 26, 0.18);
+    border-left-color: var(--blood);
+}
+
+/* Rolagem secreta: só aparece no chat do mestre */
+.chat-msg.chat-msg-roll.roll-secreto {
+    border-left-style: dashed;
+    border-left-color: rgba(125, 91, 166, 0.8);
+    background: rgba(40, 28, 58, 0.55);
+    color: rgba(201, 178, 232, 0.88);
+}

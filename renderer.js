@@ -8,6 +8,8 @@ const { initCharModal } = require('./src/characters')
 const { initDice } = require('./src/dice')
 const { initRoom } = require('./src/room')
 const { initJournal } = require('./src/journal')
+const { initConfig } = require('./src/config')
+const { initBackend } = require('./src/backend')
 const state = require('./src/state')
 
 // Módulos que se auto-registram no DOM ao ser importados
@@ -26,6 +28,8 @@ initCharModal()   // modal de criação de personagem
 initDice()        // FAB de dados
 initRoom()        // criar/entrar na sala, badge
 initJournal()     // jornal de missões
+initConfig()      // painel de preferências (cor do cursor, véu do fundo)
+initBackend()     // escolha entre ngrok e servidor próprio
 
 checkSession()    // tenta restaurar sessão ativa automaticamente
 
@@ -34,7 +38,7 @@ window.addEventListener('beforeunload', () => {
         fetch(`${state.serverUrl}/cleanup-room`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ roomCode: state.currentRoomCode }),
+            body: JSON.stringify({ roomCode: state.currentRoomCode, masterToken: state.masterToken }),
             keepalive: true   // garante envio mesmo com a janela fechando
         }).catch(() => { })
     }

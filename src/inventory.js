@@ -1,5 +1,5 @@
 const state = require('./state')
-const { makeDraggable } = require('./hud')
+const { makeDraggable, clicouEmCamadaFlutuante } = require('./hud')
 
 // ── Elementos do DOM ──────────────────────────────────────────────────────────
 const inventoryModal = document.getElementById('inventoryModal')
@@ -16,13 +16,9 @@ document.getElementById('inventoryClose').addEventListener('click', () => {
     inventoryModal.classList.remove('visible')
 })
 document.addEventListener('click', e => {
-    const statPopup = document.getElementById('statPopup')
-    const transferPicker = document.getElementById('transferPicker')
-    if (inventoryModal.classList.contains('visible')
-        && !inventoryModal.contains(e.target)
-        && !statPopup.contains(e.target)
-        && !document.getElementById('invLightbox')?.contains(e.target)
-        && !(transferPicker && transferPicker.contains(e.target))) {
+    // Mesma regra da ficha: só fecha quando o clique não caiu em nenhuma camada
+    // flutuante. Era aqui que escolher um item fechava o inventário inteiro.
+    if (inventoryModal.classList.contains('visible') && !clicouEmCamadaFlutuante(e.target)) {
         inventoryModal.classList.remove('visible')
     }
 })

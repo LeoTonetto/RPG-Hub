@@ -210,11 +210,22 @@ function stopNgrok() {
 function startNgrok() {
     return new Promise((resolve, reject) => {
         stopNgrok()
-        ngrokProcess = spawn('ngrok', ['http', '3001', '--log=stdout'])
+        try {
+            ngrokProcess = spawn('ngrok', ['http', '3001', '--log=stdout'])
+        } catch (e) {
+            return reject(new Error('Nao consegui iniciar o ngrok. Ele esta instalado e no PATH?'))
+        }
+        ngrokProcess.on('error', e => {
+            reject(new Error(e.code === 'ENOENT'
+                ? 'ngrok nao encontrado no PATH. Instale o ngrok ou use o modo Servidor.'
+                : 'Falha no ngrok: ' + e.message))
+        })
         ngrokProcess.stderr.on('data', d => log('NGROK ERROR:', d.toString()))
         setTimeout(async () => {
             try { resolve(await getNgrokUrl()) }
-            catch (e) { reject(e) }
+            catch (e) {
+                reject(new Error('O tunel do ngrok nao subiu. Confira se a franquia mensal nao acabou.'))
+            }
         }, 3000)
     })
 }
@@ -257,17 +268,36 @@ app.whenReady().then(async () => {
     log('[Main] Pressione F12 no app para abrir o DevTools do renderer.')
 })
 
-ipcMain.on('create-room', async (event) => {
+// ── Criar sala ────────────────────────────────────────────────────────────────
+// Dois caminhos:
+//   ngrok — sobe o tunel para o servidor local (comportamento de sempre)
+//   vps   — nao sobe tunel nenhum; a sala vive no servidor que o mestre indicou
+//
+// O servidor local continua rodando nos dois casos: o player de musica e o
+// painel de SFX carregam de http://localhost:3001 e precisam dele de pe.
+ipcMain.on('create-room', async (event, opcoes) => {
+    const { modo = 'ngrok', urlServidor = '' } = opcoes || {}
+    const creator = windows.find(w => w.webContents === event.sender)
+
     try {
         const roomCode = generateRoomCode()
-        const publicUrl = await startNgrok()
+        let publicUrl
+
+        if (modo === 'vps') {
+            if (!urlServidor) throw new Error('Endereco do servidor nao informado.')
+            publicUrl = urlServidor.replace(/\/+$/, '')
+            stopNgrok()          // se havia um tunel de uma sessao anterior, derruba
+            log('[Main] Sala no servidor proprio:', publicUrl)
+        } else {
+            publicUrl = await startNgrok()
+            log('[Main] Sala via ngrok:', publicUrl)
+        }
+
         const sender = BrowserWindow.fromWebContents(event.sender)
         if (sender) { sender.setAlwaysOnTop(true); sender.focus() }
-        const creator = windows.find(w => w.webContents === event.sender)
-        if (creator) creator.webContents.send('room-created', { roomCode, publicUrl })
+        if (creator) creator.webContents.send('room-created', { roomCode, publicUrl, modo })
     } catch (error) {
         log('[Main] create-room erro:', error.message)
-        const creator = windows.find(w => w.webContents === event.sender)
-        if (creator) creator.webContents.send('room-error', { message: error.message })
+        if (creator) creator.webContents.send('room-error', { message: error.message, modo })
     }
 })

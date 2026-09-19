@@ -62,6 +62,9 @@ function buildCharCard(char, ownerName) {
     card.className = 'char-card clickable'
     card.dataset.charId = char.id
     card.dataset.ownerName = ownerName
+    // Permite que o CSS trate o card por sistema. No Calico, 0 PV não é morte:
+    // é o começo dos testes de Vigor (§7.9), e o card precisa dizer isso.
+    card.dataset.system = char.system || ''
     if (ownerName === state.playerName) card.style.borderColor = 'rgba(201,168,76,0.65)'
 
     const photoWrap = document.createElement('div'); photoWrap.className = 'char-card-photo-wrap'
@@ -250,6 +253,8 @@ function openEditCharModal(char) {
 
     document.getElementById('systemSelectorWrap').style.display = 'none'
     document.getElementById('systemFields').style.display = 'none'
+    // A edição só mexe em nome e foto, então o modal volta à largura normal
+    modal.querySelector('.connect-card').classList.remove('calico-mode')
 }
 
 function closeCharModal() { document.getElementById('charModal').style.display = 'none' }
@@ -273,6 +278,12 @@ function renderSystemSelector() {
             selectedSystem = key
             attrPoints = {}
             SYSTEMS[key].attributes.forEach(a => { attrPoints[a.key] = 0 })
+            if (SYSTEMS[key].module === 'calico') {
+                const calicoCreate = require('./calicoCreate')
+                calicoCreate.resetForm()
+                // Busca perfis/ocupações no Supabase; se falhar, o seed local vale
+                calicoCreate.carregarConteudo().then(() => renderSystemFields())
+            }
             renderSystemSelector()
             renderSystemFields()
         })
@@ -282,11 +293,25 @@ function renderSystemSelector() {
 
 function renderSystemFields() {
     const container = document.getElementById('systemFields')
+    const card = document.querySelector('#charModal .connect-card')
+
     container.innerHTML = ''
-    if (!selectedSystem) { container.style.display = 'none'; return }
+    if (!selectedSystem) {
+        container.style.display = 'none'
+        card.classList.remove('calico-mode')
+        return
+    }
     container.style.display = 'flex'
 
     const sysDef = SYSTEMS[selectedSystem]
+
+    // Sistemas com criador próprio assumem o container inteiro
+    if (sysDef.module === 'calico') {
+        card.classList.add('calico-mode')
+        require('./calicoCreate').render(container, () => { })
+        return
+    }
+    card.classList.remove('calico-mode')
 
     const infoEl = document.createElement('div')
     infoEl.className = 'system-info-box'
@@ -375,7 +400,17 @@ function initCharModal() {
         if (!state.editCharMode) {
             if (!selectedSystem) { showCharModalInfo('Escolha um sistema de jogo.', 'error'); return }
             const sysDef = SYSTEMS[selectedSystem]
-            if (sysDef.attributePoints > 0) {
+
+            // Sistemas com criador próprio validam sozinhos (spec §12, P0:
+            // não deixa salvar ficha inválida)
+            if (sysDef.module === 'calico') {
+                const v = require('./calicoCreate').validar(name)
+                if (!v.valido) {
+                    const msgs = v.erros.length ? v.erros : v.avisos
+                    showCharModalInfo(msgs.slice(0, 3).join('\n'), 'error')
+                    return
+                }
+            } else if (sysDef.attributePoints > 0) {
                 const totalUsed = Object.values(attrPoints).reduce((a, b) => a + b, 0)
                 if (totalUsed !== sysDef.attributePoints) {
                     showCharModalInfo(`Distribua todos os ${sysDef.attributePoints} pontos de atributo.`, 'error')
@@ -402,13 +437,23 @@ function initCharModal() {
 
 async function handleCreateChar(name, photoFile) {
     const charId = crypto.randomUUID()
+    // Idem na criação: falhou o upload, o jogador precisa saber por quê
     const photoUrl = photoFile ? await uploadCharPhoto(charId, photoFile) : null
 
     const sysDef = SYSTEMS[selectedSystem]
-    const stats = { ...sysDef.defaultStats }
-    // Garante que habilidades seja um array novo (não referência do default)
-    if (Array.isArray(sysDef.defaultStats.habilidades)) stats.habilidades = []
-    sysDef.attributes.forEach(attr => { stats[attr.key] = attrPoints[attr.key] || 0 })
+    let stats
+    let itensIniciais = null
+
+    if (sysDef.module === 'calico') {
+        const calicoCreate = require('./calicoCreate')
+        stats = calicoCreate.montarStats()
+        itensIniciais = calicoCreate.itensIniciais()
+    } else {
+        stats = { ...sysDef.defaultStats }
+        // Garante que habilidades seja um array novo (não referência do default)
+        if (Array.isArray(sysDef.defaultStats.habilidades)) stats.habilidades = []
+        sysDef.attributes.forEach(attr => { stats[attr.key] = attrPoints[attr.key] || 0 })
+    }
 
     const { data: newChar, error } = await state.supabase
         .from('characters')
@@ -420,6 +465,31 @@ async function handleCreateChar(name, photoFile) {
     if (!state.activeCharacterId) state.activeCharacterId = newChar.id
     closeCharModal()
     emitCharacters()
+
+    if (itensIniciais) seedInventarioInicial(charId, itensIniciais)
+}
+
+/**
+ * Best-effort: dá ao personagem novo o equipamento inicial do Calico (§6.3).
+ * Depende de os itens existirem no catálogo `items` — o seed SQL da campanha os
+ * cria. Se não estiverem lá, o mestre entrega na mão e nada quebra aqui.
+ */
+async function seedInventarioInicial(charId, nomes) {
+    if (!state.supabase || !nomes || nomes.length === 0) return
+    try {
+        const { data: itens, error } = await state.supabase
+            .from('items').select('id, name').in('name', nomes)
+        if (error || !itens || itens.length === 0) {
+            console.log('[Calico] Catálogo de itens iniciais não encontrado; equipamento entra manualmente.')
+            return
+        }
+        const linhas = itens.map(i => ({ character_id: charId, item_id: i.id, quantity: 1 }))
+        const { error: insErr } = await state.supabase.from('inventory').insert(linhas)
+        if (insErr) { console.warn('[Calico] Falha ao dar equipamento inicial:', insErr.message); return }
+        console.log(`[Calico] ${linhas.length} item(ns) inicial(is) entregues ao personagem.`)
+    } catch (e) {
+        console.warn('[Calico] seedInventarioInicial:', e.message)
+    }
 }
 
 async function handleEditChar(name, photoFile) {
@@ -427,11 +497,10 @@ async function handleEditChar(name, photoFile) {
     const existing = state.playerCharacters.find(c => c.id === charId)
     if (!existing) throw new Error('Personagem não encontrado')
 
+    // Se o upload falhar, o erro sobe e o modal mostra o motivo — nada de dizer
+    // que atualizou mantendo a foto antiga
     let photoUrl = existing.photo
-    if (photoFile) {
-        const uploaded = await uploadCharPhoto(charId, photoFile)
-        if (uploaded) photoUrl = uploaded
-    }
+    if (photoFile) photoUrl = await uploadCharPhoto(charId, photoFile)
 
     const updates = { name, photo: photoUrl }
     const { error } = await state.supabase.from('characters').update(updates).eq('id', charId)
@@ -443,19 +512,57 @@ async function handleEditChar(name, photoFile) {
     emitCharacters()
 }
 
+/**
+ * Sobe a foto para o bucket e devolve a URL pública.
+ *
+ * ATENÇÃO: esta função PROPAGA o erro de propósito.
+ *
+ * Antes ela engolia a falha e devolvia null, e quem chamava simplesmente
+ * mantinha a foto antiga — a tela dizia "Personagem atualizado" e nada mudava.
+ * Era isso que parecia "a troca de foto não funciona para quem não é mestre":
+ * o upload falhava na policy do Storage e ninguém ficava sabendo.
+ */
 async function uploadCharPhoto(charId, photoFile) {
-    try {
-        const ext = photoFile.name.split('.').pop().toLowerCase()
-        const filePath = `${state.currentUserId}/${charId}/photo.${ext}`
-        const mimeType = photoFile.type || `image/${ext}`
-        const buffer = await photoFile.arrayBuffer()
-        const { error } = await state.supabase.storage
-            .from('CharactersAndItems')
-            .upload(filePath, buffer, { contentType: mimeType, upsert: true })
-        if (error) throw error
-        const { data: urlData } = state.supabase.storage.from('CharactersAndItems').getPublicUrl(filePath)
-        return urlData?.publicUrl || null
-    } catch (err) { console.error('[Photo] Erro:', err); return null }
+    const ext = (photoFile.name.split('.').pop() || 'png').toLowerCase()
+    // O primeiro nível da pasta é o id do usuário: é nisso que a policy do
+    // Storage se apoia para deixar cada um escrever só na sua pasta.
+    const filePath = `${state.currentUserId}/${charId}/photo.${ext}`
+    const mimeType = photoFile.type || `image/${ext}`
+    const buffer = await photoFile.arrayBuffer()
+
+    const { error } = await state.supabase.storage
+        .from('CharactersAndItems')
+        .upload(filePath, buffer, { contentType: mimeType, upsert: true })
+
+    if (error) {
+        console.error('[Photo] Falha no upload:', error)
+        throw new Error(traduzErroDeUpload(error))
+    }
+
+    const { data: urlData } = state.supabase.storage.from('CharactersAndItems').getPublicUrl(filePath)
+    if (!urlData?.publicUrl) throw new Error('O upload foi feito, mas o bucket não devolveu uma URL pública.')
+
+    // Quebra o cache do navegador: o caminho é sempre o mesmo (upsert), então
+    // sem isto a imagem trocada continuaria aparecendo com a versão antiga.
+    return `${urlData.publicUrl}?v=${Date.now()}`
+}
+
+/** Transforma o erro do Storage em algo que o jogador entenda e você consiga agir. */
+function traduzErroDeUpload(error) {
+    const msg = (error.message || '').toLowerCase()
+    if (msg.includes('row-level security') || msg.includes('unauthorized') || error.statusCode === '403') {
+        return 'Sem permissão para salvar a imagem no servidor.\nO mestre precisa rodar sql/storage/fotos.sql no Supabase.'
+    }
+    if (msg.includes('already exists')) {
+        return 'Já existe uma imagem nesse caminho e a conta não tem permissão para substituí-la.\nFalta a policy de UPDATE no bucket — ver sql/storage/fotos.sql.'
+    }
+    if (msg.includes('bucket not found')) {
+        return 'O bucket "CharactersAndItems" não existe neste projeto do Supabase.'
+    }
+    if (msg.includes('payload too large') || msg.includes('maximum allowed size')) {
+        return 'Imagem grande demais para o limite do bucket. Tente uma menor.'
+    }
+    return `Erro ao enviar a imagem: ${error.message || 'desconhecido'}`
 }
 
 module.exports = {

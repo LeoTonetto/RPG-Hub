@@ -32,9 +32,99 @@ let timerLeft = 0         // tempo restante em ms
 let timerInterval = null  // interval do countdown
 let falloffRange = 70     // quão rápido o giro cai fora do sweet spot
 
+// ══════════════════════════════════════════════════════════════════════════════
+// ── SORTEIO DO SWEET SPOT ────────────────────────────────────────────────────
+//
+// Antes o ponto era sorteado no cliente de QUEM JOGA, sem memória nenhuma. Como
+// o sorteio não olhava para as partidas anteriores, era só questão de tempo até
+// cair perto do mesmo lugar várias vezes seguidas e a mesa achar que era fixo.
+//
+// Agora: quem sorteia é o MESTRE, no momento de iniciar, e o valor viaja junto
+// no payload. Assim existe um só ponto por partida e o histórico das últimas
+// posições fica no cliente do mestre — que é quem roda todas as fechaduras.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// A gazua se move de -90 a +90; o ponto pode nascer em quase toda essa faixa.
+// (Era -70 a +70, o que já deixava as bordas de fora.)
+const SWEET_SPOT_ALCANCE = 82
+
+// Distância desejada, em graus, das últimas posições sorteadas. É isto que
+// garante que a mesa não veja o mesmo canto duas vezes seguidas.
+const SWEET_SPOT_DIST_MINIMA = 30
+
+// Quantas posições anteriores entram nessa comparação. Com 2 posições na
+// memória e ±30° de exclusão, sempre sobra faixa livre suficiente na prática.
+const SWEET_SPOT_MEMORIA = 2
+
+// Quantas candidatas sortear antes de desistir de achar uma bem distante.
+const SWEET_SPOT_TENTATIVAS = 12
+
+let _ultimosSweetSpots = []
+let _contadorSemente = 0
+
+/**
+ * Gerador com semente de tempo, como você pediu — data e hora do PC.
+ * Date.now() sozinho é grosseiro demais (muda só a cada milissegundo), então
+ * misturamos o relógio de alta resolução e um contador: duas fechaduras abertas
+ * no mesmo milissegundo ainda caem em lugares diferentes.
+ */
+function _aleatorioPorTempo() {
+    const agora = Date.now()
+    const fino = Math.floor((typeof performance !== 'undefined' ? performance.now() : 0) * 1000)
+    _contadorSemente = (_contadorSemente + 1) | 0
+
+    // mulberry32
+    let s = (agora ^ Math.imul(fino, 2654435761) ^ Math.imul(_contadorSemente, 40503)) >>> 0
+    const rand = () => {
+        s = (s + 0x6D2B79F5) | 0
+        let t = Math.imul(s ^ (s >>> 15), 1 | s)
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+    // Sementes próximas produzem primeiros valores parecidos; descarta-os.
+    rand(); rand(); rand()
+    return rand
+}
+
+/**
+ * Sorteia uma posição longe das últimas.
+ *
+ * Aceita a primeira candidata que esteja a pelo menos SWEET_SPOT_DIST_MINIMA
+ * das anteriores. Se nenhuma das candidatas servir, fica com a MAIS distante
+ * que apareceu — assim a função nunca falha nem cai num laço eterno, e mesmo no
+ * pior caso o ponto ainda se afasta o máximo possível do anterior.
+ */
+function _sortearSweetSpot() {
+    const rand = _aleatorioPorTempo()
+    let escolhido = 0
+    let melhorDist = -1
+
+    for (let i = 0; i < SWEET_SPOT_TENTATIVAS; i++) {
+        const candidata = rand() * (SWEET_SPOT_ALCANCE * 2) - SWEET_SPOT_ALCANCE
+        const dist = _ultimosSweetSpots.length
+            ? Math.min(..._ultimosSweetSpots.map(ant => Math.abs(ant - candidata)))
+            : Infinity
+
+        if (dist >= SWEET_SPOT_DIST_MINIMA) { escolhido = candidata; break }
+        if (dist > melhorDist) { melhorDist = dist; escolhido = candidata }
+    }
+
+    _ultimosSweetSpots.push(escolhido)
+    if (_ultimosSweetSpots.length > SWEET_SPOT_MEMORIA) _ultimosSweetSpots.shift()
+
+    console.log(`[Lockpick] Sweet spot sorteado: ${escolhido.toFixed(1)}° (últimos: ${_ultimosSweetSpots.map(v => v.toFixed(0)).join(', ')})`)
+    return escolhido
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
+// socket.js chama isto a cada 'connect'. Sem a trava, uma reconexão registraria
+// os listeners de mouse/toque de novo e o mesmo clique dispararia várias vezes.
+let _eventosRegistrados = false
+
 function initLockpicking() {
     _buildOverlayHTML()
+    if (_eventosRegistrados) return
+    _eventosRegistrados = true
     _setupEvents()
 }
 
@@ -223,6 +313,9 @@ function openLockpickPicker() {
             state.socket.emit('lockpick_start', {
                 charId: character.id,
                 charName: character.name,
+                // Sorteado aqui, no mestre, para existir um só ponto por partida
+                // e para o histórico anti-repetição valer para a mesa inteira.
+                sweetSpot: _sortearSweetSpot(),
                 sweetSpotSize: selectedDiff.size,
                 diffLabel: selectedDiff.label,
                 picks: selectedPicks,
@@ -466,7 +559,9 @@ function _generateDialMarks() {
 function _startGame(data) {
     lockpickActive = true
     pickAngle = 0
-    sweetSpot = Math.random() * 140 - 70
+    // O mestre manda o ponto no payload. O sorteio local só cobre o caso de a
+    // partida ter sido iniciada por uma versão antiga do app.
+    sweetSpot = typeof data.sweetSpot === 'number' ? data.sweetSpot : _sortearSweetSpot()
     sweetSpotSize = data.sweetSpotSize || 20
     turning = false
     turnAngle = 0
@@ -922,4 +1017,8 @@ function _addSpark() {
     }
 }
 
-module.exports = { initLockpicking, openLockpickPicker, handleLockpickStart, handleLockpickResult }
+module.exports = {
+    initLockpicking, openLockpickPicker, handleLockpickStart, handleLockpickResult,
+    // Exposto para teste e para conferir o sorteio pelo console do mestre
+    _sortearSweetSpot,
+}

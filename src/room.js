@@ -16,31 +16,62 @@ function initRoom() {
     const roomBadgeCode = document.getElementById('roomBadgeCode')
     const { hideJournalButtons } = require('./journal')
 
-    createBtn.addEventListener('click', () => {
-        setRoomInfo('Preparando a taverna...')
+    createBtn.addEventListener('click', async () => {
+        const backend = require('./backend')
         createBtn.disabled = true
-        ipcRenderer.send('create-room')
+
+        if (state.backendMode === 'vps') {
+            // Nao adianta criar a sala se o servidor nao responde: o mestre
+            // ficaria olhando para uma tela de conexao que nunca completa
+            setRoomInfo('Falando com o servidor...')
+            const teste = await backend.testarServidor(state.vpsUrl)
+            if (!teste.ok) {
+                setRoomInfo(teste.erro, 'error')
+                createBtn.disabled = false
+                return
+            }
+        }
+
+        setRoomInfo('Preparando a taverna...')
+        ipcRenderer.send('create-room', {
+            modo: state.backendMode,
+            urlServidor: state.vpsUrl,
+        })
     })
 
     ipcRenderer.on('room-created', async (event, data) => {
+        const backend = require('./backend')
+
         state.isRoomMaster = true
         state.currentRoomCode = data.roomCode
         state.serverUrl = data.publicUrl
         state.rooms[data.roomCode.toLowerCase()] = data.publicUrl
-        clipboard.writeText(data.publicUrl)
-
-        setRoomInfo(`Sala aberta! Código: ${data.roomCode}\n\nURL copiada para a área de transferência.\nCompartilhe com seus aliados remotos.`, 'success')
-        createBtn.disabled = false
         roomBadgeCode.textContent = data.roomCode
 
-        // Registra no servidor local
-        fetch(`${data.publicUrl}/register-room`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
-            body: JSON.stringify({ code: data.roomCode, url: data.publicUrl })
-        }).catch(e => console.error('[Room] Erro ao registrar sala:', e))
+        // ── Registra a sala e recebe o token de mestre ───────────────────────
+        // O token é o que prova, a cada conexão, que este app é o dono. Sem
+        // ele, num servidor sempre no ar, quem conectasse primeiro viraria
+        // mestre — e o próprio mestre perderia o posto ao reconectar.
+        try {
+            await backend.registrarSala(data.publicUrl, data.roomCode, state.currentUserId)
+        } catch (e) {
+            console.error('[Room] Erro ao registrar sala:', e)
+            setRoomInfo(`Não consegui registrar a sala no servidor:\n${e.message}`, 'error')
+            createBtn.disabled = false
+            state.isRoomMaster = false
+            return
+        }
 
-        // Registra no Supabase para usuários remotos
+        // No modo VPS o código é o que interessa: a URL é sempre a mesma
+        const noVps = data.modo === 'vps'
+        clipboard.writeText(noVps ? data.roomCode : data.publicUrl)
+        setRoomInfo(noVps
+            ? `Sala aberta no seu servidor!\n\nCódigo: ${data.roomCode}  (copiado)\nSeus jogadores entram só com o código.`
+            : `Sala aberta! Código: ${data.roomCode}\n\nURL copiada para a área de transferência.\nCompartilhe com seus aliados remotos.`,
+            'success')
+        createBtn.disabled = false
+
+        // Registra no Supabase para quem entra pelo código
         if (state.supabase) {
             state.supabase.from('room_codes')
                 .upsert({ code: data.roomCode, url: data.publicUrl, created_at: new Date().toISOString() })
@@ -68,12 +99,17 @@ function initRoom() {
             roomCode = code
             roomUrl = state.rooms[input.toLowerCase()] || null
 
+            // Pergunta a quem pode saber: o servidor configurado (VPS) e o
+            // servidor local (ngrok, quando a sala e deste PC)
             if (!roomUrl) {
-                try {
-                    const r = await fetch(`http://localhost:3001/resolve-code/${code}`, { headers: { 'ngrok-skip-browser-warning': 'true' } })
-                    const j = await r.json()
-                    if (j.url) roomUrl = j.url
-                } catch (e) { }
+                const candidatos = [state.vpsUrl, 'http://localhost:3001'].filter(Boolean)
+                for (const base of candidatos) {
+                    try {
+                        const r = await fetch(`${base}/resolve-code/${code}`, { headers: { 'ngrok-skip-browser-warning': 'true' } })
+                        const j = await r.json()
+                        if (j.url) { roomUrl = j.url; break }
+                    } catch (e) { }
+                }
             }
 
             if (!roomUrl && state.supabase) {
@@ -113,6 +149,7 @@ function initRoom() {
             state.currentRoomCode = null
             state.serverUrl = null
             state.isRoomMaster = false
+            state.masterToken = null
             state.playerCharacters = []
             state.allCharsCache = []
             state.activeCharacterId = null

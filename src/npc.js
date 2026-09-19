@@ -20,6 +20,9 @@ function initNPC() {
 
     _setupOverlayClose()
     _setupCardModal()
+    // Vale para todo mundo: o painel de musica aparece para os jogadores
+    // tambem (so os controles e que sao do mestre)
+    _observarPainelDeMusica()
 
     if (state.isRoomMaster) {
         _setupMasterPanel()
@@ -55,8 +58,12 @@ function _setupMasterPanel() {
 
     document.addEventListener('click', e => {
         const picker = document.getElementById('npcPicker')
-        const wrap = document.getElementById('npcPanelWrap')
-        if (picker?.classList.contains('visible') && !wrap?.contains(e.target)) {
+        const { clicouEmCamadaFlutuante } = require('./hud')
+        // Ignora a si mesmo: clicar fora do painel de NPC fecha o picker, mas
+        // clicar em outra camada flutuante (ficha, inventário…) não.
+        if (picker?.classList.contains('visible')
+            && !clicouEmCamadaFlutuante(e.target, ['#npcPanelWrap', '#npcPicker'])
+            && !e.target.closest('#npcPanelWrap')) {
             picker.classList.remove('visible')
         }
     })
@@ -186,6 +193,15 @@ function handleNPCDismiss({ npcId }) {
     delete state.activeNPCs[npcId]
     _removeNPCBubble(npcId)
 
+    // O NPC pode ter sido dispensado enquanto a intro dele ainda rolava na tela
+    // de alguem. Sem cancelar aqui, o _closeNPCIntro criava a bolha DEPOIS do
+    // dispensar e o NPC voltava do alem so para aquele jogador — era este o
+    // motivo de "removi da cena e o pessoal continua vendo".
+    if (introNpc && String(introNpc.id) === String(npcId)) {
+        introNpc = null
+        _closeNPCIntro()
+    }
+
     const modal = document.getElementById('npcCardModal')
     if (modal?.dataset.npcId === String(npcId)) {
         modal.classList.remove('visible')
@@ -275,17 +291,67 @@ function _closeNPCIntro() {
     // Espera o fade-out terminar antes de esconder o overlay
     setTimeout(() => {
         if (overlay) overlay.classList.remove('active')
-        if (introNpc) {
-            addNPCBubble(introNpc)
-            introNpc = null
-        }
+        // So cria a bolha se o NPC continuar na cena: durante os 7 s da intro
+        // o mestre pode ter dispensado ele
+        if (introNpc && state.activeNPCs[introNpc.id]) addNPCBubble(introNpc)
+        introNpc = null
     }, 600)
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── POSICAO DA BARRA DE NPCs ─────────────────────────────────────────────────
+//
+// A barra ficava com `top: 290px` fixo, chutando a altura do painel de musica.
+// So que esse painel cresce quando tem musica tocando (aparece o "tocando
+// agora" e o volume) — e como ele tem z-index maior, passava por cima das
+// bolhas. Agora a barra mede o painel de verdade e se acomoda abaixo dele.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const BARRA_TOPO_MINIMO = 16    // px do topo da tela quando nao ha painel
+const BARRA_FOLGA = 12          // respiro entre o painel de musica e a barra
+
+function _reposicionarBarra() {
+    const bar = document.getElementById('npcSceneBar')
+    if (!bar) return
+
+    let topo = BARRA_TOPO_MINIMO
+    const painel = document.getElementById('musicPanel')
+    if (painel) {
+        const r = painel.getBoundingClientRect()
+        // getBoundingClientRect devolve tudo zero quando o elemento esta com
+        // display:none — nesse caso nao ha painel para desviar
+        if (r.height > 0) topo = r.bottom + BARRA_FOLGA
+    }
+    bar.style.top = topo + 'px'
+}
+
+/** Mantem a barra acompanhando o painel de musica sem ninguem precisar avisar. */
+function _observarPainelDeMusica() {
+    _reposicionarBarra()
+    window.addEventListener('resize', _reposicionarBarra)
+
+    const painel = document.getElementById('musicPanel')
+    if (!painel) return
+
+    // ResizeObserver cobre o painel aparecendo, sumindo e mudando de altura
+    if (typeof ResizeObserver === 'function') {
+        new ResizeObserver(_reposicionarBarra).observe(painel)
+    }
+    // display:none nao dispara ResizeObserver em todo navegador; o observer de
+    // atributos cobre a troca de style/class
+    if (typeof MutationObserver === 'function') {
+        new MutationObserver(_reposicionarBarra)
+            .observe(painel, { attributes: true, attributeFilter: ['style', 'class'] })
+    }
 }
 
 // ── Bolha no canto ────────────────────────────────────────────────────────────
 function addNPCBubble(npc) {
     const bar = document.getElementById('npcSceneBar')
     if (!bar) return
+    // Rede de seguranca: qualquer caminho que tente criar a bolha de um NPC que
+    // ja foi dispensado para aqui
+    if (!state.activeNPCs[npc.id]) return
 
     // Remove duplicata
     bar.querySelector(`[data-npc-id="${npc.id}"]`)?.remove()
@@ -330,6 +396,7 @@ function addNPCBubble(npc) {
     bubble.addEventListener('click', () => _openNPCCard(npc))
 
     bar.appendChild(bubble)
+    _reposicionarBarra()
 }
 
 function _removeNPCBubble(npcId) {
@@ -411,4 +478,8 @@ function _openNPCCard(npc) {
     modal.appendChild(wrap)
 }
 
-module.exports = { initNPC, handleNPCSummon, handleNPCDismiss, addNPCBubble }
+module.exports = {
+    initNPC, handleNPCSummon, handleNPCDismiss, addNPCBubble,
+    // Exposto para teste e para quem precisar reposicionar a barra na mão
+    reposicionarBarra: _reposicionarBarra,
+}

@@ -4,9 +4,10 @@ const state = require('./state')
 const { applyScene } = require('./scene')
 const { playYouTubeVideo, stopYouTubeVideo, loadYouTubeAPI, initMusicPanel, showMusicActive, hideMusicActive } = require('./music')
 const { renderCharacterBar, updateCardStat, flashCard, loadAndShareCharacters } = require('./characters')
-const { showDiceResult } = require('./dice')
+const { showDiceResult, updateDiceMasterUI } = require('./dice')
 const { initChat, addChatMessage } = require('./chat')
 const { showHUDButtons } = require('./hud')
+const { showConfigButton, emitirCor, COR_PADRAO } = require('./config')
 const { handleInventoryUpdate, handleItemShow, handleItemTransferred } = require('./inventory')
 const { initNPC, handleNPCSummon, handleNPCDismiss } = require('./npc')
 const { initSfxPanel, playSfxAudio } = require('./sfx')
@@ -18,7 +19,16 @@ function connectToRoom(url, roomCode) {
     state.currentRoomCode = (roomCode || 'DEFAULT').toString().trim().toUpperCase()
     if (!state.serverUrl) state.serverUrl = url.replace(/\/$/, '')
 
-    state.socket = io(url, { auth: { roomCode: state.currentRoomCode }, transports: ['websocket'] })
+    // O token so existe para quem criou a sala. Recuperamos do localStorage
+    // tambem, para o mestre reassumir depois de fechar e reabrir o app.
+    const backend = require('./backend')
+    const masterToken = state.masterToken || backend.recuperarToken(state.currentRoomCode)
+    if (masterToken) state.masterToken = masterToken
+
+    state.socket = io(url, {
+        auth: { roomCode: state.currentRoomCode, masterToken: masterToken || undefined },
+        transports: ['websocket'],
+    })
 
     state.socket.on('connect', async () => {
         console.log('[Socket] Conectado:', state.socket.id)
@@ -29,6 +39,8 @@ function connectToRoom(url, roomCode) {
         const leaveBtn = document.getElementById('leaveRoomBtn')
         if (leaveBtn) leaveBtn.style.display = 'block'
         showHUDButtons()
+        showConfigButton()
+        emitirCor()          // a sala precisa saber a cor do meu cursor
         showJournalButtons()
         initMusicPanel()
         initChat()
@@ -49,6 +61,7 @@ function connectToRoom(url, roomCode) {
         state.isRoomMaster = isMaster
         initMusicPanel(); initNPC(); initSfxPanel(); initReputation()
         showJournalButtons()
+        updateDiceMasterUI()   // mostra/esconde o interruptor de rolagem secreta
 
         const { openLockpickPicker } = require('./lockpicking')
         const lockBtn = document.getElementById('lockpickMasterBtn')
@@ -68,6 +81,11 @@ function connectToRoom(url, roomCode) {
     })
 
     state.socket.on('dice_result', showDiceResult)
+
+    // ── Calico: resultado de teste (2 dados, RA/RB, crítico) para a sala ─────
+    state.socket.on('calico_result', res => {
+        require('./calicoSheet').mostrarRolagemNaSala(res)
+    })
 
     state.socket.on('music_play', ({ videoId, startedBy, seekTime }) => { playYouTubeVideo(videoId, seekTime || 0); showMusicActive(videoId, startedBy) })
     state.socket.on('music_stop', () => { stopYouTubeVideo(); hideMusicActive() })
@@ -89,10 +107,17 @@ function connectToRoom(url, roomCode) {
         updateCardStat(charId, field, value)
 
         if (state.statPopupCharId === charId) {
-            const input = document.querySelector(`#statDynamicRows [data-stat-key="${field}"]`)
-            if (input && document.activeElement !== input) {
-                if (input.tagName === 'INPUT') input.value = value
-                else input.textContent = value
+            const { onRemoteStatUpdate, isCalico } = require('./calicoSheet')
+            if (isCalico(state.statPopupChar)) {
+                // Ficha do Calico: campos estruturados (perícias, armas, condições)
+                // precisam de redesenho, não de um input avulso
+                onRemoteStatUpdate(charId, field)
+            } else {
+                const input = document.querySelector(`#statDynamicRows [data-stat-key="${field}"]`)
+                if (input && document.activeElement !== input) {
+                    if (input.tagName === 'INPUT') input.value = value
+                    else input.textContent = value
+                }
             }
         }
 
@@ -109,7 +134,10 @@ function connectToRoom(url, roomCode) {
     state.socket.on('item_transferred', ({ toCharId, item }) => { handleItemTransferred({ toCharId, item }) })
     state.socket.on('npc_summon', npc => handleNPCSummon(npc))
     state.socket.on('npc_dismiss', ({ npcId }) => handleNPCDismiss({ npcId }))
-    state.socket.on('chat_message', ({ playerName: from, message, type, gifUrl }) => { addChatMessage(from, message, from === state.playerName, type || 'text', gifUrl || null) })
+    state.socket.on('chat_message', ({ playerName: from, message, type, gifUrl, critico, falha, secreto }) => {
+        addChatMessage(from, message, from === state.playerName, type || 'text', gifUrl || null, false,
+            type === 'roll' ? { critico, falha, secreto } : null)
+    })
 
     // ── Cursors ──────────────────────────────────────────────────────────────
     const cursors = {}
@@ -121,6 +149,10 @@ function connectToRoom(url, roomCode) {
             const wrap = document.createElement('div'); wrap.className = 'cursor'
             wrap.style.left = players[id].x + 'px'; wrap.style.top = players[id].y + 'px'
             const dot = document.createElement('div'); dot.className = 'cursor-dot'
+            // Cada jogador escolhe a sua cor no painel de configuracoes
+            const cor = players[id].color || COR_PADRAO
+            dot.style.background = cor
+            dot.style.boxShadow = `0 0 6px ${cor}`
             wrap.appendChild(dot); document.body.appendChild(wrap); cursors[id] = wrap
         }
     })

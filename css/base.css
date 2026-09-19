@@ -8,6 +8,9 @@
     --ember: #d4622a;
     --hp: #c0392b;
     --san: #2980b9;
+
+    /* Opacidade do véu sobre a cena — ver body::before e src/config.js */
+    --veu-opacidade: 1;
 }
 
 /* ══ RESET ══ */
@@ -26,11 +29,16 @@ body {
     font-family: 'Crimson Text', Georgia, serif;
 }
 
+/* O "véu": o escurecido por cima da cena e dos vídeos de fundo.
+   A opacidade é controlada por cada jogador no painel de configurações
+   (src/config.js) — 1 é o original, 0 deixa a cena limpa. */
 body::before {
     content: '';
     position: fixed;
     inset: 0;
     background: radial-gradient(ellipse at 50% 60%, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.82) 100%);
+    opacity: var(--veu-opacidade, 1);
+    transition: opacity 0.25s ease;
     pointer-events: none;
     z-index: 0;
 }

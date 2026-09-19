@@ -1,8 +1,13 @@
 const {
     rooms, roomCodes, urlCodes, roomChars,
     roomMusic, roomMasters, roomScene, roomNPCs,
-    roomReputation, roomMissions, normalizeUrl
+    roomReputation, roomMissions, roomOwners,
+    normalizeUrl, tocarSala
 } = require('./roomState')
+
+// Remetente das linhas de rolagem no chat, no mesmo espírito do "⚙ Sistema"
+// que o lockpicking já usa.
+const CHAT_DADOS = '🎲 Dados'
 
 function broadcastRoomChars(io, roomCode) {
     const entries = roomChars[roomCode] || {}
@@ -26,9 +31,32 @@ function setupSocketHandlers(io) {
         socket.join(roomCode)
         if (!rooms[roomCode]) rooms[roomCode] = {}
         if (!roomChars[roomCode]) roomChars[roomCode] = {}
-        rooms[roomCode][socket.id] = { x: 100, y: 100 }
+        rooms[roomCode][socket.id] = { x: 100, y: 100, color: null }
+        tocarSala(roomCode)
         io.to(roomCode).emit('players_update', rooms[roomCode])
-        if (!roomMasters[roomCode]) { roomMasters[roomCode] = socket.id; console.log('[Master] definido:', socket.id, 'na sala', roomCode) }
+
+        // ── Quem e o mestre? ─────────────────────────────────────────────────
+        // Sala registrada (POST /register-room) tem dono: so quem apresenta o
+        // masterToken vira mestre, e pode reconectar quantas vezes quiser.
+        // Sala sem registro cai na regra antiga (primeira conexao) — e o caso
+        // de quem entra por URL direta, sem passar pela criacao.
+        const dono = roomOwners[roomCode]
+        const tokenEnviado = socket.handshake.auth.masterToken || socket.handshake.query.masterToken
+
+        if (dono) {
+            if (tokenEnviado && tokenEnviado === dono.token) {
+                roomMasters[roomCode] = socket.id
+                console.log(`[Master] ${socket.id} assumiu a sala ${roomCode} pelo token`)
+            } else if (roomMasters[roomCode] === socket.id) {
+                // nada a fazer, ja era
+            } else if (tokenEnviado) {
+                console.warn(`[Master] token invalido na sala ${roomCode} — conexao entra como jogador`)
+            }
+        } else if (!roomMasters[roomCode]) {
+            roomMasters[roomCode] = socket.id
+            console.log('[Master] definido por ordem de chegada:', socket.id, 'na sala', roomCode)
+        }
+
         socket.emit('master_status', roomMasters[roomCode] === socket.id)
         if (roomMusic[roomCode]) { const elapsed = (Date.now() - roomMusic[roomCode].startTime) / 1000; socket.emit('music_play', { ...roomMusic[roomCode], seekTime: elapsed }) }
         if (roomScene[roomCode]) { socket.emit('scene_change', roomScene[roomCode]) }
@@ -96,8 +124,81 @@ function setupSocketHandlers(io) {
         // ── Inventário ──────────────────────────────────────────────────────
         socket.on('inventory_update', ({ charId, items }) => { const isMaster = roomMasters[roomCode] === socket.id; const isOwner = roomChars[roomCode][socket.id]?.characters.some(c => c.id === charId); if (!isMaster && !isOwner) return; io.to(roomCode).emit('inventory_update', { charId, items }) })
 
-        // ── Dados ────────────────────────────────────────────────────────────
-        socket.on('dice_roll', ({ player, value, sides, label }) => { io.to(roomCode).emit('dice_result', { player, value, sides, label }) })
+        // ══ Dados ════════════════════════════════════════════════════════════
+        // Toda rolagem vira uma linha no chat, para o mestre ter o registro de
+        // quem rolou o quê. Rolagem secreta é privilégio do mestre: o resultado
+        // e a linha do chat voltam só para ele, e a sala não recebe nada.
+
+        socket.on('dice_roll', ({ player, value, sides, label, secreto }) => {
+            const ehMestre = roomMasters[roomCode] === socket.id
+            const escondido = !!secreto && ehMestre
+            const dLabel = label || `d${sides || 20}`
+
+            const ehD20 = sides === 20 || dLabel === 'd20'
+            const critico = ehD20 && value === 20
+            const falha = ehD20 && value === 1
+
+            const resultado = { player, value, sides, label, secreto: escondido }
+            const linha = {
+                playerName: CHAT_DADOS,
+                message: `${player} rolou ${dLabel}: ${value}`
+                    + (critico ? '  ✦ crítico' : falha ? '  ✗ falha crítica' : ''),
+                type: 'roll',
+                critico, falha, secreto: escondido,
+            }
+
+            const destino = escondido ? socket : io.to(roomCode)
+            destino.emit('dice_result', resultado)
+            destino.emit('chat_message', linha)
+
+            console.log(`[Dados]${escondido ? ' (secreto)' : ''} ${player} rolou ${dLabel}: ${value} na sala ${roomCode}`)
+        })
+
+        // ── Calico: teste de 2 dados contra DT ───────────────────────────────
+        // O cliente já resolveu a rolagem; aqui só formatamos e distribuímos.
+        socket.on('calico_roll', (res) => {
+            if (!res || !Array.isArray(res.rolados)) return
+
+            const ehMestre = roomMasters[roomCode] === socket.id
+            const escondido = !!res.secreto && ehMestre
+            const ctx = res.contexto || {}
+
+            // Sem DT e sem veredito: o mestre anuncia a dificuldade na mesa e a
+            // conta de passou ou não é feita em voz alta. A linha só registra o
+            // que saiu nos dados — e marca crítico e falha crítica, que não
+            // dependem de DT.
+            const passos = ctx.passos
+                ? `  (${ctx.passos > 0 ? '+' : ''}${ctx.passos} passo${Math.abs(ctx.passos) > 1 ? 's' : ''})`
+                : ''
+            const marca = res.falhaCritica ? '  ✗ falha crítica'
+                : res.critico ? '  ✦ crítico' : ''
+
+            // Ex.: "Jed — FÍSICO + Pontaria: d8(5) + d6(3) = 8 · RA 5 · RB 3"
+            const dados = res.rolados
+                .map(d => `${d.dado}(${d.valor})${d.somado === false ? '↯' : ''}`)
+                .join(' + ')
+            const linha = {
+                playerName: CHAT_DADOS,
+                message: `${ctx.personagem || '?'} — ${ctx.atributo || ''} + ${ctx.pericia || ''}${passos}: `
+                    + `${dados} = ${res.soma}`
+                    + `  ·  RA ${res.ra} · RB ${res.rb}${marca}`,
+                type: 'roll',
+                critico: !!res.critico,
+                falha: !!res.falhaCritica,
+                secreto: escondido,
+            }
+
+            if (escondido) {
+                // Só a linha no chat do mestre: o overlay grande no meio da tela
+                // entregaria o jogo se ele estiver com a tela compartilhada.
+                socket.emit('chat_message', linha)
+            } else {
+                io.to(roomCode).emit('calico_result', res)
+                io.to(roomCode).emit('chat_message', linha)
+            }
+
+            console.log(`[Calico]${escondido ? ' (secreto)' : ''} ${ctx.personagem || '?'} — ${ctx.atributo || ''} + ${ctx.pericia || ''}: soma ${res.soma} (RA ${res.ra}, RB ${res.rb})${marca} na sala ${roomCode}`)
+        })
 
         // ── Mostrar item a todos ─────────────────────────────────────────────
         socket.on('item_show', ({ playerName, item }) => {
@@ -146,10 +247,51 @@ function setupSocketHandlers(io) {
         })
 
         // ── Cursores ─────────────────────────────────────────────────────────
-        socket.on('mouse_move', ({ x, y }) => { if (!rooms[roomCode]) return; rooms[roomCode][socket.id] = { x, y }; socket.to(roomCode).emit('players_update', rooms[roomCode]) })
+        // Preserva a cor: antes este handler substituia o objeto inteiro e
+        // apagava a cor escolhida pelo jogador a cada movimento do mouse.
+        socket.on('mouse_move', ({ x, y }) => {
+            if (!rooms[roomCode] || !rooms[roomCode][socket.id]) return
+            rooms[roomCode][socket.id].x = x
+            rooms[roomCode][socket.id].y = y
+            socket.to(roomCode).emit('players_update', rooms[roomCode])
+        })
+
+        // ── Cor do cursor ────────────────────────────────────────────────────
+        socket.on('set_cursor_color', ({ color }) => {
+            if (!rooms[roomCode] || !rooms[roomCode][socket.id]) return
+            // So aceita hex de 3 ou 6 digitos, para nao deixar CSS arbitrario entrar
+            if (typeof color !== 'string' || !/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(color)) return
+            rooms[roomCode][socket.id].color = color
+            io.to(roomCode).emit('players_update', rooms[roomCode])
+        })
 
         // ── Desconexão ───────────────────────────────────────────────────────
-        socket.on('disconnect', () => { if (rooms[roomCode]) delete rooms[roomCode][socket.id]; if (roomChars[roomCode]) delete roomChars[roomCode][socket.id]; io.to(roomCode).emit('players_update', rooms[roomCode] || {}); broadcastRoomChars(io, roomCode); console.log(`[Socket] Desconectado: ${socket.id} da sala ${roomCode}`) })
+        socket.on('disconnect', () => {
+            if (rooms[roomCode]) delete rooms[roomCode][socket.id]
+            if (roomChars[roomCode]) delete roomChars[roomCode][socket.id]
+
+            // Solta o posto de mestre. Antes isto nao acontecia: o socket id
+            // morto ficava em roomMasters e, ao reconectar, o mestre perdia o
+            // posto para sempre — ninguem mais conseguia comandar a sala.
+            if (roomMasters[roomCode] === socket.id) {
+                delete roomMasters[roomCode]
+                console.log(`[Master] ${socket.id} saiu; a sala ${roomCode} esta sem mestre ate ele voltar`)
+                // Sala com dono espera o token voltar. Sala sem dono (URL
+                // direta) promove quem ja estiver dentro, para nao travar.
+                if (!roomOwners[roomCode]) {
+                    const restante = Object.keys(rooms[roomCode] || {})[0]
+                    if (restante) {
+                        roomMasters[roomCode] = restante
+                        io.to(restante).emit('master_status', true)
+                        console.log(`[Master] ${restante} assumiu a sala ${roomCode} por sucessao`)
+                    }
+                }
+            }
+
+            io.to(roomCode).emit('players_update', rooms[roomCode] || {})
+            broadcastRoomChars(io, roomCode)
+            console.log(`[Socket] Desconectado: ${socket.id} da sala ${roomCode}`)
+        })
     })
 }
 

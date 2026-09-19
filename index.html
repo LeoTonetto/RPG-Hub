@@ -21,6 +21,8 @@
     <link rel="stylesheet" href="css/reputation.css">
     <link rel="stylesheet" href="css/lockpicking.css">
     <link rel="stylesheet" href="css/journal.css">
+    <link rel="stylesheet" href="css/calico.css">
+    <link rel="stylesheet" href="css/config.css">
 </head>
 
 <body>
@@ -57,6 +59,7 @@
 
     <!-- ══ JORNAL DE MISSÕES ══ -->
     <button id="journalToggle" title="Jornal de Missões (J)">📜</button>
+    <button id="configToggle" title="Configurações">⚙</button>
     <button id="missionObjectiveToggle" title="Exibir/Ocultar Objetivo">🎯</button>
 
     <!-- ══ BANNER DE OBJETIVO ══ -->
@@ -126,6 +129,26 @@
             <div class="card-icon">⚄</div>
             <h1 class="card-title">RPG Lobby</h1>
             <p class="card-subtitle" id="connectSubtitle">Bem-vindo, Aventureiro</p>
+
+            <!-- Onde a sala vai rodar -->
+            <div class="input-wrap" id="backendWrap" style="margin-bottom:12px;">
+                <span class="input-label">Onde hospedar a sala</span>
+                <div class="backend-opts">
+                    <button type="button" class="backend-opt" id="backendNgrok">
+                        <span class="backend-opt-nome">🔗 ngrok</span>
+                        <span class="backend-opt-sub">túnel deste PC · 1 GB/mês</span>
+                    </button>
+                    <button type="button" class="backend-opt" id="backendVps">
+                        <span class="backend-opt-nome">🖥 Servidor</span>
+                        <span class="backend-opt-sub">sua VPS · sem limite</span>
+                    </button>
+                </div>
+                <div id="vpsUrlWrap" style="display:none;margin-top:8px;">
+                    <input class="room-input" id="vpsUrlInput" spellcheck="false" autocomplete="off"
+                        placeholder="http://SEU.IP.AQUI:3001" />
+                    <div class="backend-hint" id="vpsStatus">Endereço do seu servidor, com http:// e a porta.</div>
+                </div>
+            </div>
 
             <button class="btn-primary" id="createRoomButton">✦ Criar Sala</button>
             <hr class="divider">

@@ -1,0 +1,256 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   PAINEL DE CONFIGURAÇÕES — preferências de cada jogador
+   Cor do cursor e opacidade do véu sobre a cena. Ver src/config.js.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Botão de engrenagem, na fileira do HUD: 👁 (16) · 📜 (56) · ⚙ (96) */
+#configToggle {
+    position: fixed;
+    top: 16px;
+    left: 96px;
+    z-index: 1010;
+    background: rgba(10, 8, 6, 0.65);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+    border-radius: 3px;
+    color: rgba(201, 168, 76, 0.45);
+    font-size: 15px;
+    width: 34px;
+    height: 34px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    transition: color 0.2s, border-color 0.2s, transform 0.3s;
+    line-height: 1;
+}
+
+#configToggle:hover {
+    color: var(--gold);
+    border-color: rgba(201, 168, 76, 0.5);
+    transform: rotate(45deg);
+}
+
+/* ── Painel ──────────────────────────────────────────────────────────────── */
+#configPanel {
+    position: fixed;
+    top: 58px;
+    left: 96px;
+    z-index: 1060;
+    width: 260px;
+    padding: 14px;
+    background: linear-gradient(160deg, rgba(20, 16, 12, 0.98) 0%, rgba(10, 8, 5, 0.99) 100%);
+    border: 1px solid var(--gold-dim);
+    border-radius: 4px;
+    box-shadow: 0 6px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(201, 168, 76, 0.08);
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+    backdrop-filter: blur(10px);
+}
+
+#configPanel.aberto {
+    display: flex;
+    animation: cfgIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cfgIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: none; }
+}
+
+.cfg-title {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--gold);
+    padding-bottom: 9px;
+    border-bottom: 1px solid rgba(201, 168, 76, 0.12);
+}
+
+.cfg-sec {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.cfg-label {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(244, 234, 213, 0.65);
+}
+
+.cfg-hint {
+    font-size: 10.5px;
+    color: rgba(244, 234, 213, 0.32);
+    line-height: 1.45;
+}
+
+/* ── Cores do cursor ─────────────────────────────────────────────────────── */
+.cfg-cores {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+}
+
+.cfg-cor {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.12s, border-color 0.12s;
+}
+
+.cfg-cor:hover {
+    transform: scale(1.15);
+}
+
+.cfg-cor.ativa {
+    border-color: var(--parchment);
+    transform: scale(1.12);
+}
+
+.cfg-cor-livre {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 2px;
+}
+
+.cfg-cor-livre-label {
+    font-size: 11px;
+    color: rgba(244, 234, 213, 0.45);
+}
+
+.cfg-cor-input {
+    width: 40px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    border-radius: 3px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.cfg-cor-input::-webkit-color-swatch-wrapper { padding: 2px; }
+.cfg-cor-input::-webkit-color-swatch { border: none; border-radius: 2px; }
+
+.cfg-previa {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 9px;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 3px;
+}
+
+.cfg-previa-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--gold);
+    flex-shrink: 0;
+}
+
+.cfg-previa-txt {
+    font-size: 10.5px;
+    color: rgba(244, 234, 213, 0.4);
+    font-style: italic;
+}
+
+/* ── Slider do véu ───────────────────────────────────────────────────────── */
+.cfg-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.cfg-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(201, 168, 76, 0.2);
+    outline: none;
+    cursor: pointer;
+}
+
+.cfg-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--gold);
+    border: 1px solid rgba(0, 0, 0, 0.5);
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(201, 168, 76, 0.4);
+}
+
+.cfg-slider-val {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--gold);
+    min-width: 36px;
+    text-align: right;
+}
+
+.cfg-atalhos {
+    display: flex;
+    gap: 5px;
+}
+
+.cfg-atalho {
+    flex: 1;
+    padding: 5px 4px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(201, 168, 76, 0.15);
+    border-radius: 2px;
+    color: rgba(201, 168, 76, 0.6);
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.cfg-atalho:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: rgba(201, 168, 76, 0.07);
+}
+
+/* ── Aviso ───────────────────────────────────────────────────────────────── */
+.cfg-aviso {
+    display: none;
+    font-size: 10px;
+    line-height: 1.45;
+    color: var(--ember);
+    background: rgba(212, 98, 42, 0.08);
+    border-left: 2px solid rgba(212, 98, 42, 0.5);
+    border-radius: 0 2px 2px 0;
+    padding: 6px 8px;
+}
+
+.cfg-aviso.visivel {
+    display: block;
+}
+
+/* Acompanha o HUD: some com ele, mas volta ao passar o mouse — mesmo
+   comportamento do botão do jornal */
+body.hud-hidden #configToggle {
+    opacity: 0.25;
+}
+
+body.hud-hidden #configToggle:hover {
+    opacity: 1;
+}
