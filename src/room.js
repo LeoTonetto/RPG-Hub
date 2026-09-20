@@ -90,6 +90,13 @@ function initRoom() {
         const input = roomCodeInput.value.trim()
         if (!input) { roomCodeInput.focus(); return }
 
+        // Trava o botao enquanto procura e conecta. Sem isto, clicar varias
+        // vezes abria uma conexao por clique e o jogador entrava repetido na
+        // sala — varios cursores e varios cards do mesmo personagem.
+        if (joinBtn.disabled) return
+        joinBtn.disabled = true
+        const liberar = () => { joinBtn.disabled = false }
+
         let roomUrl = null, roomCode = input
 
         if (/^https?:\/\//i.test(input)) {
@@ -119,16 +126,25 @@ function initRoom() {
                         .from('room_codes').select('url').eq('code', code).maybeSingle()
                     if (error) {
                         setRoomInfo('Tabela room_codes não encontrada no Supabase.\nExecute o SQL de criação (ver README).', 'error')
+                        liberar()
                         return
                     }
                     if (row?.url) roomUrl = row.url
                 } catch (e) { console.warn('[Room] Supabase lookup:', e) }
             }
 
-            if (!roomUrl) { setRoomInfo('Código não encontrado.\nVerifique o código ou use a URL completa do ngrok.', 'error'); return }
+            if (!roomUrl) {
+                setRoomInfo('Código não encontrado.\nVerifique o código ou use a URL completa do ngrok.', 'error')
+                liberar()
+                return
+            }
         }
 
         connectToRoom(roomUrl, roomCode)
+
+        // Se a conexão falhar, o botão volta: o connect_error do socket.js
+        // reexibe a tela de sala, e o jogador precisa poder tentar de novo.
+        setTimeout(liberar, 3000)
     })
 
     // Badge: clique copia o código
@@ -144,8 +160,12 @@ function initRoom() {
     if (leaveBtn) {
         leaveBtn.addEventListener('click', () => {
             if (!state.socket) return
-            state.socket.disconnect()
-            state.socket = null
+
+            // Encerra com limpeza: derruba os listeners, desconecta e apaga os
+            // cursores dos outros jogadores — que senão ficariam parados na sua
+            // tela, na última posição em que estavam.
+            require('./socket').desconectarSocketAtual()
+
             state.currentRoomCode = null
             state.serverUrl = null
             state.isRoomMaster = false
