@@ -105,6 +105,78 @@ else
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════
+# De ONDE esse container foi criado, e se bate com o codigo daqui.
+#
+# O Gerenciador Docker da Hostinger guarda o projeto na pasta DELE, nao em
+# /opt/hub-rpg. Quem faz `git pull` numa pasta e deploy pela outra fica com o
+# container eternamente desatualizado, sem entender o porque.
+azul "Alinhamento com o codigo"
+
+if command -v docker >/dev/null 2>&1 && docker inspect hub-rpg >/dev/null 2>&1; then
+    PASTA=$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' hub-rpg 2>/dev/null)
+    ARQS=$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project.config_files"}}' hub-rpg 2>/dev/null)
+    PROJ=$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' hub-rpg 2>/dev/null)
+    CRIADA=$(docker inspect -f '{{.Created}}' hub-rpg 2>/dev/null | cut -c1-19)
+    PORTAS=$(docker inspect -f '{{range $p, $c := .NetworkSettings.Ports}}{{$p}} -> {{range $c}}{{.HostPort}}{{end}} {{end}}' hub-rpg 2>/dev/null)
+
+    echo "     projeto compose : ${PROJ:-?}"
+    echo "     pasta do deploy : ${PASTA:-?}"
+    echo "     arquivo compose : ${ARQS:-?}"
+    echo "     container criado: ${CRIADA:-?}"
+    echo "     portas          : ${PORTAS:-?}"
+    echo
+
+    AQUI=$(cd "$(dirname "$0")/.." && pwd)
+    echo "     voce esta em    : $AQUI"
+    echo
+
+    if [ -n "${PASTA:-}" ] && [ "$PASTA" != "$AQUI" ]; then
+        ruim "O deploy NAO sai desta pasta."
+        echo
+        echo "     O container foi criado a partir de:"
+        echo "         $PASTA"
+        echo
+        # Aspas simples de proposito: com aspas duplas, o bash EXECUTARIA o
+        # git pull que esta entre as crases em vez de imprimi-lo
+        echo '     Um `git pull` aqui nao muda nada no container. Escolha um dos dois:'
+        echo
+        echo "     a) passar a usar esta pasta (recomendado):"
+        echo "         cd $PASTA && docker compose down"
+        echo "         cd $AQUI  && docker compose up -d --build"
+        echo
+        echo "     b) continuar na pasta do deploy:"
+        echo "         cd $PASTA && git pull && docker compose up -d --build"
+        echo "        (se ela nao for um repositorio git, foi o painel da"
+        echo "         Hostinger que criou — veja deploy/DOCKER.md)"
+    elif [ -n "${PASTA:-}" ]; then
+        ok "O deploy sai desta mesma pasta."
+    fi
+
+    # A pasta do deploy esta atualizada em relacao ao GitHub?
+    if [ -n "${PASTA:-}" ] && [ -d "$PASTA/.git" ]; then
+        echo
+        LOCAL=$(git -C "$PASTA" rev-parse --short HEAD 2>/dev/null)
+        echo "     commit no deploy: $LOCAL  $(git -C "$PASTA" log -1 --format=%s 2>/dev/null | cut -c1-50)"
+        if git -C "$PASTA" fetch --quiet 2>/dev/null; then
+            ATRAS=$(git -C "$PASTA" rev-list --count HEAD..@{u} 2>/dev/null || echo 0)
+            if [ "${ATRAS:-0}" -gt 0 ]; then
+                aten "Esta $ATRAS commit(s) atras do GitHub. Rode: git pull && docker compose up -d --build"
+            else
+                ok "Em dia com o GitHub."
+            fi
+        fi
+    elif [ -n "${PASTA:-}" ]; then
+        echo
+        aten "A pasta do deploy nao e um repositorio git."
+        echo "     Provavelmente foi o Gerenciador Docker da Hostinger que criou."
+        echo "     Para atualizar pelo painel: Gerenciar > recriar o projeto."
+        echo "     Para passar a controlar pelo terminal, veja a opcao (a) acima."
+    fi
+else
+    aten "Container hub-rpg nao existe — nada para comparar."
+fi
+
+# ══════════════════════════════════════════════════════════════════════════════
 azul "Servidor respondendo"
 
 RESP=$(curl -s -m 5 "http://localhost:$PORTA/health" 2>/dev/null || true)
