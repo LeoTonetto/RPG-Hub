@@ -128,9 +128,19 @@ async function testarServidor(url, timeoutMs = 6000) {
         const motivo = e.name === 'AbortError'
             ? 'não respondeu a tempo'
             : 'não deu para alcançar'
+
+        // Mostra o endereço EXATO que foi tentado. Sem isto, quem digitasse só
+        // o host não veria que a porta 3001 foi completada automaticamente — e
+        // quem roda o container noutra porta ficaria sem entender a falha.
+        const { port } = (() => { try { return new URL(alvo) } catch (x) { return {} } })()
+        const dicaPorta = port
+            ? `\nA porta usada foi a ${port}. Se o seu container publica outra, informe-a no endereço.`
+            : ''
+
         return {
             ok: false,
-            erro: `O servidor ${motivo}.\nConfira o endereço, se o serviço está rodando e se a porta está liberada no firewall.`,
+            erro: `Não consegui alcançar ${alvo}/health — ${motivo}.${dicaPorta}`
+                + '\nConfira se o serviço está rodando e se a porta está liberada no firewall.',
         }
     } finally {
         clearTimeout(t)

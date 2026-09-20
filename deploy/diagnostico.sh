@@ -43,9 +43,21 @@ else
         echo
         # ── Veredito ────────────────────────────────────────────────────────
         if printf '%s' "$CMD" | grep -q 'docker-proxy'; then
-            aten "É outro CONTAINER que já publicou esta porta."
-            echo "     Veja qual:  docker ps --format '{{.Names}}\t{{.Ports}}'"
-            echo "     Solução: mude HOST_PORT no .env (veja o fim deste relatório)."
+            # De QUEM é esse docker-proxy? Se for do próprio hub-rpg, está tudo
+            # certo — é exatamente assim que o Docker publica a porta. Sem esta
+            # checagem o diagnóstico acusava conflito onde não havia.
+            DONO=$(docker ps --filter "publish=$PORTA" --format '{{.Names}}' 2>/dev/null | head -1)
+
+            if [ "${DONO:-}" = "hub-rpg" ]; then
+                ok "É o próprio container hub-rpg publicando a porta. Está correto."
+                PORTA_OK=1
+            elif [ -n "${DONO:-}" ]; then
+                aten "É o container \"$DONO\" que já ocupa esta porta."
+                echo "     Solução: mude HOST_PORT no .env (veja o fim deste relatório)."
+            else
+                aten "É um container, mas não identifiquei qual."
+                echo "     Veja:  docker ps --format '{{.Names}}\t{{.Ports}}'"
+            fi
 
         elif printf '%s' "$CMD" | grep -qE 'server/standalone\.js|hub-rpg'; then
             ruim "É o PRÓPRIO Hub-RPG rodando FORA do container."
@@ -180,32 +192,46 @@ fi
 azul "Servidor respondendo"
 
 RESP=$(curl -s -m 5 "http://localhost:$PORTA/health" 2>/dev/null || true)
+
+# Endereço fixo da máquina, em vez de montar a URL com substituição de comando:
+# o `$(curl ifconfig.me)` que eu sugeria antes quebrava quando o serviço externo
+# não respondia, e o erro do curl não dizia o porquê.
+ENDERECO=$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo "SEU_IP")
+
 if printf '%s' "$RESP" | grep -q '"ok":true'; then
     ok "De dentro da VPS: $RESP"
     echo
-    echo "     Agora teste DO SEU PC, no PowerShell:"
-    echo "         curl http://\$(curl -s ifconfig.me):$PORTA/health"
-    echo "     (ou troque pelo IP da VPS)"
-    echo "     Se falhar lá e funcionar aqui, é firewall:"
+    echo "     Falta confirmar de FORA. No PowerShell do seu PC:"
+    echo
+    echo "         curl http://$ENDERECO:$PORTA/health"
+    echo
+    echo "     Respondeu? Então é só configurar o app com esse mesmo endereço:"
+    echo "         http://$ENDERECO:$PORTA"
+    echo
+    echo "     Não respondeu? É firewall — os DOIS precisam liberar:"
     echo "         ufw allow $PORTA/tcp"
-    echo "         + regra no painel da Hostinger (hPanel > VPS > Firewall)"
+    echo "         + regra TCP $PORTA no hPanel > VPS > Firewall"
 else
     ruim "Não respondeu em http://localhost:$PORTA/health"
+    echo "     O container pode estar subindo ainda. Veja: docker compose logs --tail 30"
 fi
 
 # ══════════════════════════════════════════════════════════════════════════════
-azul "Como mudar a porta"
-cat <<EOF
+# Só mostra a receita de trocar a porta se ela for mesmo o problema
+if [ "${PORTA_OK:-0}" != "1" ] && [ -n "${PID:-}" ]; then
+    azul "Como mudar a porta"
+    cat <<EOF
      Crie (ou edite) o arquivo .env ao lado do docker-compose.yml:
 
-         echo "HOST_PORT=3002" > .env
+         echo "HOST_PORT=3010" > .env
          docker compose up -d
 
      Só a porta EXTERNA muda. Por dentro o servidor continua na 3001, então
      nada mais precisa ser ajustado.
 
-     Depois, libere a porta nova e use o endereço novo no app:
-         ufw allow 3002/tcp          (+ regra no painel da Hostinger)
-         http://SEU_IP:3002
+     Depois libere a porta nova e use o endereço novo no app:
+         ufw allow 3010/tcp          (+ regra no painel da Hostinger)
+         http://$ENDERECO:3010
 EOF
+fi
 echo

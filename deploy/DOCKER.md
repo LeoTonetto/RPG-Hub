@@ -88,7 +88,7 @@ outra coisa na VPS já está usando a 3001, e o Docker não consegue publicar.
 Rode o diagnóstico — ele diz exatamente quem é e o que fazer:
 
 ```bash
-./deploy/diagnostico.sh
+bash deploy/diagnostico.sh
 ```
 
 Os dois desfechos possíveis:
@@ -174,7 +174,7 @@ criar a sala.
 | Ver se está de pé | `docker compose ps` |
 | Entrar no container | `docker compose exec hub-rpg sh` |
 | Quantas salas abertas | `curl http://SEU_IP:3001/health` |
-| **Diagnosticar problema** | `./deploy/diagnostico.sh` |
+| **Diagnosticar problema** | `bash deploy/diagnostico.sh` |
 
 Todos rodando de dentro de `/opt/hub-rpg`.
 
@@ -184,7 +184,7 @@ Todos rodando de dentro de `/opt/hub-rpg`.
 
 ```bash
 cd /opt/hub-rpg
-./deploy/atualizar-docker.sh
+bash deploy/atualizar-docker.sh
 ```
 
 Ou na mão:
