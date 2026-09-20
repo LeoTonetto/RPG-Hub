@@ -18,9 +18,16 @@ services:
     # Volta sozinho depois de um crash ou de um reboot da VPS
     restart: unless-stopped
 
-    # host:container — mude só o lado esquerdo se a 3001 já estiver ocupada
+    # host:container
+    #
+    # A porta EXTERNA (esquerda) vem do .env, porque ela costuma precisar mudar:
+    # se outro serviço da VPS já estiver na 3001, o container nem inicia.
+    #
+    #     echo "HOST_PORT=3002" > .env  &&  docker compose up -d
+    #
+    # A porta interna fica sempre 3001 — nada mais precisa ser ajustado.
     ports:
-      - "3001:3001"
+      - "${HOST_PORT:-3001}:3001"
 
     environment:
       NODE_ENV: production

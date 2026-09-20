@@ -80,6 +80,40 @@ curl http://localhost:3001/health
 
 Se voltar `{"ok":true,...}`, o container está funcionando.
 
+### Deu "created" em vez de "running"?
+
+Container criado mas que não inicia é, quase sempre, **porta ocupada**: alguma
+outra coisa na VPS já está usando a 3001, e o Docker não consegue publicar.
+
+Rode o diagnóstico — ele diz exatamente quem é e o que fazer:
+
+```bash
+./deploy/diagnostico.sh
+```
+
+Os dois desfechos possíveis:
+
+**a) É o próprio Hub-RPG rodando fora do container.** Acontece se você tiver
+experimentado a instalação direta antes. Não deixe os dois de pé: as salas
+ficariam registradas num servidor e os jogadores conectando no outro. Desligue
+o de fora:
+
+```bash
+systemctl disable --now hub-rpg
+docker compose up -d
+```
+
+**b) É outro serviço seu.** Aí mude a porta externa do Hub-RPG, que é só uma
+linha:
+
+```bash
+echo "HOST_PORT=3002" > .env
+docker compose up -d
+```
+
+Por dentro o servidor continua na 3001; muda só por onde ele é acessado. Depois
+libere a porta nova no passo 4 e use `http://SEU_IP:3002` no app.
+
 ---
 
 ## 4. Abrir a porta 3001
@@ -90,7 +124,7 @@ São **dois** firewalls, e esquecer o segundo é o erro mais comum.
 
 ```bash
 ufw allow 22/tcp
-ufw allow 3001/tcp
+ufw allow 3001/tcp      # ou a porta que você pôs em HOST_PORT
 ufw --force enable
 ```
 
@@ -140,6 +174,7 @@ criar a sala.
 | Ver se está de pé | `docker compose ps` |
 | Entrar no container | `docker compose exec hub-rpg sh` |
 | Quantas salas abertas | `curl http://SEU_IP:3001/health` |
+| **Diagnosticar problema** | `./deploy/diagnostico.sh` |
 
 Todos rodando de dentro de `/opt/hub-rpg`.
 
@@ -191,15 +226,15 @@ Tudo por variável de ambiente, no `docker-compose.yml`:
 
 Mudou algo? `docker compose up -d` aplica.
 
-**Porta 3001 já ocupada na VPS?** Mude só o lado esquerdo do mapeamento no
-`docker-compose.yml`:
+**Porta 3001 já ocupada na VPS?** Não precisa editar o compose — use o `.env`:
 
-```yaml
-ports:
-  - "3010:3001"
+```bash
+echo "HOST_PORT=3010" > .env
+docker compose up -d
 ```
 
-E use `http://SEU_IP:3010` no app.
+E use `http://SEU_IP:3010` no app. Tem um `.env.exemplo` na raiz do projeto com
+as opções comentadas.
 
 ---
 

@@ -5,3 +5,4 @@ build/
 scenes/
 *.exe
 cenas/
+.env
