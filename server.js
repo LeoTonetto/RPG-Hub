@@ -15,11 +15,14 @@ const { createServer } = require('http')
 const { Server } = require('socket.io')
 const crypto = require('crypto')
 
-const { setupSceneRoutes } = require('./server/scenes')
+const {
+    setupSceneRoutes, limparCenasDaSala, limparCenasOrfas, tamanhoDasCenas,
+} = require('./server/scenes')
 const { setupSocketHandlers } = require('./server/handlers')
 const {
     roomCodes, urlCodes, rooms, roomOwners,
     normalizeUrl, limparSalasVencidas,
+    registrarAoFecharSala, salasAtivas, SALA_VAZIA_MS,
 } = require('./server/roomState')
 
 const PORTA = parseInt(process.env.PORT, 10) || 3001
@@ -43,6 +46,7 @@ app.get('/health', (req, res) => {
         ok: true,
         salas: Object.keys(roomOwners).length,
         conectados: Object.values(rooms).reduce((n, r) => n + Object.keys(r).length, 0),
+        cenas: tamanhoDasCenas(),
         uptime: Math.round(process.uptime()),
     })
 })
@@ -110,11 +114,14 @@ app.post('/cleanup-room', express.json(), (req, res) => {
     const { roomCode, masterToken } = req.body || {}
     const sala = (roomCode || '').toUpperCase()
     const dono = roomOwners[sala]
-    // Só o dono encerra. Sem token, ignora em silêncio — o TTL recicla depois.
+    // Só o dono encerra. Sem token, ignora em silêncio — a varredura recicla depois.
     if (!dono || !masterToken || masterToken !== dono.token) return res.json({ ok: false })
 
-    dono.lastSeen = 0            // vence na próxima varredura
-    console.log(`[Sala] ${sala} marcada para reciclagem pelo dono`)
+    // Marca como vazia há bastante tempo: a próxima varredura fecha e apaga as
+    // cenas. Não fechamos na hora de propósito — o mestre pode estar só
+    // reiniciando o app, e os jogadores continuariam conectados.
+    dono.vazioDesde = Date.now() - SALA_VAZIA_MS
+    console.log(`[Sala] ${sala} marcada para fechar pelo dono`)
     res.json({ ok: true })
 })
 
@@ -125,8 +132,18 @@ app.use(express.static(__dirname))
 
 setupSocketHandlers(io)
 
-// Varre salas abandonadas de hora em hora
-const varredura = setInterval(limparSalasVencidas, 60 * 60 * 1000)
+// ── Ciclo de vida das salas ──────────────────────────────────────────────────
+// Quando uma sala fecha, o que ela enviou some junto. Sem isto, os vídeos de
+// fundo ficariam ocupando disco para sempre.
+registrarAoFecharSala(code => limparCenasDaSala(code))
+
+// As salas vivem em memória, então ao subir o servidor nenhuma existe: tudo que
+// estiver na pasta de cenas é sobra de antes do reinício.
+limparCenasOrfas(salasAtivas())
+
+// Varredura de minuto em minuto. Antes era de hora em hora, o que somado à
+// tolerância antiga deixava a sala de pé por até 13h depois de esvaziar.
+const varredura = setInterval(limparSalasVencidas, 60 * 1000)
 varredura.unref?.()
 
 // ── Inicialização ─────────────────────────────────────────────────────────────

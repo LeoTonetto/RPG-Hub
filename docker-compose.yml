@@ -37,6 +37,11 @@ services:
       SCENE_MAX_MB: 150
       # Quantas cenas guardar antes de podar as mais antigas
       SCENE_KEEP: 30
+      # Minutos que a sala espera vazia antes de fechar (e apagar as cenas
+      # dela). A carencia aguenta queda de Wi-Fi, reinicio do app e intervalo.
+      ROOM_EMPTY_MINUTES: 10
+      # Teto absoluto de uma sala, mesmo com gente conectada
+      ROOM_MAX_HOURS: 24
 
     volumes:
       # As cenas sobrevivem a `down`, rebuild e atualização

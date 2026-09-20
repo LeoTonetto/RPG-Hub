@@ -31,49 +31,124 @@ const roomMissions = {}  // { roomCode: [{ id, objective, status }] }
 // ══════════════════════════════════════════════════════════════════════════════
 const roomOwners = {}
 
-// Salas sem ninguém conectado por mais que isto são recicladas, para o código
-// de 6 caracteres poder ser usado de novo.
-const SALA_TTL_MS = 12 * 60 * 60 * 1000   // 12 horas
+// ══════════════════════════════════════════════════════════════════════════════
+// ── QUANDO A SALA FECHA ──────────────────────────────────────────────────────
+//
+// Eram 12 horas de tolerância, varridas de hora em hora — na prática uma sala
+// ficava de pé até 13h depois de todo mundo sair, segurando os vídeos de fundo
+// no disco e o código de 6 letras reservado.
+//
+// Agora a sala fecha alguns minutos depois de esvaziar. A carência existe para
+// aguentar o normal: alguém caiu o Wi-Fi, o mestre reiniciou o app, todo mundo
+// saiu para o intervalo. Dez minutos cobrem isso com folga.
+// ══════════════════════════════════════════════════════════════════════════════
+const SALA_VAZIA_MS = (parseInt(process.env.ROOM_EMPTY_MINUTES, 10) > 0
+    ? parseInt(process.env.ROOM_EMPTY_MINUTES, 10)
+    : 10) * 60 * 1000
+
+// Teto absoluto: mesmo com gente conectada, uma sala esquecida aberta por dias
+// (app minimizado, máquina ligada) acaba sendo reciclada.
+const SALA_TTL_MS = (parseInt(process.env.ROOM_MAX_HOURS, 10) > 0
+    ? parseInt(process.env.ROOM_MAX_HOURS, 10)
+    : 24) * 60 * 60 * 1000
+
+// Quem quiser ser avisado do fechamento se registra aqui. É assim que a
+// limpeza das cenas entra, sem roomState precisar conhecer o módulo de cenas.
+const ouvintesDeFechamento = []
+
+function registrarAoFecharSala(fn) {
+    if (typeof fn === 'function') ouvintesDeFechamento.push(fn)
+}
 
 function normalizeUrl(url) {
     return url.toLowerCase().replace(/\/$/, '')
 }
 
-/** Marca atividade na sala, adiando a reciclagem. */
+/** Marca atividade na sala e cancela a contagem de sala vazia. */
 function tocarSala(roomCode) {
-    if (roomOwners[roomCode]) roomOwners[roomCode].lastSeen = Date.now()
+    const sala = roomOwners[roomCode]
+    if (!sala) return
+    sala.lastSeen = Date.now()
+    sala.vazioDesde = null
 }
 
-/** Remove salas vazias e vencidas. Chamado periodicamente pelo servidor. */
+/** Derruba a sala e tudo que pertence a ela. */
+function fecharSala(code, motivo = 'inatividade') {
+    const sala = roomOwners[code]
+    const url = sala && sala.url
+
+    delete roomOwners[code]
+    delete roomCodes[code]
+    if (url) delete urlCodes[normalizeUrl(url)]
+    delete rooms[code]
+    delete roomChars[code]
+    delete roomMusic[code]
+    delete roomMasters[code]
+    delete roomScene[code]
+    delete roomNPCs[code]
+    delete roomReputation[code]
+    delete roomMissions[code]
+
+    // Avisa quem precisa limpar o que ficou para trás (cenas, por exemplo)
+    ouvintesDeFechamento.forEach(fn => {
+        try { fn(code, motivo) } catch (e) { console.warn('[Salas] ouvinte falhou:', e.message) }
+    })
+
+    console.log(`[Salas] ${code} fechada (${motivo})`)
+}
+
+/**
+ * Varre as salas e fecha as que passaram do tempo. Roda de minuto em minuto.
+ *
+ * A contagem de "vazia desde" é feita aqui, e não no disconnect, de propósito:
+ * assim ela não depende do handler de desconexão ter rodado — se o processo
+ * perdeu um evento, a varredura seguinte corrige sozinha.
+ */
 function limparSalasVencidas() {
     const agora = Date.now()
-    let removidas = 0
-    for (const code of Object.keys(roomOwners)) {
-        const temGente = rooms[code] && Object.keys(rooms[code]).length > 0
-        if (temGente) { roomOwners[code].lastSeen = agora; continue }
-        if (agora - (roomOwners[code].lastSeen || 0) < SALA_TTL_MS) continue
+    const fechadas = []
 
-        const url = roomOwners[code].url
-        delete roomOwners[code]
-        delete roomCodes[code]
-        if (url) delete urlCodes[normalizeUrl(url)]
-        delete rooms[code]
-        delete roomChars[code]
-        delete roomMusic[code]
-        delete roomMasters[code]
-        delete roomScene[code]
-        delete roomNPCs[code]
-        delete roomReputation[code]
-        delete roomMissions[code]
-        removidas++
+    for (const code of Object.keys(roomOwners)) {
+        const sala = roomOwners[code]
+        const gente = rooms[code] ? Object.keys(rooms[code]).length : 0
+
+        if (gente > 0) {
+            sala.lastSeen = agora
+            sala.vazioDesde = null
+
+            // Teto absoluto, mesmo com gente dentro
+            if (agora - (sala.createdAt || agora) > SALA_TTL_MS) {
+                fecharSala(code, 'tempo máximo de sala')
+                fechadas.push(code)
+            }
+            continue
+        }
+
+        // Esvaziou agora: começa a contar a carência
+        if (!sala.vazioDesde) {
+            sala.vazioDesde = agora
+            continue
+        }
+
+        if (agora - sala.vazioDesde >= SALA_VAZIA_MS) {
+            fecharSala(code, `vazia há ${Math.round((agora - sala.vazioDesde) / 60000)} min`)
+            fechadas.push(code)
+        }
     }
-    if (removidas) console.log(`[Salas] ${removidas} sala(s) inativa(s) recicladas`)
-    return removidas
+
+    return fechadas
+}
+
+/** Códigos das salas abertas — usado para achar cenas órfãs. */
+function salasAtivas() {
+    return Object.keys(roomOwners)
 }
 
 module.exports = {
     rooms, roomCodes, urlCodes, roomChars,
     roomMusic, roomMasters, roomScene, roomNPCs,
     roomReputation, roomMissions, roomOwners,
-    normalizeUrl, tocarSala, limparSalasVencidas, SALA_TTL_MS,
+    normalizeUrl, tocarSala, fecharSala, limparSalasVencidas,
+    registrarAoFecharSala, salasAtivas,
+    SALA_TTL_MS, SALA_VAZIA_MS,
 }

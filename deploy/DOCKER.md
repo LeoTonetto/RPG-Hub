@@ -195,7 +195,12 @@ git pull
 docker compose up -d --build
 ```
 
-As cenas já enviadas **não se perdem**: ficam num volume separado da imagem.
+As cenas já enviadas **não se perdem** no rebuild: ficam num volume separado da
+imagem. Elas são apagadas quando a **sala** fecha, não quando o container
+reinicia.
+
+> Como as salas vivem em memória, reiniciar o servidor derruba todas — e o
+> Hub-RPG aproveita o boot para limpar as cenas que ficaram órfãs.
 
 ---
 
@@ -222,7 +227,9 @@ Tudo por variável de ambiente, no `docker-compose.yml`:
 | `PORT` | `3001` | Porta dentro do container |
 | `SCENES_DIR` | `/dados/cenas` | Onde as cenas são gravadas (é o volume) |
 | `SCENE_MAX_MB` | `150` | Teto de cada arquivo de cena |
-| `SCENE_KEEP` | `30` | Quantas cenas guardar antes de podar as antigas |
+| `SCENE_KEEP` | `30` | Quantas cenas guardar por sala, como rede de segurança |
+| `ROOM_EMPTY_MINUTES` | `10` | Minutos vazia antes da sala fechar (e apagar as cenas dela) |
+| `ROOM_MAX_HOURS` | `24` | Teto absoluto de uma sala, mesmo com gente dentro |
 
 Mudou algo? `docker compose up -d` aplica.
 

@@ -110,6 +110,13 @@ function buildCharCard(char, ownerName) {
         if (stats.sanity != null) info.appendChild(buildStatRow('Sanidade', stats.sanity, stats.sanity_max ?? stats.sanity, 'san-fill', 'sanity'))
     }
 
+    // ── Condicoes ativas ─────────────────────────────────────────────────────
+    // Agarrado, caido, sangrando... a mesa precisa ver isso de relance, sem
+    // abrir a ficha de cada um
+    if (sysDef?.cardCondicoes) {
+        info.appendChild(buildCondicoesRow(stats.condicoes))
+    }
+
     card.appendChild(info)
 
     // Indicador de morte (HP = 0)
@@ -126,6 +133,37 @@ function buildCharCard(char, ownerName) {
     })
 
     return card
+}
+
+/**
+ * Fileira de condicoes do card. Devolve sempre o elemento (vazio quando nao ha
+ * condicao), para o updateCardStat conseguir trocar o conteudo sem remontar o
+ * card inteiro.
+ */
+function buildCondicoesRow(condicoes) {
+    const row = document.createElement('div')
+    row.className = 'char-card-cond'
+    row.dataset.statField = 'condicoes'
+    preencherCondicoes(row, condicoes)
+    return row
+}
+
+function preencherCondicoes(row, condicoes) {
+    row.innerHTML = ''
+    const lista = Array.isArray(condicoes) ? condicoes : []
+    row.style.display = lista.length ? 'flex' : 'none'
+    if (!lista.length) return
+
+    const { CONDICAO_POR_ID } = require('./calico')
+    lista.forEach(id => {
+        const def = CONDICAO_POR_ID[id]
+        if (!def) return
+        const chip = document.createElement('span')
+        chip.className = 'char-cond-chip cond-' + id
+        chip.textContent = def.icon
+        chip.title = `${def.nome} — ${def.efeito}`
+        row.appendChild(chip)
+    })
 }
 
 function buildPhotoPlaceholder() {
@@ -172,6 +210,18 @@ function updateCardStat(charId, field, value) {
         if (extraDef) {
             const el = card.querySelector(`[data-stat-field="${field}"]`)
             if (el) el.textContent = `${extraDef.label} ${value}`
+        }
+
+        // Condicoes mudam em pleno combate: o card acompanha na hora
+        if (field === 'condicoes' && sysDef.cardCondicoes) {
+            const row = card.querySelector('[data-stat-field="condicoes"]')
+            if (row) {
+                preencherCondicoes(row, value)
+                card.classList.remove('cond-flash')
+                void card.offsetWidth
+                card.classList.add('cond-flash')
+                setTimeout(() => card.classList.remove('cond-flash'), 900)
+            }
         }
     }
 

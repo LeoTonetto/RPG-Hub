@@ -69,6 +69,8 @@ const state = {
     // Preferencias do jogador (ver config.js)
     cursorColor: null,     // cor do proprio cursor, vista pelos outros
     veuOpacidade: 1,       // escurecido por cima da cena; 0 = limpo
+    zoom: 1,               // escala da interface inteira; 1 = tamanho original
+    cursorProprio: false,  // true = esconde o cursor do sistema e desenha o da plataforma
 
     // UI
     hudVisible: true,

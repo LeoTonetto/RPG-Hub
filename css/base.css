@@ -27,6 +27,14 @@ body {
     width: 100vw;
     height: 100vh;
     font-family: 'Crimson Text', Georgia, serif;
+
+    /* CAUSA RAIZ dos ícones invisíveis: sem um `color` aqui, tudo que não
+       define a própria cor herda o preto padrão do navegador. Em fundo escuro
+       isso some — foi o que aconteceu com os ícones das perícias, porque vários
+       emoji (⚙ ⚕ 🕮 🗝 …) são glifos de TEXTO, não coloridos, e obedecem ao
+       `color`. Com o pergaminho como padrão, qualquer glifo monocromático que
+       entre no projeto daqui pra frente nasce legível. */
+    color: var(--parchment);
 }
 
 /* O "véu": o escurecido por cima da cena e dos vídeos de fundo.

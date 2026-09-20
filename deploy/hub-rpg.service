@@ -22,6 +22,8 @@ Environment=PORT=3001
 Environment=SCENES_DIR=/var/lib/hub-rpg/cenas
 Environment=SCENE_MAX_MB=150
 Environment=SCENE_KEEP=30
+Environment=ROOM_EMPTY_MINUTES=10
+Environment=ROOM_MAX_HOURS=24
 
 StandardOutput=journal
 StandardError=journal

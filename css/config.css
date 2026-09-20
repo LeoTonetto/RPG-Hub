@@ -254,3 +254,170 @@ body.hud-hidden #configToggle {
 body.hud-hidden #configToggle:hover {
     opacity: 1;
 }
+
+/* ══ TAMANHO DA INTERFACE ══ */
+/* Presets de zoom. O zoom do Electron escala tudo junto, então nada aqui
+   precisa saber das medidas do resto da interface. */
+.cfg-zoom-opts {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+}
+
+.cfg-zoom-opt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    padding: 6px 2px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(201, 168, 76, 0.15);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+
+.cfg-zoom-opt:hover {
+    border-color: rgba(201, 168, 76, 0.5);
+    background: rgba(201, 168, 76, 0.05);
+}
+
+.cfg-zoom-opt.ativa {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.13);
+}
+
+.cfg-zoom-nome {
+    font-family: 'Cinzel', serif;
+    font-size: 7.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(244, 234, 213, 0.5);
+    white-space: nowrap;
+}
+
+.cfg-zoom-opt.ativa .cfg-zoom-nome {
+    color: var(--gold);
+}
+
+.cfg-zoom-pct {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(244, 234, 213, 0.75);
+}
+
+.cfg-zoom-opt.ativa .cfg-zoom-pct {
+    color: var(--gold);
+}
+
+/* Ajuste fino, para um valor entre os presets */
+.cfg-zoom-fino {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.cfg-zoom-passo {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    color: var(--gold);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+    transition: all 0.12s;
+}
+
+.cfg-zoom-passo:hover:not(:disabled) {
+    border-color: var(--gold);
+    background: rgba(201, 168, 76, 0.1);
+}
+
+.cfg-zoom-passo:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+}
+
+.cfg-zoom-atual {
+    font-family: 'Cinzel', serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--gold);
+    min-width: 52px;
+    text-align: center;
+}
+
+/* ══ CURSOR DA PLATAFORMA NA PRÓPRIA TELA ══ */
+/* Quando ligado, o cursor do sistema some e o app desenha o ponteiro.
+   O I-beam continua nos campos de texto: digitar sem ele é ruim. */
+body.cursor-plataforma,
+body.cursor-plataforma * {
+    cursor: none !important;
+}
+
+body.cursor-plataforma input[type="text"],
+body.cursor-plataforma input[type="password"],
+body.cursor-plataforma input[type="number"],
+body.cursor-plataforma input:not([type]),
+body.cursor-plataforma textarea {
+    cursor: text !important;
+}
+
+/* O próprio ponteiro fica acima de tudo, inclusive dos overlays */
+#meuCursor.cursor-proprio {
+    z-index: 4000;
+    transform: translate(-50%, -50%);
+}
+
+/* ══ CHECKBOX DE CONFIGURAÇÃO ══ */
+.cfg-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 7px 9px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(201, 168, 76, 0.12);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.cfg-check:hover {
+    border-color: rgba(201, 168, 76, 0.4);
+}
+
+.cfg-check input[type="checkbox"] {
+    accent-color: var(--gold);
+    cursor: pointer;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.cfg-check-txt {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.cfg-check-nome {
+    font-size: 11.5px;
+    color: rgba(244, 234, 213, 0.8);
+    line-height: 1.3;
+}
+
+.cfg-check-sub {
+    font-size: 10px;
+    color: rgba(244, 234, 213, 0.32);
+    line-height: 1.4;
+}

@@ -2085,3 +2085,53 @@
     border-color: #7d5ba6;
     background: rgba(125, 91, 166, 0.25);
 }
+
+/* ══ CONDIÇÕES NO CARD DO PERSONAGEM ══ */
+/* A mesa precisa ver de relance quem está agarrado, caído ou sangrando, sem
+   abrir a ficha de cada um. Só os ícones: o nome e o efeito vão no tooltip. */
+.char-card-cond {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    margin-top: 3px;
+}
+
+.char-cond-chip {
+    font-size: 11px;
+    line-height: 1;
+    padding: 2px 3px;
+    border-radius: 2px;
+    background: rgba(139, 26, 26, 0.25);
+    border: 1px solid rgba(139, 26, 26, 0.5);
+    cursor: help;
+}
+
+/* As que sangram o recurso a cada turno pulsam, para não passarem batido */
+.char-cond-chip.cond-sangrando,
+.char-cond-chip.cond-queimando {
+    animation: condPulsa 1.6s ease-in-out infinite;
+    border-color: rgba(192, 57, 43, 0.85);
+}
+
+@keyframes condPulsa {
+    0%, 100% { background: rgba(139, 26, 26, 0.25); }
+    50% { background: rgba(192, 57, 43, 0.5); }
+}
+
+/* As de estado (não de dano) ficam mais discretas */
+.char-cond-chip.cond-desprevenido,
+.char-cond-chip.cond-caido,
+.char-cond-chip.cond-abalado {
+    background: rgba(201, 168, 76, 0.12);
+    border-color: rgba(201, 168, 76, 0.35);
+}
+
+/* Condição nova ou removida: um brilho curto para o mestre perceber */
+.char-card.cond-flash {
+    animation: condFlash 0.9s ease;
+}
+
+@keyframes condFlash {
+    0%, 100% { box-shadow: none; }
+    35% { box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.55), 0 0 16px rgba(192, 57, 43, 0.35); }
+}

@@ -80,6 +80,9 @@ const SYSTEMS = {
         cardExtras: [
             { label: 'NV', key: 'nivel' },
         ],
+        // O card mostra as condicoes ativas para a mesa inteira ver o estado
+        // do personagem sem precisar abrir a ficha (§7.8)
+        cardCondicoes: true,
         popupStats: [
             { key: 'hp', maxKey: 'hp_max', label: '❤ PV', hasMax: true, flashField: 'hp' },
             { key: 'sanity', maxKey: 'sanity_max', label: '🕯 PD', hasMax: true, flashField: 'sanity' },

@@ -101,27 +101,33 @@ const ATRIBUTOS = [
 ]
 
 // ══ 3. PERÍCIAS — são 20, fixas. Não criar novas. ════════════════════════════
+//
+// NOTA SOBRE OS ÍCONES: use só emoji cuja apresentação PADRÃO no Unicode seja
+// colorida (Emoji_Presentation=Yes). Caracteres como ⚙ U+2699, ⚕ U+2695 ou
+// 🕮 U+1F56E são, por padrão, glifos de TEXTO — o Windows desenha em preto, e
+// no fundo escuro do app eles somem. O seletor de variação (U+FE0F) até força
+// a versão colorida, mas não em toda fonte; trocar o caractere é mais seguro.
 // `idPlaytest` guarda o ID oficial quando o rótulo foi re-ambientado para 1890,
 // para permitir importar conteúdo oficial no futuro sem migrar as fichas.
 const PERICIAS = [
     { key: 'acrobacia', label: 'Acrobacia', attr: 'fisico', icon: '🤸', desc: 'Equilíbrio, rolamento, saltos, escalada rápida, se firmar em coisa em movimento' },
     { key: 'aptidao', label: 'Aptidão', attr: 'mente', icon: '🎓', desc: 'Conhecimento em campo específico — exige especialização', temEspecializacao: true },
     { key: 'atletismo', label: 'Atletismo', attr: 'fisico', icon: '🏃', desc: 'Correr, saltar, escalar, nadar, arrombar na força' },
-    { key: 'crime', label: 'Crime', attr: 'fisico', icon: '🗝', desc: 'Furtar, abrir fechaduras, gazua, falsificar, marcar baralho' },
-    { key: 'disciplina', label: 'Disciplina', attr: 'emocao', icon: '🕯', desc: 'Resistir a trauma, susto, pânico, dor' },
+    { key: 'crime', label: 'Crime', attr: 'fisico', icon: '🔑', desc: 'Furtar, abrir fechaduras, gazua, falsificar, marcar baralho' },
+    { key: 'disciplina', label: 'Disciplina', attr: 'emocao', icon: '🧘', desc: 'Resistir a trauma, susto, pânico, dor' },
     { key: 'enganacao', label: 'Enganação', attr: 'emocao', icon: '🃏', desc: 'Mentir, blefar, disfarçar-se, seduzir' },
     { key: 'furtividade', label: 'Furtividade', attr: 'fisico', icon: '🌑', desc: 'Esconder-se, andar sem ser visto ou ouvido' },
     { key: 'intimidacao', label: 'Intimidação', attr: 'emocao', icon: '😠', desc: 'Assustar, coagir, encarar' },
-    { key: 'intuicao', label: 'Intuição', attr: 'emocao', icon: '👁', desc: 'Sexto sentido, ler pessoas e ambientes' },
+    { key: 'intuicao', label: 'Intuição', attr: 'emocao', icon: '🔮', desc: 'Sexto sentido, ler pessoas e ambientes' },
     { key: 'luta', label: 'Luta', attr: 'fisico', icon: '👊', desc: 'Ataque desarmado ou corpo a corpo' },
-    { key: 'maquinario', label: 'Maquinário', attr: 'mente', icon: '⚙', desc: 'Locomotiva, moinho, bomba de mina, carroça, telégrafo', idPlaytest: 'maquinas' },
-    { key: 'medicina', label: 'Medicina', attr: 'mente', icon: '⚕', desc: 'Primeiros socorros, extrair bala, costurar, necropsia' },
-    { key: 'ocultismo', label: 'Ocultismo', attr: 'mente', icon: '🕮', desc: 'Conhecimento sobre o paranormal, superstição, folclore', naoSugerir: true },
+    { key: 'maquinario', label: 'Maquinário', attr: 'mente', icon: '🚂', desc: 'Locomotiva, moinho, bomba de mina, carroça, telégrafo', idPlaytest: 'maquinas' },
+    { key: 'medicina', label: 'Medicina', attr: 'mente', icon: '🩹', desc: 'Primeiros socorros, extrair bala, costurar, necropsia' },
+    { key: 'ocultismo', label: 'Ocultismo', attr: 'mente', icon: '📿', desc: 'Conhecimento sobre o paranormal, superstição, folclore', naoSugerir: true },
     { key: 'percepcao', label: 'Percepção', attr: 'mente', icon: '🔍', desc: 'Notar por visão, audição, olfato; revistar' },
-    { key: 'persuasao', label: 'Persuasão', attr: 'emocao', icon: '🗣', desc: 'Convencer, negociar, lábia' },
+    { key: 'persuasao', label: 'Persuasão', attr: 'emocao', icon: '💬', desc: 'Convencer, negociar, lábia' },
     { key: 'pesquisar', label: 'Pesquisar', attr: 'mente', icon: '📚', desc: 'Documentos, registros, cartório, arquivo de jornal, analisar evidência' },
     { key: 'pontaria', label: 'Pontaria', attr: 'fisico', icon: '🔫', desc: 'Armas de fogo, arremesso, arco' },
-    { key: 'sobrevivencia', label: 'Sobrevivência', attr: 'mente', icon: '🏕', desc: 'Acampar, rastrear, ler terreno, cavalgar, lidar com animais' },
+    { key: 'sobrevivencia', label: 'Sobrevivência', attr: 'mente', icon: '⛺', desc: 'Acampar, rastrear, ler terreno, cavalgar, lidar com animais' },
     { key: 'engenhoca', label: 'Engenhoca', attr: 'mente', icon: '🧨', desc: 'Dinamite, mecanismos, cofres industriais, equipamento de mineração', idPlaytest: 'tecnologia' },
     { key: 'vigor', label: 'Vigor', attr: 'fisico', icon: '🫀', desc: 'Fôlego, resistir a veneno, suportar ferimento, não morrer' },
 ]
@@ -159,7 +165,7 @@ const PERFIS = [
         placeholder: true,
     },
     {
-        id: 'vigilante', nome: 'Vigilante', icon: '👁',
+        id: 'vigilante', nome: 'Vigilante', icon: '🦉',
         descricao: 'Sempre atento. Aproveita brechas, age primeiro, decide sob pressão',
         habilidadeNome: 'Nunca Surpreendido',
         habilidadeTexto: 'Você nunca fica surpreendido. Quando seria, você age normalmente na primeira rodada.',
@@ -176,9 +182,9 @@ const OCUPACOES = [
     { id: 'trapaceiro', nome: 'Trapaceiro', icon: '🃏', habilidadeNome: 'Carta na Manga', habilidadeTexto: 'Uma vez por cena, gaste 1 PD para trocar o resultado de um dos seus dados por 4.' },
     { id: 'barbeiro_cirurgiao', nome: 'Barbeiro-cirurgião', icon: '🪒', habilidadeNome: 'Mão Firme', habilidadeTexto: 'Fora de combate, gaste 1 PD para restaurar 1d4 PV a um aliado. Uma vez por aliado por descanso.' },
     { id: 'batedor', nome: 'Batedor', icon: '🧭', habilidadeNome: 'Leitura de Terreno', habilidadeTexto: 'Uma vez por cena, faça uma pergunta ao mestre sobre o ambiente físico. A resposta é verdadeira.' },
-    { id: 'pregador', nome: 'Pregador', icon: '✝', habilidadeNome: 'Palavra de Conforto', habilidadeTexto: 'Uma vez por cena, ajude um aliado em um teste de Disciplina sem gastar sua ação.' },
+    { id: 'pregador', nome: 'Pregador', icon: '🙏', habilidadeNome: 'Palavra de Conforto', habilidadeTexto: 'Uma vez por cena, ajude um aliado em um teste de Disciplina sem gastar sua ação.' },
     { id: 'ferroviario', nome: 'Ferroviário', icon: '🚂', habilidadeNome: 'Homem de Trilho', habilidadeTexto: '+1 passo em testes de Maquinário e em qualquer teste feito dentro ou sobre um trem.' },
-    { id: 'garimpeiro', nome: 'Garimpeiro', icon: '⛏', habilidadeNome: 'Faro de Rocha', habilidadeTexto: '+1 passo em testes de Engenhoca e Atletismo envolvendo rocha, mina, túnel ou explosivo.' },
+    { id: 'garimpeiro', nome: 'Garimpeiro', icon: '💎', habilidadeNome: 'Faro de Rocha', habilidadeTexto: '+1 passo em testes de Engenhoca e Atletismo envolvendo rocha, mina, túnel ou explosivo.' },
 ]
 
 // ══ 1.9 DIFICULDADES ═════════════════════════════════════════════════════════

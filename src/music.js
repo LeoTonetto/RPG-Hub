@@ -185,7 +185,14 @@ function initMusicPanel() {
             const arrayBuffer = await file.arrayBuffer()
             const res = await fetch(`${state.serverUrl}/upload-scene`, {
                 method: 'POST',
-                headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-File-Ext': ext, 'ngrok-skip-browser-warning': 'true' },
+                headers: {
+                    'Content-Type': file.type || 'application/octet-stream',
+                    'X-File-Ext': ext,
+                    // A sala vai junto para o arquivo cair na pasta dela e ser
+                    // apagado quando ela fechar
+                    'X-Room-Code': state.currentRoomCode || '',
+                    'ngrok-skip-browser-warning': 'true',
+                },
                 body: arrayBuffer
             })
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
