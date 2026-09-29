@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu } = require('electron')
+const { app, BrowserWindow, ipcMain, Menu, dialog } = require('electron')
 const { startServer } = require('./server')
 const { spawn } = require('child_process')
 const http = require('http')
@@ -243,6 +243,53 @@ function getNgrokUrl() {
     })
 }
 
+// ── Atualização automática ────────────────────────────────────────────────────
+// Lê o `latest.yml` da URL em build.publish (package.json). Se a versão de lá
+// for maior que a instalada, baixa em segundo plano e pergunta se pode
+// reiniciar. Se o jogador disser "depois", instala sozinho ao fechar o app.
+//
+// Para publicar: suba a versão no package.json, rode `npm run build` e copie
+// para a pasta de downloads o latest.yml, o .exe e o .exe.blockmap do dist/.
+const ATUALIZACAO_INTERVALO_MS = 60 * 60 * 1000
+
+function iniciarAtualizacaoAutomatica() {
+    // Rodando com `npm start` não há instalador para trocar
+    if (!app.isPackaged) { log('[Update] Modo dev, atualização desligada'); return }
+
+    let autoUpdater
+    try { ({ autoUpdater } = require('electron-updater')) }
+    catch (e) { log('[Update] electron-updater indisponível:', e.message); return }
+
+    autoUpdater.autoDownload = true
+    autoUpdater.autoInstallOnAppQuit = true
+    autoUpdater.logger = { info: m => log('[Update]', m), warn: m => log('[Update] AVISO', m), error: m => log('[Update] ERRO', m), debug: () => { } }
+
+    let perguntou = false
+    autoUpdater.on('update-available', info => log('[Update] Nova versão disponível:', info.version))
+    autoUpdater.on('update-not-available', () => log('[Update] Já está na versão mais recente:', app.getVersion()))
+    autoUpdater.on('error', err => log('[Update] Falha:', err && err.message || err))
+    autoUpdater.on('update-downloaded', async info => {
+        log('[Update] Versão', info.version, 'baixada')
+        if (perguntou) return
+        perguntou = true
+        const { response } = await dialog.showMessageBox(mainWindow && !mainWindow.isDestroyed() ? mainWindow : null, {
+            type: 'info',
+            buttons: ['Reiniciar agora', 'Depois'],
+            defaultId: 0,
+            cancelId: 1,
+            title: 'Atualização pronta',
+            message: `A versão ${info.version} do Hub-RPG foi baixada.`,
+            detail: 'Reinicie para aplicar. Se preferir continuar agora, ela é instalada quando você fechar o app.',
+        })
+        if (response === 0) autoUpdater.quitAndInstall()
+    })
+
+    const verificar = () => autoUpdater.checkForUpdates().catch(e => log('[Update] Falha ao verificar:', e.message))
+    verificar()
+    // Quem deixa o app aberto a sessão inteira também recebe
+    setInterval(verificar, ATUALIZACAO_INTERVALO_MS).unref?.()
+}
+
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 app.on('second-instance', () => createWindow())
 
@@ -266,6 +313,7 @@ app.whenReady().then(async () => {
     mainWindow = windows[0]
     log('[Main] App pronto. Logs em:', LOG_FILE)
     log('[Main] Pressione F12 no app para abrir o DevTools do renderer.')
+    iniciarAtualizacaoAutomatica()
 })
 
 // ── Criar sala ────────────────────────────────────────────────────────────────

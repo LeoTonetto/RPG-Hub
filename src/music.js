@@ -181,23 +181,8 @@ function initMusicPanel() {
         scenePickerBtn.textContent = '⏳ Enviando…'
         scenePickerBtn.disabled = true
         try {
-            const ext = file.name.split('.').pop().toLowerCase()
-            const arrayBuffer = await file.arrayBuffer()
-            const res = await fetch(`${state.serverUrl}/upload-scene`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': file.type || 'application/octet-stream',
-                    'X-File-Ext': ext,
-                    // A sala vai junto para o arquivo cair na pasta dela e ser
-                    // apagado quando ela fechar
-                    'X-Room-Code': state.currentRoomCode || '',
-                    'ngrok-skip-browser-warning': 'true',
-                },
-                body: arrayBuffer
-            })
-            if (!res.ok) throw new Error(`HTTP ${res.status}`)
-            const { scenePath } = await res.json()
-            state.socket.emit('scene_change', { url: `${state.serverUrl}${scenePath}`, mimeType: file.type })
+            const url = await require('./scene').enviarArquivoDaSala(file)
+            state.socket.emit('scene_change', { url, mimeType: file.type })
         } catch (e) {
             console.error('[Cena] Erro no upload:', e)
             scenePickerBtn.textContent = '✗ Erro no upload'

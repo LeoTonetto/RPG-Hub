@@ -187,6 +187,20 @@
                         <input id="charPhoto" type="file" accept="image/*" style="display:none;" />
                     </label>
                 </div>
+                <div class="input-wrap" id="exprWrap" style="display:none;">
+                    <span class="input-label">Expressões <span class="expr-hint">— feliz, triste, raiva…</span></span>
+                    <div id="exprList" class="expr-list"></div>
+                    <div class="expr-add-row">
+                        <input class="room-input" id="exprNome" type="text" maxlength="20"
+                            placeholder="Nome da expressão" autocomplete="off" />
+                        <label class="photo-upload-label expr-file-label" for="exprFile" id="exprFileLabel">
+                            <span>📷</span>
+                            <span id="exprFileText">Imagem</span>
+                            <input id="exprFile" type="file" accept="image/*" style="display:none;" />
+                        </label>
+                        <button type="button" class="expr-add-btn" id="exprAddBtn" title="Adicionar expressão">＋</button>
+                    </div>
+                </div>
                 <div class="input-wrap" id="systemSelectorWrap">
                     <span class="input-label">Sistema de Jogo</span>
                     <div id="systemSelector" class="system-selector"></div>
@@ -247,6 +261,9 @@
             <button id="scenePickerBtn">🖼 Trocar Cena</button>
             <input id="sceneFileInput" type="file"
                 accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" style="display:none;" />
+            <button id="imageShowBtn">🔍 Mostrar Imagem</button>
+            <input id="imageShowInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp"
+                style="display:none;" />
             <button id="sfxOpenBtn" style="display:none;">🔊 Efeitos Sonoros</button>
             <hr class="panel-divider">
             <div id="repMasterControls">
@@ -290,6 +307,7 @@
             <button class="stat-popup-close" id="statPopupClose">✕</button>
         </div>
         <div class="stat-popup-body" id="statTabStats">
+            <div id="statExprRow" style="display:none;"></div>
             <div id="statDynamicRows"></div>
             <button class="stat-inv-btn" id="openInventoryBtn">📦 Inventário</button>
         </div>

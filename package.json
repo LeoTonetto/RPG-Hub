@@ -1,6 +1,6 @@
 {
   "name": "hub-rpg",
-  "version": "4.5.2",
+  "version": "4.6.0",
   "description": "Lobby interativo para sessões de RPG",
   "author": "Tonetto",
   "main": "main.js",
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.100.1",
+    "electron-updater": "^6.8.9",
     "express": "^5.2.1",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.1"

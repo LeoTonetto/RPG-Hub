@@ -7,6 +7,27 @@ async function fetchAsBlobUrl(url) {
     return URL.createObjectURL(blob)
 }
 
+/**
+ * Sobe um arquivo para a pasta da sala no servidor e devolve a URL absoluta.
+ * O arquivo é apagado junto com a sala quando ela fecha.
+ */
+async function enviarArquivoDaSala(file) {
+    const ext = file.name.split('.').pop().toLowerCase()
+    const res = await fetch(`${state.serverUrl}/upload-scene`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': file.type || 'application/octet-stream',
+            'X-File-Ext': ext,
+            'X-Room-Code': state.currentRoomCode || '',
+            'ngrok-skip-browser-warning': 'true',
+        },
+        body: await file.arrayBuffer()
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const { scenePath } = await res.json()
+    return `${state.serverUrl}${scenePath}`
+}
+
 async function applyScene({ url, mimeType }) {
     const layerA = document.getElementById('bgA')
     const layerB = document.getElementById('bgB')
@@ -46,4 +67,4 @@ async function applyScene({ url, mimeType }) {
     }, 950)
 }
 
-module.exports = { applyScene }
+module.exports = { applyScene, fetchAsBlobUrl, enviarArquivoDaSala }

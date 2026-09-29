@@ -11,6 +11,7 @@ const { showConfigButton, emitirCor, COR_PADRAO } = require('./config')
 const { handleInventoryUpdate, handleItemShow, handleItemTransferred } = require('./inventory')
 const { initNPC, handleNPCSummon, handleNPCDismiss } = require('./npc')
 const { initSfxPanel, playSfxAudio } = require('./sfx')
+const { initImageShow, handleImageShow, handleImageHide } = require('./imageShow')
 const { showReputation, initReputation } = require('./reputation')
 const { initLockpicking, handleLockpickStart, handleLockpickResult } = require('./lockpicking')
 const { showJournalButtons, handleMissionsSync, showObjectiveBanner, hideObjectiveBanner, loadMissions } = require('./journal')
@@ -67,7 +68,7 @@ function connectToRoom(url, roomCode) {
 
     state.socket.on('master_status', isMaster => {
         state.isRoomMaster = isMaster
-        initMusicPanel(); initNPC(); initSfxPanel(); initReputation()
+        initMusicPanel(); initNPC(); initSfxPanel(); initReputation(); initImageShow()
         showJournalButtons()
         updateDiceMasterUI()   // mostra/esconde o interruptor de rolagem secreta
 
@@ -99,6 +100,8 @@ function connectToRoom(url, roomCode) {
     state.socket.on('music_stop', () => { stopYouTubeVideo(); hideMusicActive() })
     state.socket.on('play_sfx', ({ audioUrl, sfxName }) => { playSfxAudio(audioUrl) })
     state.socket.on('scene_change', data => applyScene(data))
+    state.socket.on('image_show', data => handleImageShow(data))
+    state.socket.on('image_hide', () => handleImageHide())
     state.socket.on('room_characters', allChars => renderCharacterBar(allChars))
 
     // ── Stats em tempo real ──────────────────────────────────────────────────
@@ -114,7 +117,9 @@ function connectToRoom(url, roomCode) {
 
         updateCardStat(charId, field, value)
 
-        if (state.statPopupCharId === charId) {
+        if (state.statPopupCharId === charId && (field === 'expressao' || field === 'expressoes')) {
+            require('./statPopup').renderExpressoesDaFicha()
+        } else if (state.statPopupCharId === charId) {
             const { onRemoteStatUpdate, isCalico } = require('./calicoSheet')
             if (isCalico(state.statPopupChar)) {
                 // Ficha do Calico: campos estruturados (perícias, armas, condições)

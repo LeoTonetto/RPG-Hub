@@ -68,12 +68,7 @@ function buildCharCard(char, ownerName) {
     if (ownerName === state.playerName) card.style.borderColor = 'rgba(201,168,76,0.65)'
 
     const photoWrap = document.createElement('div'); photoWrap.className = 'char-card-photo-wrap'
-    if (char.photo) {
-        const img = document.createElement('img')
-        img.className = 'char-card-photo'; img.src = char.photo; img.alt = char.name
-        img.onerror = () => { img.style.display = 'none'; photoWrap.appendChild(buildPhotoPlaceholder()) }
-        photoWrap.appendChild(img)
-    } else { photoWrap.appendChild(buildPhotoPlaceholder()) }
+    preencherFotoDoCard(photoWrap, char)
     card.appendChild(photoWrap)
 
     const info = document.createElement('div'); info.className = 'char-card-info'
@@ -166,6 +161,27 @@ function preencherCondicoes(row, condicoes) {
     })
 }
 
+// ── Expressões ────────────────────────────────────────────────────────────────
+// Variações da foto (feliz, triste, raiva…) moram nos stats, como o resto da
+// ficha: stats.expressoes = [{ nome, foto }] e stats.expressao = nome da ativa
+// ('' = foto padrão). Assim a troca viaja pelo mesmo stat_update de sempre e
+// quem entra depois já recebe a expressão certa.
+function fotoDoPersonagem(char) {
+    const s = char.stats || {}
+    const ativa = s.expressao && (s.expressoes || []).find(e => e.nome === s.expressao)
+    return (ativa && ativa.foto) || char.photo || null
+}
+
+function preencherFotoDoCard(photoWrap, char) {
+    photoWrap.innerHTML = ''
+    const foto = fotoDoPersonagem(char)
+    if (!foto) { photoWrap.appendChild(buildPhotoPlaceholder()); return }
+    const img = document.createElement('img')
+    img.className = 'char-card-photo'; img.src = foto; img.alt = char.name
+    img.onerror = () => { img.style.display = 'none'; photoWrap.appendChild(buildPhotoPlaceholder()) }
+    photoWrap.appendChild(img)
+}
+
 function buildPhotoPlaceholder() {
     const ph = document.createElement('div'); ph.className = 'char-card-photo-placeholder'; ph.textContent = '⚔'; return ph
 }
@@ -195,6 +211,12 @@ function updateCardStat(charId, field, value) {
     const entry = state.allCharsCache.find(e => e.character.id === charId)
     const stats = entry?.character?.stats ?? {}
     const sysDef = SYSTEMS[entry?.character?.system] || null
+
+    if ((field === 'expressao' || field === 'expressoes') && entry) {
+        const photoWrap = card.querySelector('.char-card-photo-wrap')
+        if (photoWrap) preencherFotoDoCard(photoWrap, entry.character)
+        return
+    }
 
     if (sysDef) {
         const barDef = sysDef.cardBars.find(b => b.key === field || b.maxKey === field)
@@ -274,6 +296,7 @@ function openCharModal() {
     document.getElementById('charModalInfo').className = 'info-box'
     document.getElementById('charModalInfo').textContent = ''
 
+    document.getElementById('exprWrap').style.display = 'none'
     document.getElementById('systemSelectorWrap').style.display = ''
     selectedSystem = null
     attrPoints = {}
@@ -295,11 +318,13 @@ function openEditCharModal(char) {
 
     const modal = document.getElementById('charModal')
     modal.querySelector('.card-title').textContent = 'Editar Personagem'
-    modal.querySelector('.card-subtitle').textContent = 'Atualize nome e imagem'
+    modal.querySelector('.card-subtitle').textContent = 'Atualize nome, imagem e expressões'
     modal.style.display = 'flex'
 
     document.getElementById('charModalInfo').className = 'info-box'
     document.getElementById('charModalInfo').textContent = ''
+
+    abrirEditorDeExpressoes(char)
 
     document.getElementById('systemSelectorWrap').style.display = 'none'
     document.getElementById('systemFields').style.display = 'none'
@@ -308,6 +333,77 @@ function openEditCharModal(char) {
 }
 
 function closeCharModal() { document.getElementById('charModal').style.display = 'none' }
+
+// ── Editor de expressões (só na edição) ───────────────────────────────────────
+// O rascunho guarda as que já existem ({ nome, foto }) e as novas ainda não
+// enviadas ({ nome, file, preview }). Nada sobe antes de "Atualizar".
+const MAX_EXPRESSOES = 12
+let exprRascunho = []
+
+function abrirEditorDeExpressoes(char) {
+    exprRascunho.forEach(e => { if (e.preview) URL.revokeObjectURL(e.preview) })
+    exprRascunho = (char.stats?.expressoes || []).map(e => ({ nome: e.nome, foto: e.foto }))
+    limparCamposDeExpressao()
+    document.getElementById('exprWrap').style.display = ''
+    renderizarExpressoes()
+}
+
+function limparCamposDeExpressao() {
+    document.getElementById('exprNome').value = ''
+    document.getElementById('exprFile').value = ''
+    document.getElementById('exprFileText').textContent = 'Imagem'
+    document.getElementById('exprFileLabel').classList.remove('has-file')
+}
+
+function renderizarExpressoes() {
+    const lista = document.getElementById('exprList')
+    lista.innerHTML = ''
+    lista.style.display = exprRascunho.length ? 'flex' : 'none'
+    exprRascunho.forEach((expr, i) => {
+        const chip = document.createElement('div')
+        chip.className = 'expr-chip'
+
+        const img = document.createElement('img')
+        img.src = expr.preview || expr.foto
+        img.alt = expr.nome
+        chip.appendChild(img)
+
+        const nome = document.createElement('span')
+        nome.textContent = expr.nome
+        chip.appendChild(nome)
+
+        const remover = document.createElement('button')
+        remover.type = 'button'
+        remover.className = 'expr-chip-remove'
+        remover.textContent = '✕'
+        remover.title = 'Remover expressão'
+        remover.addEventListener('click', () => {
+            if (expr.preview) URL.revokeObjectURL(expr.preview)
+            exprRascunho.splice(i, 1)
+            renderizarExpressoes()
+        })
+        chip.appendChild(remover)
+
+        lista.appendChild(chip)
+    })
+}
+
+/** Põe no rascunho o que está nos campos. Devolve a mensagem de erro, ou null. */
+function adicionarExpressao() {
+    const nome = document.getElementById('exprNome').value.trim()
+    const file = document.getElementById('exprFile').files[0] || null
+    if (!nome) return 'Dê um nome à expressão (ex.: feliz).'
+    if (!file) return `Escolha a imagem da expressão "${nome}".`
+    const chave = nome.toLowerCase()
+    if (chave === 'padrão' || chave === 'padrao') return '"Padrão" é reservado para a foto principal.'
+    if (exprRascunho.some(e => e.nome.toLowerCase() === chave)) return `Já existe uma expressão "${nome}".`
+    if (exprRascunho.length >= MAX_EXPRESSOES) return `No máximo ${MAX_EXPRESSOES} expressões por personagem.`
+
+    exprRascunho.push({ nome, file, preview: URL.createObjectURL(file) })
+    limparCamposDeExpressao()
+    renderizarExpressoes()
+    return null
+}
 
 function showCharModalInfo(msg, type) {
     const el = document.getElementById('charModalInfo')
@@ -441,11 +537,33 @@ function initCharModal() {
         else { photoLabelText.textContent = 'Clique para escolher imagem'; photoUploadLabel.classList.remove('has-file') }
     })
 
+    const exprFile = document.getElementById('exprFile')
+    exprFile.addEventListener('change', () => {
+        const file = exprFile.files[0]
+        document.getElementById('exprFileText').textContent = file ? file.name : 'Imagem'
+        document.getElementById('exprFileLabel').classList.toggle('has-file', !!file)
+    })
+    const tentarAdicionarExpressao = () => {
+        const erro = adicionarExpressao()
+        showCharModalInfo(erro || '', 'error')
+    }
+    document.getElementById('exprAddBtn').addEventListener('click', tentarAdicionarExpressao)
+    document.getElementById('exprNome').addEventListener('keydown', e => {
+        e.stopPropagation()
+        if (e.key === 'Enter') tentarAdicionarExpressao()
+    })
+
     charSubmitBtn.addEventListener('click', async () => {
         const name = document.getElementById('charName').value.trim()
         const photoFile = charPhotoInput.files[0] || null
 
         if (!name) { showCharModalInfo('O nome do personagem é obrigatório.', 'error'); return }
+
+        // Expressão preenchida mas sem clicar no ＋: entra junto, em vez de se perder
+        if (state.editCharMode && (document.getElementById('exprNome').value.trim() || exprFile.files[0])) {
+            const erro = adicionarExpressao()
+            if (erro) { showCharModalInfo(erro, 'error'); return }
+        }
 
         if (!state.editCharMode) {
             if (!selectedSystem) { showCharModalInfo('Escolha um sistema de jogo.', 'error'); return }
@@ -552,14 +670,42 @@ async function handleEditChar(name, photoFile) {
     let photoUrl = existing.photo
     if (photoFile) photoUrl = await uploadCharPhoto(charId, photoFile)
 
-    const updates = { name, photo: photoUrl }
+    // Expressões novas sobem agora; as que já existiam mantêm a URL
+    const expressoes = []
+    for (const expr of exprRascunho) {
+        const foto = expr.file
+            ? await uploadCharPhoto(charId, expr.file, `expr_${Date.now()}_${expressoes.length}`)
+            : expr.foto
+        expressoes.push({ nome: expr.nome, foto })
+    }
+    const anteriores = existing.stats?.expressoes || []
+    const stats = { ...(existing.stats || {}), expressoes }
+    // A expressão ativa foi removida: volta para a foto padrão
+    if (stats.expressao && !expressoes.some(e => e.nome === stats.expressao)) stats.expressao = ''
+
+    const updates = { name, photo: photoUrl, stats }
     const { error } = await state.supabase.from('characters').update(updates).eq('id', charId)
     if (error) throw new Error(error.message)
 
     existing.name = name
     existing.photo = photoUrl
+    existing.stats = stats
     closeCharModal()
     emitCharacters()
+
+    const mantidas = new Set(expressoes.map(e => e.foto))
+    apagarImagensAntigas(anteriores.map(e => e.foto).filter(f => f && !mantidas.has(f)))
+}
+
+/** Best-effort: tira do bucket as imagens de expressões removidas. */
+async function apagarImagensAntigas(urls) {
+    const marcador = '/object/public/CharactersAndItems/'
+    const caminhos = urls
+        .map(u => { const i = u.indexOf(marcador); return i < 0 ? null : decodeURIComponent(u.slice(i + marcador.length).split('?')[0]) })
+        .filter(Boolean)
+    if (!caminhos.length) return
+    const { error } = await state.supabase.storage.from('CharactersAndItems').remove(caminhos)
+    if (error) console.warn('[Photo] Não consegui apagar expressões antigas:', error.message)
 }
 
 /**
@@ -572,11 +718,11 @@ async function handleEditChar(name, photoFile) {
  * Era isso que parecia "a troca de foto não funciona para quem não é mestre":
  * o upload falhava na policy do Storage e ninguém ficava sabendo.
  */
-async function uploadCharPhoto(charId, photoFile) {
+async function uploadCharPhoto(charId, photoFile, nomeBase = 'photo') {
     const ext = (photoFile.name.split('.').pop() || 'png').toLowerCase()
     // O primeiro nível da pasta é o id do usuário: é nisso que a policy do
     // Storage se apoia para deixar cada um escrever só na sua pasta.
-    const filePath = `${state.currentUserId}/${charId}/photo.${ext}`
+    const filePath = `${state.currentUserId}/${charId}/${nomeBase}.${ext}`
     const mimeType = photoFile.type || `image/${ext}`
     const buffer = await photoFile.arrayBuffer()
 
@@ -618,5 +764,5 @@ function traduzErroDeUpload(error) {
 module.exports = {
     loadAndShareCharacters, emitCharacters, renderCharacterBar,
     updateCardStat, flashCard, updateActiveIndicator,
-    openCharModal, openEditCharModal, initCharModal
+    openCharModal, openEditCharModal, initCharModal, fotoDoPersonagem
 }

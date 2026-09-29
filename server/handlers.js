@@ -76,6 +76,12 @@ function setupSocketHandlers(io) {
         // ── Cena ─────────────────────────────────────────────────────────────
         socket.on('scene_change', ({ url, mimeType }) => { if (roomMasters[roomCode] !== socket.id) return; if (!url || typeof url !== 'string') return; roomScene[roomCode] = { url, mimeType: mimeType || 'image/jpeg' }; io.to(roomCode).emit('scene_change', roomScene[roomCode]); console.log(`[Cena] Nova cena na sala ${roomCode}:`, url) })
 
+        // ── Imagem mostrada pelo mestre ──────────────────────────────────────
+        // Não é cena nem item: aparece por cima de tudo e cada um fecha a sua.
+        // Não fica guardada — quem entrar depois não recebe.
+        socket.on('image_show', ({ url } = {}) => { if (roomMasters[roomCode] !== socket.id) return; if (!url || typeof url !== 'string') return; io.to(roomCode).emit('image_show', { url }); console.log(`[Imagem] Mestre mostrou uma imagem na sala ${roomCode}`) })
+        socket.on('image_hide', () => { if (roomMasters[roomCode] !== socket.id) return; io.to(roomCode).emit('image_hide'); console.log(`[Imagem] Mestre recolheu a imagem na sala ${roomCode}`) })
+
         // ── NPCs ──────────────────────────────────────────────────────────────
         socket.on('npc_summon', (npc) => { if (roomMasters[roomCode] !== socket.id) return; if (!npc || !npc.id || !npc.name) return; if (!roomNPCs[roomCode]) roomNPCs[roomCode] = {}; roomNPCs[roomCode][npc.id] = { id: npc.id, name: npc.name, photo: npc.photo || null, description: npc.description || '' }; io.to(roomCode).emit('npc_summon', roomNPCs[roomCode][npc.id]); console.log(`[NPC] "${npc.name}" invocado na sala ${roomCode}`) })
         socket.on('npc_dismiss', ({ npcId }) => { if (roomMasters[roomCode] !== socket.id) return; if (roomNPCs[roomCode]) delete roomNPCs[roomCode][npcId]; io.to(roomCode).emit('npc_dismiss', { npcId }); console.log(`[NPC] ${npcId} dispensado da sala ${roomCode}`) })

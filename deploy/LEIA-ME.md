@@ -206,7 +206,28 @@ systemctl restart hub-rpg
 ```
 
 O app dos jogadores não precisa de nada — a não ser que a mudança tenha sido no
-cliente, aí é build novo do Electron como sempre.
+cliente, aí é build novo do Electron (próxima seção).
+
+### Publicar versão nova do app (atualização automática)
+
+O app instalado confere `https://2-24-68-127.sslip.io/downloads/hub-rpg/latest.yml`
+ao abrir e depois de hora em hora. Achou versão maior, baixa em segundo plano e
+pergunta se pode reiniciar (se a pessoa disser "Depois", instala ao fechar).
+
+1. Suba o `"version"` no `package.json` (ex.: 4.6.0 → 4.6.1). **Sem isto ninguém
+   atualiza** — a comparação é pela versão.
+2. `npm run build`
+3. Copie do `dist/` para a pasta servida em `/downloads/hub-rpg/`:
+   `latest.yml`, `Hub-RPG-Setup-X.Y.Z.exe` e `Hub-RPG-Setup-X.Y.Z.exe.blockmap`.
+   Suba o `.exe` primeiro e o `latest.yml` por último, para ninguém ler o
+   anúncio antes do instalador existir.
+4. Confira no navegador que o `latest.yml` abre pela URL acima.
+
+Quem tem uma versão **sem** o atualizador (4.5.2 ou anterior) precisa instalar
+a primeira versão com ele na mão, uma única vez. Daí em diante é automático.
+
+Se algo falhar, o motivo aparece no log do app
+(`rpg-lobby.log`, na pasta do Hub-RPG dentro de `%APPDATA%`), nas linhas `[Update]`.
 
 ---
 

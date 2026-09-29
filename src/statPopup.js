@@ -86,6 +86,8 @@ function openStatPopup(char, ownerName, cardEl) {
         statDynamicRows.innerHTML = '<div style="padding:8px;color:rgba(244,234,213,0.5);font-size:13px;">Sistema não definido</div>'
     }
 
+    renderExpressoesDaFicha()
+
     // Gestão
     if (statCharMgmt) statCharMgmt.style.display = isOwn ? 'block' : 'none'
     if (statSwitchPanel) {
@@ -116,6 +118,53 @@ function openStatPopup(char, ownerName, cardEl) {
         statPopup.style.top = top + 'px'
         statPopup.style.left = left + 'px'
         statPopup.style.visibility = 'visible'
+    })
+}
+
+// ── Expressões ────────────────────────────────────────────────────────────────
+// Fileira de miniaturas no topo da ficha: "Padrão" + as que o jogador cadastrou
+// ao editar o personagem. Clicar troca a foto do card para a sala inteira.
+function renderExpressoesDaFicha() {
+    const row = document.getElementById('statExprRow')
+    if (!row) return
+    row.innerHTML = ''
+
+    const entry = state.allCharsCache.find(e => e.character.id === state.statPopupCharId)
+    const char = entry ? entry.character : state.statPopupChar
+    const stats = char?.stats || {}
+    const expressoes = Array.isArray(stats.expressoes) ? stats.expressoes : []
+    if (!char || expressoes.length === 0) { row.style.display = 'none'; return }
+    row.style.display = 'flex'
+
+    const ownerName = entry ? entry.playerName : state.playerName
+    const canEdit = state.isRoomMaster || ownerName === state.playerName
+    const ativa = stats.expressao || ''
+
+    const opcoes = [{ nome: '', rotulo: 'Padrão', foto: char.photo }, ...expressoes.map(e => ({ nome: e.nome, rotulo: e.nome, foto: e.foto }))]
+    opcoes.forEach(op => {
+        const btn = document.createElement('button')
+        btn.type = 'button'
+        btn.className = 'sp-expr' + (op.nome === ativa ? ' active' : '')
+        btn.disabled = !canEdit
+        btn.title = op.rotulo
+
+        if (op.foto) {
+            const img = document.createElement('img')
+            img.src = op.foto
+            img.alt = op.rotulo
+            btn.appendChild(img)
+        } else {
+            btn.appendChild(mk('span', 'sp-expr-ph', '⚔'))
+        }
+        btn.appendChild(mk('span', 'sp-expr-name', op.rotulo))
+
+        btn.addEventListener('click', e => {
+            e.stopPropagation()
+            if (op.nome === (stats.expressao || '')) return
+            commitStatChange('expressao', op.nome)
+            renderExpressoesDaFicha()
+        })
+        row.appendChild(btn)
     })
 }
 
@@ -504,4 +553,4 @@ function persistFullStats() {
         .then(({ error }) => { if (error) console.warn('[Stat] Supabase error:', error.message) })
 }
 
-module.exports = { openStatPopup, closeStatPopup, commitStatChange }
+module.exports = { openStatPopup, closeStatPopup, commitStatChange, renderExpressoesDaFicha }

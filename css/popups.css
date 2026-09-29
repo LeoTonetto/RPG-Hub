@@ -740,3 +740,203 @@
     font-size: 11px;
     color: rgba(244, 234, 213, 0.35);
 }
+
+/* ══ IMAGEM MOSTRADA PELO MESTRE ══ */
+#imageShowOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    background: rgba(0, 0, 0, 0.88);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#imageShowOverlay.visible { opacity: 1; }
+
+.image-show-img {
+    max-width: 90vw;
+    max-height: 82vh;
+    object-fit: contain;
+    border-radius: 8px;
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    box-shadow: 0 8px 80px rgba(0, 0, 0, 0.8);
+    cursor: default;
+}
+
+.image-show-footer {
+    margin-top: 14px;
+    font-family: 'Crimson Text', serif;
+    font-size: 14px;
+    font-style: italic;
+    color: rgba(244, 234, 213, 0.4);
+}
+
+.image-show-close {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    background: none;
+    border: none;
+    color: rgba(201, 168, 76, 0.5);
+    font-size: 22px;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 0.15s;
+}
+
+.image-show-close:hover { color: var(--gold); }
+
+.image-show-hide-all {
+    position: absolute;
+    top: 20px;
+    left: 22px;
+    padding: 7px 14px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    border-radius: 3px;
+    color: rgba(201, 168, 76, 0.75);
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.image-show-hide-all:hover { border-color: var(--gold); color: var(--gold); }
+
+/* ══ EXPRESSÕES — seletor na ficha ══ */
+#statExprRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(201, 168, 76, 0.1);
+}
+
+.sp-expr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    width: 52px;
+    padding: 4px 2px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(201, 168, 76, 0.14);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.sp-expr img,
+.sp-expr-ph {
+    width: 40px;
+    height: 40px;
+    border-radius: 3px;
+    object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(201, 168, 76, 0.4);
+}
+
+.sp-expr-name {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: 'Cinzel', serif;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(244, 234, 213, 0.55);
+}
+
+.sp-expr:hover:not(:disabled) { border-color: rgba(201, 168, 76, 0.4); }
+.sp-expr.active { border-color: var(--gold); background: rgba(201, 168, 76, 0.1); }
+.sp-expr.active .sp-expr-name { color: var(--gold); }
+.sp-expr:disabled { cursor: default; }
+.sp-expr:disabled:not(.active) { opacity: 0.55; }
+
+/* ══ EXPRESSÕES — editor no modal de personagem ══ */
+.expr-hint {
+    text-transform: none;
+    letter-spacing: 0;
+    opacity: 0.6;
+}
+
+.expr-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.expr-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 4px 3px 3px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(201, 168, 76, 0.25);
+    border-radius: 3px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: rgba(244, 234, 213, 0.75);
+}
+
+.expr-chip img {
+    width: 28px;
+    height: 28px;
+    border-radius: 2px;
+    object-fit: cover;
+}
+
+.expr-chip-remove {
+    background: none;
+    border: none;
+    color: rgba(201, 168, 76, 0.45);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0 3px;
+}
+
+.expr-chip-remove:hover { color: #e06a5a; }
+
+.expr-add-row {
+    display: flex;
+    gap: 6px;
+    align-items: stretch;
+}
+
+.expr-add-row .room-input { flex: 1; min-width: 0; }
+
+.expr-file-label {
+    flex: 0 0 auto;
+    max-width: 140px;
+    gap: 6px;
+    padding: 0 12px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.expr-add-btn {
+    flex: 0 0 auto;
+    width: 40px;
+    background: rgba(201, 168, 76, 0.08);
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    border-radius: 3px;
+    color: var(--gold);
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.expr-add-btn:hover { background: rgba(201, 168, 76, 0.16); border-color: var(--gold); }

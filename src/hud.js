@@ -25,7 +25,7 @@ const CAMADAS_FLUTUANTES = [
     // Chat
     '#emojiPicker', '#gifModal', '#chatPanel',
     // Painéis do mestre
-    '#musicPanel', '#sfxOpenBtn', '#sfxPanel', '#repMasterControls',
+    '#musicPanel', '#sfxOpenBtn', '#imageShowOverlay', '#sfxPanel', '#repMasterControls',
     '#lockpickPicker', '#lockpickOverlay', '#lockpickMasterBtn',
     // Jornal, dados, configurações
     '#journalOverlay', '#journalToggle', '#missionObjectiveToggle',
