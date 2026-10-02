@@ -940,3 +940,42 @@
 }
 
 .expr-add-btn:hover { background: rgba(201, 168, 76, 0.16); border-color: var(--gold); }
+
+.image-show-caption {
+    margin-top: 14px;
+    font-family: 'Cinzel', serif;
+    font-size: 16px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold);
+}
+
+/* ══ MENU DO BOTÃO DIREITO NO CARD ══ */
+#cardContextMenu {
+    position: fixed;
+    z-index: 9997;
+    min-width: 150px;
+    padding: 4px;
+    background: rgba(15, 12, 9, 0.97);
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    border-radius: 4px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+.card-menu-item {
+    display: block;
+    width: 100%;
+    padding: 7px 10px;
+    background: none;
+    border: none;
+    border-radius: 3px;
+    text-align: left;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: rgba(244, 234, 213, 0.8);
+    cursor: pointer;
+}
+
+.card-menu-item:hover:not(:disabled) { background: rgba(201, 168, 76, 0.12); color: var(--gold); }
+.card-menu-item:disabled { opacity: 0.4; cursor: default; }

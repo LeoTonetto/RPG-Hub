@@ -57,26 +57,42 @@ async function handleImageShow({ url }) {
     let src = url
     try { src = await fetchAsBlobUrl(url) }
     catch (e) { console.warn('[Imagem] Fetch bypass falhou, usando URL direta:', e.message) }
+    abrirImagem(src)
+}
 
+/**
+ * Abre a imagem em tela cheia. Sem `local`, é a imagem do mestre para a sala;
+ * com `local`, só esta pessoa vê (ex.: "Ver foto" no card) e o "Recolher de
+ * todos" do mestre não a fecha.
+ */
+function abrirImagem(src, { local = false, legenda = '' } = {}) {
     document.getElementById('imageShowOverlay')?.remove()
     if (blobAtual) URL.revokeObjectURL(blobAtual)
     blobAtual = src.startsWith('blob:') ? src : null
 
     const overlay = document.createElement('div')
     overlay.id = 'imageShowOverlay'
+    if (local) overlay.dataset.local = '1'
 
     const img = document.createElement('img')
     img.className = 'image-show-img'
     img.src = src
-    img.alt = 'Imagem mostrada pelo mestre'
+    img.alt = legenda || 'Imagem mostrada pelo mestre'
     overlay.appendChild(img)
+
+    if (legenda) {
+        const titulo = document.createElement('div')
+        titulo.className = 'image-show-caption'
+        titulo.textContent = legenda
+        overlay.appendChild(titulo)
+    }
 
     const rodape = document.createElement('div')
     rodape.className = 'image-show-footer'
     rodape.textContent = 'Clique fora ou aperte Esc para fechar'
     overlay.appendChild(rodape)
 
-    if (state.isRoomMaster) {
+    if (state.isRoomMaster && !local) {
         const recolher = document.createElement('button')
         recolher.className = 'image-show-hide-all'
         recolher.textContent = 'Recolher de todos'
@@ -101,6 +117,10 @@ async function handleImageShow({ url }) {
     requestAnimationFrame(() => overlay.classList.add('visible'))
 }
 
-function handleImageHide() { fecharImagem() }
+function handleImageHide() {
+    // O mestre recolhe a imagem DELE; quem estiver vendo uma foto por conta própria continua vendo
+    if (document.getElementById('imageShowOverlay')?.dataset.local) return
+    fecharImagem()
+}
 
-module.exports = { initImageShow, handleImageShow, handleImageHide }
+module.exports = { initImageShow, handleImageShow, handleImageHide, abrirImagem }

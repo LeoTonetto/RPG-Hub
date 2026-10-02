@@ -127,7 +127,63 @@ function buildCharCard(char, ownerName) {
         openStatPopup(fresh ? fresh.character : char, ownerName, card)
     })
 
+    // Botão direito: menu com "Ver foto". Vale para qualquer card, de qualquer um
+    card.addEventListener('contextmenu', e => {
+        e.preventDefault()
+        e.stopPropagation()
+        const fresh = state.allCharsCache.find(en => en.character.id === char.id)
+        abrirMenuDoCard(e.clientX, e.clientY, fresh ? fresh.character : char)
+    })
+
     return card
+}
+
+// ── Menu de contexto do card ──────────────────────────────────────────────────
+function fecharMenuDoCard() {
+    document.getElementById('cardContextMenu')?.remove()
+    document.removeEventListener('mousedown', fecharMenuSeFora, true)
+    document.removeEventListener('keydown', fecharMenuNoEsc, true)
+    window.removeEventListener('blur', fecharMenuDoCard)
+}
+
+function fecharMenuSeFora(e) {
+    if (!e.target.closest('#cardContextMenu')) fecharMenuDoCard()
+}
+
+function fecharMenuNoEsc(e) {
+    if (e.key === 'Escape') fecharMenuDoCard()
+}
+
+function abrirMenuDoCard(x, y, char) {
+    fecharMenuDoCard()
+
+    const menu = document.createElement('div')
+    menu.id = 'cardContextMenu'
+
+    const foto = fotoDoPersonagem(char)
+    const verFoto = document.createElement('button')
+    verFoto.type = 'button'
+    verFoto.className = 'card-menu-item'
+    verFoto.textContent = '🔍 Ver foto'
+    verFoto.disabled = !foto
+    if (!foto) verFoto.title = 'Este personagem não tem foto'
+    verFoto.addEventListener('click', () => {
+        fecharMenuDoCard()
+        // Só para quem clicou: não passa pelo servidor
+        require('./imageShow').abrirImagem(foto, { local: true, legenda: char.name })
+    })
+    menu.appendChild(verFoto)
+
+    document.body.appendChild(menu)
+
+    // Abre onde o mouse está, sem sair da tela (a barra de cards fica embaixo)
+    const r = menu.getBoundingClientRect()
+    menu.style.left = Math.max(8, Math.min(x, window.innerWidth - r.width - 8)) + 'px'
+    menu.style.top = Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) + 'px'
+
+    document.addEventListener('mousedown', fecharMenuSeFora, true)
+    document.addEventListener('keydown', fecharMenuNoEsc, true)
+    window.addEventListener('blur', fecharMenuDoCard)
 }
 
 /**
