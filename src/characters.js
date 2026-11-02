@@ -1,5 +1,5 @@
 const state = require('./state')
-const { SYSTEMS, SYSTEM_ORDER } = require('./systems')
+const { SYSTEMS, SISTEMAS_JOGAVEIS, aplicarTema } = require('./systems')
 
 // ── Carregar e emitir ─────────────────────────────────────────────────────────
 async function loadAndShareCharacters() {
@@ -10,16 +10,40 @@ async function loadAndShareCharacters() {
         if (error) { console.error('[Characters] Erro ao carregar:', error.message); return }
 
         state.playerCharacters = (chars || []).map(normalizeChar)
-
-        if (state.playerCharacters.length === 0) {
-            openCharModal()
-        } else {
-            if (!state.activeCharacterId) {
-                state.activeCharacterId = state.playerCharacters[0].id
-            }
-            emitCharacters()
-        }
+        state.personagensCarregados = true
+        escolherPersonagemDaSala()
     } catch (e) { console.error('[Characters] Erro:', e) }
+}
+
+// ── Sistema da sala ───────────────────────────────────────────────────────────
+// O servidor avisa o sistema logo depois da conexão. Esse aviso pode chegar
+// antes ou depois de os personagens virem do Supabase, por isso os dois lados
+// terminam em escolherPersonagemDaSala().
+function definirSistemaDaSala(sistema) {
+    state.roomSystem = SYSTEMS[sistema] ? sistema : null
+    aplicarTema(state.roomSystem)
+    if (state.personagensCarregados) escolherPersonagemDaSala()
+}
+
+/** Personagens do jogador que podem entrar na sala atual. */
+function personagensDaSala() {
+    if (!state.roomSystem) return state.playerCharacters
+    return state.playerCharacters.filter(c => c.system === state.roomSystem)
+}
+
+// Sem nenhum personagem do sistema, o jogador cria um ali mesmo, com o modal
+// já travado no sistema da sala.
+function escolherPersonagemDaSala() {
+    const daSala = personagensDaSala()
+    if (!daSala.some(c => c.id === state.activeCharacterId)) {
+        state.activeCharacterId = daSala[0]?.id || null
+    }
+    emitCharacters()
+
+    if (daSala.length > 0) return
+    const modalAberto = document.getElementById('charModal').style.display === 'flex'
+    if (!modalAberto) openCharModal()
+    else if (!state.editCharMode) travarNoSistemaDaSala()
 }
 
 function normalizeChar(char) {
@@ -37,9 +61,8 @@ function normalizeChar(char) {
 
 function emitCharacters() {
     if (!state.socket) return
-    const activeChar = state.activeCharacterId
-        ? state.playerCharacters.find(c => c.id === state.activeCharacterId)
-        : state.playerCharacters[0]
+    const daSala = personagensDaSala()
+    const activeChar = daSala.find(c => c.id === state.activeCharacterId) || daSala[0]
     const toSend = activeChar ? [activeChar] : []
     state.socket.emit('share_characters', { playerName: state.playerName, characters: toSend })
 }
@@ -65,7 +88,7 @@ function buildCharCard(char, ownerName) {
     // Permite que o CSS trate o card por sistema. No Calico, 0 PV não é morte:
     // é o começo dos testes de Vigor (§7.9), e o card precisa dizer isso.
     card.dataset.system = char.system || ''
-    if (ownerName === state.playerName) card.style.borderColor = 'rgba(201,168,76,0.65)'
+    if (ownerName === state.playerName) card.style.borderColor = 'rgba(var(--gold-rgb), 0.65)'
 
     const photoWrap = document.createElement('div'); photoWrap.className = 'char-card-photo-wrap'
     preencherFotoDoCard(photoWrap, char)
@@ -74,7 +97,7 @@ function buildCharCard(char, ownerName) {
     const info = document.createElement('div'); info.className = 'char-card-info'
 
     const ownerEl = document.createElement('div')
-    ownerEl.style.cssText = 'font-family:"Cinzel",serif;font-size:8px;letter-spacing:.15em;color:rgba(201,168,76,.45);text-transform:uppercase;margin-bottom:1px;'
+    ownerEl.style.cssText = 'font-family:"Cinzel",serif;font-size:8px;letter-spacing:.15em;color:rgba(var(--gold-rgb), .45);text-transform:uppercase;margin-bottom:1px;'
     ownerEl.textContent = ownerName; info.appendChild(ownerEl)
 
     const nameEl = document.createElement('div'); nameEl.className = 'char-card-name'; nameEl.textContent = char.name; info.appendChild(nameEl)
@@ -113,6 +136,15 @@ function buildCharCard(char, ownerName) {
     }
 
     card.appendChild(info)
+
+    // D&D: o mestre liberou a subida e o jogador ainda não subiu
+    if (char.system === 'dnd' && stats.nivel_liberado > (stats.nivel || 1)) {
+        const badge = document.createElement('span')
+        badge.className = 'char-card-nivel'
+        badge.textContent = '⬆'
+        badge.title = `Nível ${stats.nivel_liberado} liberado: abra a ficha para subir`
+        card.appendChild(badge)
+    }
 
     // Indicador de morte (HP = 0)
     if ((stats.hp ?? 1) <= 0) {
@@ -356,8 +388,17 @@ function openCharModal() {
     document.getElementById('systemSelectorWrap').style.display = ''
     selectedSystem = null
     attrPoints = {}
-    renderSystemSelector()
-    renderSystemFields()
+    if (state.roomSystem) travarNoSistemaDaSala()
+    else {
+        renderSystemSelector()
+        renderSystemFields()
+    }
+}
+
+/** Dentro de uma sala, o personagem novo nasce no sistema dela. */
+function travarNoSistemaDaSala() {
+    if (selectedSystem === state.roomSystem) renderSystemSelector()
+    else selecionarSistema(state.roomSystem)
 }
 
 function openEditCharModal(char) {
@@ -385,7 +426,7 @@ function openEditCharModal(char) {
     document.getElementById('systemSelectorWrap').style.display = 'none'
     document.getElementById('systemFields').style.display = 'none'
     // A edição só mexe em nome e foto, então o modal volta à largura normal
-    modal.querySelector('.connect-card').classList.remove('calico-mode')
+    modal.querySelector('.connect-card').classList.remove('calico-mode', 'dnd-mode')
 }
 
 function closeCharModal() { document.getElementById('charModal').style.display = 'none' }
@@ -470,27 +511,32 @@ function showCharModalInfo(msg, type) {
 function renderSystemSelector() {
     const container = document.getElementById('systemSelector')
     container.innerHTML = ''
-    SYSTEM_ORDER.forEach(key => {
+    // Na sala só aparece o sistema dela; fora, os que dá para jogar
+    const opcoes = state.roomSystem ? [state.roomSystem] : SISTEMAS_JOGAVEIS
+    opcoes.forEach(key => {
         const sys = SYSTEMS[key]
         const btn = document.createElement('button')
         btn.className = 'system-btn' + (selectedSystem === key ? ' active' : '')
         btn.textContent = sys.label
         btn.type = 'button'
-        btn.addEventListener('click', () => {
-            selectedSystem = key
-            attrPoints = {}
-            SYSTEMS[key].attributes.forEach(a => { attrPoints[a.key] = 0 })
-            if (SYSTEMS[key].module === 'calico') {
-                const calicoCreate = require('./calicoCreate')
-                calicoCreate.resetForm()
-                // Busca perfis/ocupações no Supabase; se falhar, o seed local vale
-                calicoCreate.carregarConteudo().then(() => renderSystemFields())
-            }
-            renderSystemSelector()
-            renderSystemFields()
-        })
+        btn.addEventListener('click', () => selecionarSistema(key))
         container.appendChild(btn)
     })
+}
+
+function selecionarSistema(key) {
+    selectedSystem = key
+    attrPoints = {}
+    SYSTEMS[key].attributes.forEach(a => { attrPoints[a.key] = 0 })
+    if (SYSTEMS[key].module === 'calico') {
+        const calicoCreate = require('./calicoCreate')
+        calicoCreate.resetForm()
+        // Busca perfis/ocupações no Supabase; se falhar, o seed local vale
+        calicoCreate.carregarConteudo().then(() => renderSystemFields())
+    }
+    if (SYSTEMS[key].module === 'dnd') require('./dndCreate').resetForm()
+    renderSystemSelector()
+    renderSystemFields()
 }
 
 function renderSystemFields() {
@@ -498,9 +544,10 @@ function renderSystemFields() {
     const card = document.querySelector('#charModal .connect-card')
 
     container.innerHTML = ''
+    container.classList.remove('dnd-create')
     if (!selectedSystem) {
         container.style.display = 'none'
-        card.classList.remove('calico-mode')
+        card.classList.remove('calico-mode', 'dnd-mode')
         return
     }
     container.style.display = 'flex'
@@ -509,11 +556,18 @@ function renderSystemFields() {
 
     // Sistemas com criador próprio assumem o container inteiro
     if (sysDef.module === 'calico') {
+        card.classList.remove('dnd-mode')
         card.classList.add('calico-mode')
         require('./calicoCreate').render(container, () => { })
         return
     }
-    card.classList.remove('calico-mode')
+    if (sysDef.module === 'dnd') {
+        card.classList.remove('calico-mode')
+        card.classList.add('dnd-mode')
+        require('./dndCreate').render(container)
+        return
+    }
+    card.classList.remove('calico-mode', 'dnd-mode')
 
     const infoEl = document.createElement('div')
     infoEl.className = 'system-info-box'
@@ -627,8 +681,8 @@ function initCharModal() {
 
             // Sistemas com criador próprio validam sozinhos (spec §12, P0:
             // não deixa salvar ficha inválida)
-            if (sysDef.module === 'calico') {
-                const v = require('./calicoCreate').validar(name)
+            if (sysDef.module === 'calico' || sysDef.module === 'dnd') {
+                const v = require(sysDef.module === 'dnd' ? './dndCreate' : './calicoCreate').validar(name)
                 if (!v.valido) {
                     const msgs = v.erros.length ? v.erros : v.avisos
                     showCharModalInfo(msgs.slice(0, 3).join('\n'), 'error')
@@ -672,6 +726,8 @@ async function handleCreateChar(name, photoFile) {
         const calicoCreate = require('./calicoCreate')
         stats = calicoCreate.montarStats()
         itensIniciais = calicoCreate.itensIniciais()
+    } else if (sysDef.module === 'dnd') {
+        stats = require('./dndCreate').montarStats()
     } else {
         stats = { ...sysDef.defaultStats }
         // Garante que habilidades seja um array novo (não referência do default)
@@ -819,6 +875,7 @@ function traduzErroDeUpload(error) {
 
 module.exports = {
     loadAndShareCharacters, emitCharacters, renderCharacterBar,
+    definirSistemaDaSala, personagensDaSala,
     updateCardStat, flashCard, updateActiveIndicator,
     openCharModal, openEditCharModal, initCharModal, fotoDoPersonagem
 }

@@ -1,11 +1,22 @@
 const { ipcRenderer, clipboard } = require('electron')
 const state = require('./state')
 const { connectToRoom } = require('./socket')
+const { SISTEMAS_JOGAVEIS, aplicarTema } = require('./systems')
+
+// O último sistema escolhido fica salvo: quem mestra D&D toda semana não
+// precisa trocar de novo
+const CHAVE_SISTEMA = 'sistemaSala'
 
 function setRoomInfo(msg, type = '') {
     const el = document.getElementById('roomInfo')
     el.textContent = msg
     el.className = 'info-box visible ' + type
+}
+
+function lerSistemaSalvo() {
+    let salvo = null
+    try { salvo = localStorage.getItem(CHAVE_SISTEMA) } catch (e) { }
+    return SISTEMAS_JOGAVEIS.includes(salvo) ? salvo : SISTEMAS_JOGAVEIS[0]
 }
 
 function initRoom() {
@@ -15,6 +26,24 @@ function initRoom() {
     const roomBadge = document.getElementById('roomBadge')
     const roomBadgeCode = document.getElementById('roomBadgeCode')
     const { hideJournalButtons } = require('./journal')
+
+    // ── Sistema da mesa ──────────────────────────────────────────────────────
+    // Escolher já pinta a tela com a cor do sistema, para o mestre ver como a
+    // sala vai ficar antes de criar
+    let sistemaEscolhido = lerSistemaSalvo()
+    const botoesSistema = document.querySelectorAll('#sistemaSalaOpts [data-sistema]')
+
+    function mostrarSistemaEscolhido() {
+        botoesSistema.forEach(b => b.classList.toggle('ativo', b.dataset.sistema === sistemaEscolhido))
+        aplicarTema(sistemaEscolhido)
+    }
+
+    botoesSistema.forEach(btn => btn.addEventListener('click', () => {
+        sistemaEscolhido = btn.dataset.sistema
+        try { localStorage.setItem(CHAVE_SISTEMA, sistemaEscolhido) } catch (e) { }
+        mostrarSistemaEscolhido()
+    }))
+    mostrarSistemaEscolhido()
 
     createBtn.addEventListener('click', async () => {
         const backend = require('./backend')
@@ -53,7 +82,7 @@ function initRoom() {
         // ele, num servidor sempre no ar, quem conectasse primeiro viraria
         // mestre — e o próprio mestre perderia o posto ao reconectar.
         try {
-            await backend.registrarSala(data.publicUrl, data.roomCode, state.currentUserId)
+            await backend.registrarSala(data.publicUrl, data.roomCode, state.currentUserId, sistemaEscolhido)
         } catch (e) {
             console.error('[Room] Erro ao registrar sala:', e)
             setRoomInfo(`Não consegui registrar a sala no servidor:\n${e.message}`, 'error')
@@ -171,8 +200,14 @@ function initRoom() {
             state.isRoomMaster = false
             state.masterToken = null
             state.playerCharacters = []
+            state.personagensCarregados = false
             state.allCharsCache = []
             state.activeCharacterId = null
+
+            // A tela de sala volta com a cor do sistema escolhido para criar
+            state.roomSystem = null
+            mostrarSistemaEscolhido()
+            require('./dndCombate').limpar()
 
             hideJournalButtons()
 

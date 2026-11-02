@@ -17,7 +17,9 @@ const state = require('./state')
 // ══════════════════════════════════════════════════════════════════════════════
 const CAMADAS_FLUTUANTES = [
     // Ficha e seus painéis
-    '#statPopup', '.subpanel', '.calico-panel',
+    '#statPopup', '.subpanel', '.calico-panel', '.dnd-panel', '#dndNivelModal', '#dndRollOverlay',
+    // Batalha de D&D
+    '#combateBarra', '#combateTurno', '#combateSetup', '#combateAnuncio', '#combateResultado', '#combatePrompt',
     // Inventário e o que nasce dele
     '#inventoryModal', '#invLightbox', '#transferPicker',
     // NPCs

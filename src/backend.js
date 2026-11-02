@@ -93,12 +93,14 @@ function recuperarToken(roomCode) {
  *
  * Reentrante: registrar a mesma sala com o mesmo dono devolve o mesmo token,
  * então reabrir o app depois de uma queda recupera o posto de mestre.
+ *
+ * O sistema fica guardado no servidor, que o repassa a cada jogador que entra.
  */
-async function registrarSala(urlServidor, roomCode, ownerId) {
+async function registrarSala(urlServidor, roomCode, ownerId, sistema) {
     const resp = await fetch(`${urlServidor}/register-room`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
-        body: JSON.stringify({ code: roomCode, url: urlServidor, ownerId: ownerId || null }),
+        body: JSON.stringify({ code: roomCode, url: urlServidor, ownerId: ownerId || null, sistema: sistema || null }),
     })
 
     if (!resp.ok) {

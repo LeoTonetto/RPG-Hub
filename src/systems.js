@@ -109,17 +109,25 @@ const SYSTEMS = {
         ],
     },
 
+    // ── D&D 5e — Livro do Jogador ──────────────────────────────────────────
+    // Criação, ficha e subida de nível ficam em dndCreate.js / dndSheet.js;
+    // as regras, em dnd.js. hp_max e ca são calculados pelo motor e gravados
+    // em stats para o card e a sala lerem direto.
     'dnd': {
         label: 'D&D 5e',
-        defaultStats: { hp: 10, hp_max: 10 },
+        module: 'dnd',
+        defaultStats: {},
         attributePoints: 0,
         attributes: [],
         antecedentes: [],
         hasHabilidades: false,
         hasDinheiro: false,
-        cardBars: [{ key: 'hp', maxKey: 'hp_max', label: 'Vida', fillClass: 'hp-fill' }],
-        cardExtras: [],
-        popupStats: [{ key: 'hp', maxKey: 'hp_max', label: '❤ Vida', hasMax: true, flashField: 'hp' }],
+        cardBars: [{ key: 'hp', maxKey: 'hp_max', label: 'PV', fillClass: 'hp-fill' }],
+        cardExtras: [
+            { label: 'CA', key: 'ca' },
+            { label: 'NV', key: 'nivel' },
+        ],
+        popupStats: [{ key: 'hp', maxKey: 'hp_max', label: '❤ PV', hasMax: true, flashField: 'hp' }],
     },
 
     'op': {
@@ -142,6 +150,17 @@ const SYSTEMS = {
     },
 }
 
-const SYSTEM_ORDER = ['som-das-seis', 'calico', 'coc', 'dnd', 'op']
+// Sistemas que dá para escolher ao criar uma sala ou um personagem. Os outros
+// continuam definidos acima para as fichas antigas abrirem, mas não têm ficha
+// nem cor própria e ficam fora da escolha até serem implementados.
+const SISTEMAS_JOGAVEIS = ['calico', 'dnd']
 
-module.exports = { SYSTEMS, SYSTEM_ORDER }
+// A cor da interface segue o sistema da sala: css/dnd.css troca as variáveis
+// de base.css quando o <html> tem data-sistema="dnd". Sem sistema, vale a
+// paleta padrão, que é a do Calico.
+function aplicarTema(sistema) {
+    if (sistema) document.documentElement.dataset.sistema = sistema
+    else delete document.documentElement.dataset.sistema
+}
+
+module.exports = { SYSTEMS, SISTEMAS_JOGAVEIS, aplicarTema }

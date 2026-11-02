@@ -68,7 +68,7 @@
 
 .calico-intro-sub {
     font-size: 12px;
-    color: rgba(244, 234, 213, 0.45);
+    color: rgba(var(--parchment-rgb), 0.45);
     margin-top: 3px;
 }
 
@@ -78,7 +78,7 @@
     flex-direction: column;
     gap: 8px;
     padding-top: 10px;
-    border-top: 1px solid rgba(201, 168, 76, 0.1);
+    border-top: 1px solid rgba(var(--gold-rgb), 0.1);
 }
 
 .calico-sec-head {
@@ -99,12 +99,12 @@
 
 .calico-sec-sub {
     font-size: 11px;
-    color: rgba(244, 234, 213, 0.35);
+    color: rgba(var(--parchment-rgb), 0.35);
 }
 
 .calico-hint {
     font-size: 11px;
-    color: rgba(244, 234, 213, 0.38);
+    color: rgba(var(--parchment-rgb), 0.38);
     line-height: 1.5;
     font-style: italic;
 }
@@ -122,20 +122,20 @@
     gap: 3px;
     padding: 10px;
     background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(201, 168, 76, 0.18);
+    border: 1px solid rgba(var(--gold-rgb), 0.18);
     border-radius: 3px;
     cursor: pointer;
     transition: all 0.15s;
 }
 
 .calico-arranjo-btn:hover {
-    border-color: rgba(201, 168, 76, 0.45);
-    background: rgba(201, 168, 76, 0.04);
+    border-color: rgba(var(--gold-rgb), 0.45);
+    background: rgba(var(--gold-rgb), 0.04);
 }
 
 .calico-arranjo-btn.active {
     border-color: var(--gold);
-    background: rgba(201, 168, 76, 0.1);
+    background: rgba(var(--gold-rgb), 0.1);
 }
 
 .calico-arranjo-nome {
@@ -143,7 +143,7 @@
     font-size: 10px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: rgba(244, 234, 213, 0.6);
+    color: rgba(var(--parchment-rgb), 0.6);
 }
 
 .calico-arranjo-btn.active .calico-arranjo-nome {
@@ -192,12 +192,12 @@
     font-family: 'Cinzel', serif;
     font-size: 11px;
     letter-spacing: 0.1em;
-    color: rgba(244, 234, 213, 0.8);
+    color: rgba(var(--parchment-rgb), 0.8);
 }
 
 .calico-attr-escala {
     font-size: 10px;
-    color: rgba(244, 234, 213, 0.32);
+    color: rgba(var(--parchment-rgb), 0.32);
 }
 
 /* ── Botões de dado ─────────────────────────────────────────────────────── */
@@ -211,9 +211,9 @@
     min-width: 32px;
     padding: 4px 5px;
     background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(201, 168, 76, 0.18);
+    border: 1px solid rgba(var(--gold-rgb), 0.18);
     border-radius: 2px;
-    color: rgba(244, 234, 213, 0.45);
+    color: rgba(var(--parchment-rgb), 0.45);
     font-family: 'Cinzel', serif;
     font-size: 11px;
     font-weight: 600;
@@ -222,13 +222,13 @@
 }
 
 .calico-die-btn:hover:not(:disabled) {
-    border-color: rgba(201, 168, 76, 0.5);
+    border-color: rgba(var(--gold-rgb), 0.5);
     color: var(--parchment);
 }
 
 .calico-die-btn.active {
     border-color: var(--gold);
-    background: rgba(201, 168, 76, 0.15);
+    background: rgba(var(--gold-rgb), 0.15);
     color: var(--gold);
 }
 
@@ -265,7 +265,7 @@
     gap: 4px;
     padding: 9px 11px;
     background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(201, 168, 76, 0.14);
+    border: 1px solid rgba(var(--gold-rgb), 0.14);
     border-radius: 3px;
     cursor: pointer;
     transition: all 0.15s;
@@ -274,14 +274,14 @@
 }
 
 .calico-choice:hover {
-    border-color: rgba(201, 168, 76, 0.4);
-    background: rgba(201, 168, 76, 0.04);
+    border-color: rgba(var(--gold-rgb), 0.4);
+    background: rgba(var(--gold-rgb), 0.04);
 }
 
 .calico-choice.active {
     border-color: var(--gold);
-    background: rgba(201, 168, 76, 0.09);
-    box-shadow: inset 0 0 0 1px rgba(201, 168, 76, 0.12);
+    background: rgba(var(--gold-rgb), 0.09);
+    box-shadow: inset 0 0 0 1px rgba(var(--gold-rgb), 0.12);
 }
 
 .calico-choice-head {
@@ -305,16 +305,16 @@
 
 .calico-choice-desc {
     font-size: 12px;
-    color: rgba(244, 234, 213, 0.5);
+    color: rgba(var(--parchment-rgb), 0.5);
     line-height: 1.4;
 }
 
 .calico-choice-hab {
     font-size: 11px;
-    color: rgba(244, 234, 213, 0.62);
+    color: rgba(var(--parchment-rgb), 0.62);
     line-height: 1.45;
     padding-left: 8px;
-    border-left: 2px solid rgba(201, 168, 76, 0.22);
+    border-left: 2px solid rgba(var(--gold-rgb), 0.22);
 }
 
 .calico-choice.compact .calico-choice-hab {
@@ -347,7 +347,7 @@
     gap: 8px;
     padding: 6px 10px;
     background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(201, 168, 76, 0.15);
+    border: 1px solid rgba(var(--gold-rgb), 0.15);
     border-radius: 3px;
     transition: all 0.2s;
 }
@@ -362,7 +362,7 @@
     font-size: 9px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: rgba(244, 234, 213, 0.45);
+    color: rgba(var(--parchment-rgb), 0.45);
 }
 
 .calico-budget-val {
@@ -412,8 +412,8 @@
 }
 
 .calico-pericia-row.marcada {
-    background: rgba(201, 168, 76, 0.06);
-    border-color: rgba(201, 168, 76, 0.2);
+    background: rgba(var(--gold-rgb), 0.06);
+    border-color: rgba(var(--gold-rgb), 0.2);
 }
 
 .calico-pericia-icon {
@@ -438,7 +438,7 @@
 .calico-pericia-nome {
     font-family: 'Cinzel', serif;
     font-size: 11px;
-    color: rgba(244, 234, 213, 0.82);
+    color: rgba(var(--parchment-rgb), 0.82);
     letter-spacing: 0.04em;
 }
 
@@ -446,7 +446,7 @@
     font-family: 'Cinzel', serif;
     font-size: 8px;
     letter-spacing: 0.1em;
-    color: rgba(201, 168, 76, 0.4);
+    color: rgba(var(--gold-rgb), 0.4);
 }
 
 .calico-pericia-gratis {
@@ -469,7 +469,7 @@
 
 .calico-pericia-desc {
     font-size: 10px;
-    color: rgba(244, 234, 213, 0.26);
+    color: rgba(var(--parchment-rgb), 0.26);
     line-height: 1.35;
     white-space: nowrap;
     overflow: hidden;
@@ -488,7 +488,7 @@
     font-family: 'Cinzel', serif;
     font-size: 14px;
     font-weight: 700;
-    color: rgba(244, 234, 213, 0.35);
+    color: rgba(var(--parchment-rgb), 0.35);
     line-height: 1.1;
 }
 
@@ -498,7 +498,7 @@
 
 .calico-pericia-escala {
     font-size: 8px;
-    color: rgba(244, 234, 213, 0.25);
+    color: rgba(var(--parchment-rgb), 0.25);
     letter-spacing: 0.04em;
 }
 
@@ -512,9 +512,9 @@
     width: 30px;
     padding: 5px 0;
     background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(201, 168, 76, 0.18);
+    border: 1px solid rgba(var(--gold-rgb), 0.18);
     border-radius: 2px;
-    color: rgba(244, 234, 213, 0.45);
+    color: rgba(var(--parchment-rgb), 0.45);
     font-family: 'Cinzel', serif;
     font-size: 11px;
     font-weight: 700;
@@ -528,7 +528,7 @@
 }
 
 .calico-slot-btn.active {
-    background: rgba(201, 168, 76, 0.2);
+    background: rgba(var(--gold-rgb), 0.2);
     border-color: var(--gold);
     color: var(--gold);
 }
@@ -564,9 +564,9 @@
 .calico-espec-btn {
     padding: 4px 9px;
     background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(201, 168, 76, 0.18);
+    border: 1px solid rgba(var(--gold-rgb), 0.18);
     border-radius: 2px;
-    color: rgba(244, 234, 213, 0.5);
+    color: rgba(var(--parchment-rgb), 0.5);
     font-family: 'Cinzel', serif;
     font-size: 10px;
     cursor: pointer;
@@ -574,13 +574,13 @@
 }
 
 .calico-espec-btn:hover {
-    border-color: rgba(201, 168, 76, 0.5);
+    border-color: rgba(var(--gold-rgb), 0.5);
     color: var(--parchment);
 }
 
 .calico-espec-btn.active {
     border-color: var(--gold);
-    background: rgba(201, 168, 76, 0.15);
+    background: rgba(var(--gold-rgb), 0.15);
     color: var(--gold);
 }
 
@@ -597,7 +597,7 @@
     gap: 3px;
     padding: 9px 11px;
     background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(201, 168, 76, 0.14);
+    border: 1px solid rgba(var(--gold-rgb), 0.14);
     border-radius: 3px;
     cursor: pointer;
     transition: all 0.15s;
@@ -606,12 +606,12 @@
 }
 
 .calico-arma:hover {
-    border-color: rgba(201, 168, 76, 0.4);
+    border-color: rgba(var(--gold-rgb), 0.4);
 }
 
 .calico-arma.active {
     border-color: var(--gold);
-    background: rgba(201, 168, 76, 0.09);
+    background: rgba(var(--gold-rgb), 0.09);
 }
 
 .calico-arma-head {
@@ -638,12 +638,12 @@
 
 .calico-arma-meta {
     font-size: 10px;
-    color: rgba(244, 234, 213, 0.4);
+    color: rgba(var(--parchment-rgb), 0.4);
 }
 
 .calico-arma-nota {
     font-size: 10px;
-    color: rgba(244, 234, 213, 0.28);
+    color: rgba(var(--parchment-rgb), 0.28);
     font-style: italic;
     line-height: 1.35;
 }
@@ -653,7 +653,7 @@
     display: flex;
     gap: 8px;
     padding-top: 10px;
-    border-top: 1px solid rgba(201, 168, 76, 0.1);
+    border-top: 1px solid rgba(var(--gold-rgb), 0.1);
 }
 
 .calico-deriv {
@@ -664,7 +664,7 @@
     gap: 1px;
     padding: 9px 6px;
     background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(201, 168, 76, 0.12);
+    border: 1px solid rgba(var(--gold-rgb), 0.12);
     border-radius: 3px;
 }
 
@@ -681,7 +681,7 @@
     font-size: 9px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: rgba(244, 234, 213, 0.45);
+    color: rgba(var(--parchment-rgb), 0.45);
 }
 
 .calico-deriv-val {
@@ -702,7 +702,7 @@
 
 .calico-deriv-formula {
     font-size: 9px;
-    color: rgba(244, 234, 213, 0.28);
+    color: rgba(var(--parchment-rgb), 0.28);
     text-align: center;
 }
 
@@ -722,9 +722,9 @@
 }
 
 .calico-status.pending {
-    background: rgba(201, 168, 76, 0.06);
+    background: rgba(var(--gold-rgb), 0.06);
     border-color: var(--gold-dim);
-    color: rgba(244, 234, 213, 0.6);
+    color: rgba(var(--parchment-rgb), 0.6);
 }
 
 .calico-status.error {
@@ -785,7 +785,7 @@
     row-gap: 5px;
     padding: 7px 9px;
     background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(201, 168, 76, 0.1);
+    border: 1px solid rgba(var(--gold-rgb), 0.1);
     border-radius: 3px;
     min-width: 0;
 }
@@ -855,7 +855,7 @@
 }
 
 .cs-recurso-sep {
-    color: rgba(201, 168, 76, 0.3);
+    color: rgba(var(--gold-rgb), 0.3);
     font-size: 11px;
 }
 
@@ -934,9 +934,9 @@
     font-family: 'Cinzel', serif;
     font-size: 9px;
     letter-spacing: 0.05em;
-    color: rgba(244, 234, 213, 0.6);
+    color: rgba(var(--parchment-rgb), 0.6);
     background: rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(201, 168, 76, 0.15);
+    border: 1px solid rgba(var(--gold-rgb), 0.15);
     border-radius: 2px;
     padding: 3px 6px;
     cursor: help;
@@ -956,7 +956,7 @@
     gap: 0;
     padding: 4px 3px;
     background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(201, 168, 76, 0.1);
+    border: 1px solid rgba(var(--gold-rgb), 0.1);
     border-radius: 3px;
     transition: all 0.12s;
 }
@@ -966,8 +966,8 @@
 }
 
 .cs-attr-chip.editavel:hover {
-    border-color: rgba(201, 168, 76, 0.4);
-    background: rgba(201, 168, 76, 0.05);
+    border-color: rgba(var(--gold-rgb), 0.4);
+    background: rgba(var(--gold-rgb), 0.05);
 }
 
 .cs-attr-chip-icon {
@@ -978,7 +978,7 @@
     font-family: 'Cinzel', serif;
     font-size: 7px;
     letter-spacing: 0.1em;
-    color: rgba(201, 168, 76, 0.45);
+    color: rgba(var(--gold-rgb), 0.45);
 }
 
 .cs-attr-chip-val {
@@ -993,7 +993,7 @@
 .cs-roll-btn {
     width: 100%;
     padding: 8px;
-    background: linear-gradient(180deg, rgba(201, 168, 76, 0.16), rgba(201, 168, 76, 0.07));
+    background: linear-gradient(180deg, rgba(var(--gold-rgb), 0.16), rgba(var(--gold-rgb), 0.07));
     border: 1px solid var(--gold-dim);
     border-radius: 3px;
     color: var(--gold);
@@ -1008,8 +1008,8 @@
 
 .cs-roll-btn:hover {
     border-color: var(--gold);
-    background: linear-gradient(180deg, rgba(201, 168, 76, 0.26), rgba(201, 168, 76, 0.12));
-    box-shadow: 0 0 14px rgba(201, 168, 76, 0.15);
+    background: linear-gradient(180deg, rgba(var(--gold-rgb), 0.26), rgba(var(--gold-rgb), 0.12));
+    box-shadow: 0 0 14px rgba(var(--gold-rgb), 0.15);
 }
 
 /* ── Condições ativas no topo da ficha ──────────────────────────────────── */
@@ -1066,11 +1066,11 @@
 
 .calico-panel-note {
     font-size: 10px;
-    color: rgba(244, 234, 213, 0.3);
+    color: rgba(var(--parchment-rgb), 0.3);
     line-height: 1.5;
     margin-top: 8px;
     padding-top: 7px;
-    border-top: 1px solid rgba(201, 168, 76, 0.08);
+    border-top: 1px solid rgba(var(--gold-rgb), 0.08);
     font-style: italic;
 }
 
@@ -1104,7 +1104,7 @@
 
 .calico-die-row-escala {
     font-size: 9px;
-    color: rgba(244, 234, 213, 0.26);
+    color: rgba(var(--parchment-rgb), 0.26);
     letter-spacing: 0.03em;
 }
 
@@ -1120,9 +1120,9 @@
 
 .calico-mini-roll {
     background: none;
-    border: 1px solid rgba(201, 168, 76, 0.2);
+    border: 1px solid rgba(var(--gold-rgb), 0.2);
     border-radius: 2px;
-    color: rgba(201, 168, 76, 0.55);
+    color: rgba(var(--gold-rgb), 0.55);
     font-size: 11px;
     cursor: pointer;
     padding: 3px 5px;
@@ -1133,7 +1133,7 @@
 .calico-mini-roll:hover {
     border-color: var(--gold);
     color: var(--gold);
-    background: rgba(201, 168, 76, 0.08);
+    background: rgba(var(--gold-rgb), 0.08);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
@@ -1144,7 +1144,7 @@
     width: 100%;
     padding: 6px 8px;
     background: rgba(0, 0, 0, 0.45);
-    border: 1px solid rgba(201, 168, 76, 0.2);
+    border: 1px solid rgba(var(--gold-rgb), 0.2);
     border-radius: 2px;
     color: var(--parchment);
     font-family: 'Crimson Text', serif;
@@ -1190,12 +1190,12 @@
     min-width: 20px;
     text-align: center;
     flex-shrink: 0;
-    color: rgba(244, 234, 213, 0.5);
+    color: rgba(var(--parchment-rgb), 0.5);
 }
 
 .cr-mod-label {
     font-size: 10.5px;
-    color: rgba(244, 234, 213, 0.55);
+    color: rgba(var(--parchment-rgb), 0.55);
     line-height: 1.35;
     flex: 1;
 }
@@ -1209,7 +1209,7 @@
     margin-top: 10px;
     padding: 9px;
     border-radius: 3px;
-    border: 1px solid rgba(201, 168, 76, 0.15);
+    border: 1px solid rgba(var(--gold-rgb), 0.15);
     background: rgba(0, 0, 0, 0.3);
     animation: crIn 0.3s ease both;
 }
@@ -1221,8 +1221,8 @@
 
 /* Sem veredito de sucesso/falha: o app não julga mais o teste. Só crítico e
    falha crítica ganham destaque, porque não dependem de DT (§1.6). */
-.cr-saida.neutro { border-color: rgba(201, 168, 76, 0.25); }
-.cr-saida.critico { border-color: var(--gold); box-shadow: 0 0 20px rgba(201, 168, 76, 0.2); }
+.cr-saida.neutro { border-color: rgba(var(--gold-rgb), 0.25); }
+.cr-saida.critico { border-color: var(--gold); box-shadow: 0 0 20px rgba(var(--gold-rgb), 0.2); }
 .cr-saida.falha-critica { border-color: var(--blood); box-shadow: 0 0 20px rgba(139, 26, 26, 0.3); }
 
 .cr-cabecalho {
@@ -1230,7 +1230,7 @@
     font-size: 9px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: rgba(201, 168, 76, 0.6);
+    color: rgba(var(--gold-rgb), 0.6);
     text-align: center;
     margin-bottom: 7px;
 }
@@ -1270,7 +1270,7 @@
 .cr-die-tipo {
     font-family: 'Cinzel', serif;
     font-size: 7px;
-    color: rgba(201, 168, 76, 0.45);
+    color: rgba(var(--gold-rgb), 0.45);
     letter-spacing: 0.05em;
 }
 
@@ -1295,14 +1295,14 @@
     font-family: 'Cinzel', serif;
     font-size: 7px;
     letter-spacing: 0.12em;
-    color: rgba(201, 168, 76, 0.45);
+    color: rgba(var(--gold-rgb), 0.45);
 }
 
 .cr-chip-val {
     font-family: 'Cinzel', serif;
     font-size: 13px;
     font-weight: 700;
-    color: rgba(244, 234, 213, 0.85);
+    color: rgba(var(--parchment-rgb), 0.85);
 }
 
 .cr-chip.soma .cr-chip-val {
@@ -1319,12 +1319,12 @@
     text-transform: uppercase;
 }
 
-.cr-saida.critico .cr-veredito { color: var(--gold-light); text-shadow: 0 0 12px rgba(232, 201, 106, 0.5); }
+.cr-saida.critico .cr-veredito { color: var(--gold-light); text-shadow: 0 0 12px rgba(var(--gold-light-rgb), 0.5); }
 .cr-saida.falha-critica .cr-veredito { color: #e05a52; text-shadow: 0 0 12px rgba(139, 26, 26, 0.6); }
 
 .cr-nota {
     font-size: 10px;
-    color: rgba(244, 234, 213, 0.4);
+    color: rgba(var(--parchment-rgb), 0.4);
     text-align: center;
     margin-top: 5px;
     line-height: 1.4;
@@ -1368,7 +1368,7 @@
 
 .cr-fc-efeito {
     font-size: 11px;
-    color: rgba(244, 234, 213, 0.6);
+    color: rgba(var(--parchment-rgb), 0.6);
     line-height: 1.45;
     margin-top: 3px;
 }
@@ -1387,7 +1387,7 @@
 .ca-arma {
     padding: 8px 9px;
     background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(201, 168, 76, 0.1);
+    border: 1px solid rgba(var(--gold-rgb), 0.1);
     border-radius: 3px;
     margin-bottom: 6px;
 }
@@ -1444,16 +1444,16 @@
 .ca-contador-cap {
     font-family: 'Cinzel', serif;
     font-size: 10px;
-    color: rgba(201, 168, 76, 0.4);
+    color: rgba(var(--gold-rgb), 0.4);
 }
 
 .ca-recarregar {
     flex: 1;
     padding: 4px 6px;
     background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(201, 168, 76, 0.2);
+    border: 1px solid rgba(var(--gold-rgb), 0.2);
     border-radius: 2px;
-    color: rgba(201, 168, 76, 0.7);
+    color: rgba(var(--gold-rgb), 0.7);
     font-family: 'Cinzel', serif;
     font-size: 9px;
     letter-spacing: 0.08em;
@@ -1483,13 +1483,13 @@
     height: 12px;
     border-radius: 2px 2px 1px 1px;
     background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(201, 168, 76, 0.15);
+    border: 1px solid rgba(var(--gold-rgb), 0.15);
     transition: all 0.2s;
 }
 
 .ca-bala.cheia {
     background: linear-gradient(180deg, #d4a040, #8a6520);
-    border-color: rgba(201, 168, 76, 0.5);
+    border-color: rgba(var(--gold-rgb), 0.5);
 }
 
 .ca-add {
@@ -1503,7 +1503,7 @@
 .cc-cond {
     padding: 7px 9px;
     background: rgba(0, 0, 0, 0.22);
-    border: 1px solid rgba(201, 168, 76, 0.08);
+    border: 1px solid rgba(var(--gold-rgb), 0.08);
     border-radius: 3px;
     margin-bottom: 5px;
     transition: all 0.15s;
@@ -1527,7 +1527,7 @@
 .cc-cond-nome {
     font-family: 'Cinzel', serif;
     font-size: 11px;
-    color: rgba(244, 234, 213, 0.8);
+    color: rgba(var(--parchment-rgb), 0.8);
     letter-spacing: 0.05em;
     flex: 1;
 }
@@ -1535,9 +1535,9 @@
 .cc-toggle {
     padding: 3px 8px;
     background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(201, 168, 76, 0.2);
+    border: 1px solid rgba(var(--gold-rgb), 0.2);
     border-radius: 2px;
-    color: rgba(201, 168, 76, 0.6);
+    color: rgba(var(--gold-rgb), 0.6);
     font-family: 'Cinzel', serif;
     font-size: 8px;
     letter-spacing: 0.1em;
@@ -1564,7 +1564,7 @@
 
 .cc-cond-efeito {
     font-size: 10.5px;
-    color: rgba(244, 234, 213, 0.45);
+    color: rgba(var(--parchment-rgb), 0.45);
     line-height: 1.45;
     margin-top: 4px;
 }
@@ -1605,7 +1605,7 @@
 
 .cm-gatilho {
     font-size: 10px;
-    color: rgba(244, 234, 213, 0.4);
+    color: rgba(var(--parchment-rgb), 0.4);
     margin-top: 3px;
     line-height: 1.4;
 }
@@ -1626,7 +1626,7 @@
 .cm-contador {
     font-family: 'Cinzel', serif;
     font-size: 9px;
-    color: rgba(244, 234, 213, 0.4);
+    color: rgba(var(--parchment-rgb), 0.4);
     flex: 1;
 }
 
@@ -1634,9 +1634,9 @@
 .cm-reset {
     padding: 4px 8px;
     background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(201, 168, 76, 0.2);
+    border: 1px solid rgba(var(--gold-rgb), 0.2);
     border-radius: 2px;
-    color: rgba(201, 168, 76, 0.7);
+    color: rgba(var(--gold-rgb), 0.7);
     font-family: 'Cinzel', serif;
     font-size: 9px;
     letter-spacing: 0.06em;
@@ -1665,8 +1665,8 @@
     font-size: 7px;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: rgba(201, 168, 76, 0.5);
-    border: 1px solid rgba(201, 168, 76, 0.2);
+    color: rgba(var(--gold-rgb), 0.5);
+    border: 1px solid rgba(var(--gold-rgb), 0.2);
     border-radius: 2px;
     padding: 1px 4px;
 }
@@ -1709,7 +1709,7 @@
 
 #calicoRollOverlay.critico {
     border-color: var(--gold);
-    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.9), 0 0 50px rgba(201, 168, 76, 0.25);
+    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.9), 0 0 50px rgba(var(--gold-rgb), 0.25);
 }
 
 #calicoRollOverlay.falha-critica {
@@ -1734,7 +1734,7 @@
     font-family: 'Cinzel', serif;
     font-size: 9px;
     letter-spacing: 0.1em;
-    color: rgba(244, 234, 213, 0.4);
+    color: rgba(var(--parchment-rgb), 0.4);
     text-transform: uppercase;
 }
 
@@ -1772,7 +1772,7 @@
 .cro-die-tipo {
     font-family: 'Cinzel', serif;
     font-size: 8px;
-    color: rgba(201, 168, 76, 0.45);
+    color: rgba(var(--gold-rgb), 0.45);
 }
 
 .cro-nums {
@@ -1792,7 +1792,7 @@
 .cro-vs {
     font-family: 'Cinzel', serif;
     font-size: 11px;
-    color: rgba(244, 234, 213, 0.35);
+    color: rgba(var(--parchment-rgb), 0.35);
     letter-spacing: 0.08em;
 }
 
@@ -1800,7 +1800,7 @@
     font-family: 'Cinzel', serif;
     font-size: 10px;
     letter-spacing: 0.12em;
-    color: rgba(201, 168, 76, 0.55);
+    color: rgba(var(--gold-rgb), 0.55);
 }
 
 .cro-veredito {
@@ -1812,8 +1812,8 @@
 }
 
 #calicoRollOverlay.sucesso .cro-veredito { color: var(--calico-ok); }
-#calicoRollOverlay.falha .cro-veredito { color: rgba(244, 234, 213, 0.45); }
-#calicoRollOverlay.critico .cro-veredito { color: var(--gold-light); text-shadow: 0 0 16px rgba(232, 201, 106, 0.6); }
+#calicoRollOverlay.falha .cro-veredito { color: rgba(var(--parchment-rgb), 0.45); }
+#calicoRollOverlay.critico .cro-veredito { color: var(--gold-light); text-shadow: 0 0 16px rgba(var(--gold-light-rgb), 0.6); }
 #calicoRollOverlay.falha-critica .cro-veredito { color: #e05a52; text-shadow: 0 0 16px rgba(139, 26, 26, 0.7); }
 
 /* ══ ROLAGEM SECRETA NO ROLADOR DO CALICO ══ */
@@ -1876,19 +1876,19 @@
     gap: 0;
     padding: 5px 3px;
     background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(201, 168, 76, 0.15);
+    border: 1px solid rgba(var(--gold-rgb), 0.15);
     border-radius: 2px;
     cursor: pointer;
     transition: all 0.12s;
 }
 
 .ct-attr:hover {
-    border-color: rgba(201, 168, 76, 0.45);
+    border-color: rgba(var(--gold-rgb), 0.45);
 }
 
 .ct-attr.fixado {
     border-color: var(--gold);
-    background: rgba(201, 168, 76, 0.14);
+    background: rgba(var(--gold-rgb), 0.14);
 }
 
 .ct-attr-icon {
@@ -1900,7 +1900,7 @@
     font-family: 'Cinzel', serif;
     font-size: 7px;
     letter-spacing: 0.1em;
-    color: rgba(201, 168, 76, 0.5);
+    color: rgba(var(--gold-rgb), 0.5);
 }
 
 .ct-attr.fixado .ct-attr-label {
@@ -1918,7 +1918,7 @@
 .ct-aviso {
     font-size: 10px;
     color: var(--gold);
-    background: rgba(201, 168, 76, 0.08);
+    background: rgba(var(--gold-rgb), 0.08);
     border-left: 2px solid var(--gold-dim);
     border-radius: 0 2px 2px 0;
     padding: 4px 7px;
@@ -1933,14 +1933,14 @@
     gap: 6px;
     padding: 5px 8px;
     background: rgba(0, 0, 0, 0.28);
-    border: 1px solid rgba(201, 168, 76, 0.1);
+    border: 1px solid rgba(var(--gold-rgb), 0.1);
     border-radius: 2px;
     margin-bottom: 6px;
 }
 
 .ct-passos.ativo {
-    border-color: rgba(201, 168, 76, 0.45);
-    background: rgba(201, 168, 76, 0.07);
+    border-color: rgba(var(--gold-rgb), 0.45);
+    background: rgba(var(--gold-rgb), 0.07);
 }
 
 .ct-passos-label {
@@ -1956,7 +1956,7 @@
     font-family: 'Cinzel', serif;
     font-size: 15px;
     font-weight: 700;
-    color: rgba(244, 234, 213, 0.45);
+    color: rgba(var(--parchment-rgb), 0.45);
     min-width: 22px;
     text-align: center;
 }
@@ -1967,7 +1967,7 @@
 
 .ct-passos-dica {
     font-size: 9px;
-    color: rgba(244, 234, 213, 0.3);
+    color: rgba(var(--parchment-rgb), 0.3);
     flex: 1;
     text-align: right;
     line-height: 1.3;
@@ -1987,7 +1987,7 @@
     gap: 6px;
     padding: 4px 5px;
     border-radius: 2px;
-    border-bottom: 1px solid rgba(201, 168, 76, 0.05);
+    border-bottom: 1px solid rgba(var(--gold-rgb), 0.05);
     transition: background 0.1s;
 }
 
@@ -2016,7 +2016,7 @@
 .ct-row-nome {
     font-family: 'Cinzel', serif;
     font-size: 11px;
-    color: rgba(244, 234, 213, 0.8);
+    color: rgba(var(--parchment-rgb), 0.8);
     letter-spacing: 0.03em;
     white-space: nowrap;
     overflow: hidden;
@@ -2027,7 +2027,7 @@
     font-family: 'Cinzel', serif;
     font-size: 7.5px;
     letter-spacing: 0.1em;
-    color: rgba(201, 168, 76, 0.4);
+    color: rgba(var(--gold-rgb), 0.4);
 }
 
 /* Quando o mestre fixa um atributo, fica claro que saiu do base */
@@ -2058,7 +2058,7 @@
     width: 30px;
     height: 26px;
     background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(201, 168, 76, 0.25);
+    border: 1px solid rgba(var(--gold-rgb), 0.25);
     border-radius: 2px;
     color: var(--gold);
     font-size: 13px;
@@ -2072,7 +2072,7 @@
 
 .ct-roll:hover {
     border-color: var(--gold);
-    background: rgba(201, 168, 76, 0.14);
+    background: rgba(var(--gold-rgb), 0.14);
     transform: scale(1.08);
 }
 
@@ -2122,8 +2122,8 @@
 .char-cond-chip.cond-desprevenido,
 .char-cond-chip.cond-caido,
 .char-cond-chip.cond-abalado {
-    background: rgba(201, 168, 76, 0.12);
-    border-color: rgba(201, 168, 76, 0.35);
+    background: rgba(var(--gold-rgb), 0.12);
+    border-color: rgba(var(--gold-rgb), 0.35);
 }
 
 /* Condição nova ou removida: um brilho curto para o mestre perceber */

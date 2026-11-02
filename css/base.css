@@ -1,8 +1,24 @@
 /* ══ VARIÁVEIS ══ */
+/* "gold" é a cor de destaque do sistema da sala: ouro no Calico, carmesim no
+   D&D (css/dnd.css). Toda cor de destaque e de superfície passa por aqui, por
+   isso as versões -rgb existem: rgba(var(--gold-rgb), .2) troca junto com o tema. */
 :root {
     --gold: #c9a84c;
+    --gold-rgb: 201, 168, 76;
     --gold-light: #e8c96a;
+    --gold-light-rgb: 232, 201, 106;
     --gold-dim: #7a6230;
+    --parchment-rgb: 244, 234, 213;
+    --parchment-dim-rgb: 220, 200, 160;
+
+    /* Superfícies dos cards e botões */
+    --fundo-rgb: 26, 21, 16;
+    --fundo-escuro-rgb: 12, 9, 6;
+    --fundo-meio: #0f0c09;
+    --fundo-base: #160e08;
+    --botao-topo: #2a1f0f;
+    --botao-base: #1a1208;
+
     --blood: #8b1a1a;
     --parchment: #f4ead5;
     --ember: #d4622a;
@@ -84,7 +100,7 @@ body::before {
 }
 
 .connect-card {
-    background: linear-gradient(160deg, #1a1510 0%, #0f0c09 60%, #160e08 100%);
+    background: linear-gradient(160deg, rgb(var(--fundo-rgb)) 0%, var(--fundo-meio) 60%, var(--fundo-base) 100%);
     border: 1px solid var(--gold-dim);
     border-radius: 4px;
     padding: 48px 52px 44px;
@@ -92,9 +108,9 @@ body::before {
     text-align: center;
     position: relative;
     box-shadow:
-        0 0 0 1px rgba(201, 168, 76, 0.12),
+        0 0 0 1px rgba(var(--gold-rgb), 0.12),
         0 0 60px rgba(0, 0, 0, 0.9),
-        inset 0 1px 0 rgba(201, 168, 76, 0.15);
+        inset 0 1px 0 rgba(var(--gold-rgb), 0.15);
     animation: cardIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -157,7 +173,7 @@ body::before {
 .card-icon {
     font-size: 36px;
     margin-bottom: 8px;
-    filter: drop-shadow(0 0 12px rgba(201, 168, 76, 0.5));
+    filter: drop-shadow(0 0 12px rgba(var(--gold-rgb), 0.5));
     animation: float 4s ease-in-out infinite;
 }
 
@@ -181,12 +197,12 @@ body::before {
     letter-spacing: 0.12em;
     text-transform: uppercase;
     margin-bottom: 6px;
-    text-shadow: 0 0 30px rgba(201, 168, 76, 0.4);
+    text-shadow: 0 0 30px rgba(var(--gold-rgb), 0.4);
 }
 
 .card-subtitle {
     font-style: italic;
-    color: rgba(244, 234, 213, 0.4);
+    color: rgba(var(--parchment-rgb), 0.4);
     font-size: 15px;
     margin-bottom: 32px;
     letter-spacing: 0.04em;
@@ -206,7 +222,7 @@ body::before {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: #0f0c09;
+    background: var(--fundo-meio);
     color: var(--gold-dim);
     padding: 0 10px;
     font-size: 12px;
@@ -216,7 +232,7 @@ body::before {
 .tab-row {
     display: flex;
     margin-bottom: 26px;
-    border-bottom: 1px solid rgba(201, 168, 76, 0.2);
+    border-bottom: 1px solid rgba(var(--gold-rgb), 0.2);
 }
 
 .tab-btn {
@@ -228,7 +244,7 @@ body::before {
     font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: rgba(201, 168, 76, 0.35);
+    color: rgba(var(--gold-rgb), 0.35);
     cursor: pointer;
     transition: all 0.2s;
     border-bottom: 2px solid transparent;
@@ -274,7 +290,7 @@ body::before {
     width: 100%;
     padding: 13px 16px;
     background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(201, 168, 76, 0.25);
+    border: 1px solid rgba(var(--gold-rgb), 0.25);
     border-radius: 3px;
     color: var(--parchment);
     font-family: 'Crimson Text', serif;
@@ -284,7 +300,7 @@ body::before {
 }
 
 .room-input::placeholder {
-    color: rgba(244, 234, 213, 0.2);
+    color: rgba(var(--parchment-rgb), 0.2);
 }
 
 .room-input:focus {
@@ -308,9 +324,9 @@ body::before {
     justify-content: center;
     padding: 11px 16px;
     background: rgba(0, 0, 0, 0.4);
-    border: 1px dashed rgba(201, 168, 76, 0.3);
+    border: 1px dashed rgba(var(--gold-rgb), 0.3);
     border-radius: 3px;
-    color: rgba(244, 234, 213, 0.4);
+    color: rgba(var(--parchment-rgb), 0.4);
     font-family: 'Cinzel', serif;
     font-size: 10px;
     letter-spacing: 0.14em;
@@ -334,7 +350,7 @@ body::before {
 .btn-primary {
     width: 100%;
     padding: 14px 20px;
-    background: linear-gradient(135deg, #2a1f0f 0%, #1a1208 100%);
+    background: linear-gradient(135deg, var(--botao-topo) 0%, var(--botao-base) 100%);
     border: 1px solid var(--gold-dim);
     border-radius: 3px;
     color: var(--gold);
@@ -351,7 +367,7 @@ body::before {
 .btn-primary:hover {
     border-color: var(--gold);
     color: var(--gold-light);
-    box-shadow: 0 0 20px rgba(201, 168, 76, 0.15);
+    box-shadow: 0 0 20px rgba(var(--gold-rgb), 0.15);
 }
 
 .btn-primary:active {
@@ -367,9 +383,9 @@ body::before {
     width: 100%;
     padding: 13px 20px;
     background: transparent;
-    border: 1px solid rgba(201, 168, 76, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.3);
     border-radius: 3px;
-    color: rgba(244, 234, 213, 0.65);
+    color: rgba(var(--parchment-rgb), 0.65);
     font-family: 'Cinzel', serif;
     font-size: 12px;
     font-weight: 600;
@@ -382,13 +398,13 @@ body::before {
 .btn-secondary:hover {
     border-color: var(--gold-dim);
     color: var(--gold);
-    background: rgba(201, 168, 76, 0.05);
+    background: rgba(var(--gold-rgb), 0.05);
 }
 
 .btn-ghost {
     background: none;
     border: none;
-    color: rgba(201, 168, 76, 0.4);
+    color: rgba(var(--gold-rgb), 0.4);
     font-family: 'Cinzel', serif;
     font-size: 11px;
     letter-spacing: 0.12em;
@@ -410,7 +426,7 @@ body::before {
     background: rgba(0, 0, 0, 0.3);
     border-left: 2px solid var(--gold-dim);
     border-radius: 0 3px 3px 0;
-    color: rgba(244, 234, 213, 0.65);
+    color: rgba(var(--parchment-rgb), 0.65);
     font-size: 13px;
     line-height: 1.6;
     text-align: left;

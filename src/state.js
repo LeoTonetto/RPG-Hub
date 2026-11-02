@@ -25,6 +25,8 @@ const state = {
     serverUrl: null,
     isRoomMaster: false,
     rooms: {},   // mapa local código→url
+    roomSystem: null,   // sistema da sala ('calico', 'dnd'): define a cor e quais personagens entram
+    combate: null,      // batalha de D&D em andamento (ver dndCombate.js)
 
     // Onde a sala é hospedada: 'ngrok' (túnel a partir da máquina do mestre)
     // ou 'vps' (servidor próprio, sempre no ar). Ver src/backend.js
@@ -34,6 +36,7 @@ const state = {
 
     // Personagens
     playerCharacters: [],
+    personagensCarregados: false,   // a lista acima já veio do Supabase nesta sala
     allCharsCache: [],
 
     // Character options popup & edit mode

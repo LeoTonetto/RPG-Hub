@@ -72,7 +72,7 @@ function buildItemIcon(item, sizePx = 20) {
 // ── Footer do mestre ──────────────────────────────────────────────────────────
 function buildMasterFooter() {
     invModalFooter.innerHTML = ''
-    invModalFooter.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-top:1px solid rgba(201,168,76,0.15);'
+    invModalFooter.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-top:1px solid rgba(var(--gold-rgb), 0.15);'
 
     const row = document.createElement('div')
     row.style.cssText = 'display:flex;gap:6px;'
@@ -98,11 +98,11 @@ function buildMasterFooter() {
     qtyRow.style.cssText = 'display:none;align-items:center;gap:8px;'
 
     const selectedLabel = document.createElement('span')
-    selectedLabel.style.cssText = 'font-size:12px;color:rgba(201,168,76,0.85);font-family:"Crimson Text",serif;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
+    selectedLabel.style.cssText = 'font-size:12px;color:rgba(var(--gold-rgb), 0.85);font-family:"Crimson Text",serif;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
 
     const qtyLabel = document.createElement('span')
     qtyLabel.textContent = 'Qtd:'
-    qtyLabel.style.cssText = 'font-size:11px;color:rgba(201,168,76,0.5);white-space:nowrap;'
+    qtyLabel.style.cssText = 'font-size:11px;color:rgba(var(--gold-rgb), 0.5);white-space:nowrap;'
 
     const qtyInput = document.createElement('input')
     qtyInput.type = 'number'; qtyInput.min = '1'; qtyInput.value = '1'
@@ -122,7 +122,7 @@ function buildMasterFooter() {
     const dropdown = document.createElement('div')
     dropdown.style.cssText = `
         background:rgba(15,11,7,0.98);
-        border:1px solid rgba(201,168,76,0.2);
+        border:1px solid rgba(var(--gold-rgb), 0.2);
         border-radius:6px;
         max-height:180px;overflow-y:auto;
         display:none;flex-direction:column;
@@ -161,17 +161,17 @@ function buildMasterFooter() {
             const opt = document.createElement('div')
             opt.style.cssText = `
                 display:flex;align-items:center;gap:9px;padding:7px 10px;
-                cursor:pointer;border-bottom:1px solid rgba(201,168,76,0.07);
+                cursor:pointer;border-bottom:1px solid rgba(var(--gold-rgb), 0.07);
                 transition:background .1s;
             `
-            opt.addEventListener('mouseenter', () => { opt.style.background = 'rgba(201,168,76,0.08)' })
+            opt.addEventListener('mouseenter', () => { opt.style.background = 'rgba(var(--gold-rgb), 0.08)' })
             opt.addEventListener('mouseleave', () => { opt.style.background = '' })
 
             opt.appendChild(buildItemIcon(item, 18))
 
             const nameEl = document.createElement('span')
             nameEl.textContent = item.name
-            nameEl.style.cssText = 'font-family:"Crimson Text",serif;font-size:14px;color:rgba(220,200,160,0.9);'
+            nameEl.style.cssText = 'font-family:"Crimson Text",serif;font-size:14px;color:rgba(var(--parchment-dim-rgb), 0.9);'
             opt.appendChild(nameEl)
 
             if (item.viewable && item.photo) {
@@ -390,7 +390,7 @@ function buildInvTile(item, charId) {
     if (item.quantity > 1) {
         const qty = document.createElement('span')
         qty.textContent = `×${item.quantity}`
-        qty.style.cssText = 'position:absolute;bottom:4px;right:5px;font-size:9px;font-family:"Cinzel",serif;color:rgba(201,168,76,0.55);'
+        qty.style.cssText = 'position:absolute;bottom:4px;right:5px;font-size:9px;font-family:"Cinzel",serif;color:rgba(var(--gold-rgb), 0.55);'
         tile.appendChild(qty)
     }
 
@@ -450,19 +450,19 @@ function openLightbox(item) {
     img.alt = item.name
     img.style.cssText = `
         max-width:min(88vw,820px);max-height:78vh;
-        border-radius:8px;border:1px solid rgba(201,168,76,0.25);
+        border-radius:8px;border:1px solid rgba(var(--gold-rgb), 0.25);
         box-shadow:0 8px 80px rgba(0,0,0,0.8);object-fit:contain;
     `
 
     const caption = document.createElement('div')
     caption.textContent = item.name
-    caption.style.cssText = 'margin-top:14px;font-family:"Cinzel",serif;font-size:13px;letter-spacing:.15em;color:rgba(201,168,76,0.7);text-transform:uppercase;'
+    caption.style.cssText = 'margin-top:14px;font-family:"Cinzel",serif;font-size:13px;letter-spacing:.15em;color:rgba(var(--gold-rgb), 0.7);text-transform:uppercase;'
 
     const closeBtn = document.createElement('button')
     closeBtn.textContent = '✕'
-    closeBtn.style.cssText = 'position:absolute;top:18px;right:22px;background:none;border:none;color:rgba(201,168,76,0.5);font-size:22px;cursor:pointer;padding:4px 8px;transition:color .15s;'
-    closeBtn.addEventListener('mouseenter', () => { closeBtn.style.color = 'rgba(201,168,76,1)' })
-    closeBtn.addEventListener('mouseleave', () => { closeBtn.style.color = 'rgba(201,168,76,0.5)' })
+    closeBtn.style.cssText = 'position:absolute;top:18px;right:22px;background:none;border:none;color:rgba(var(--gold-rgb), 0.5);font-size:22px;cursor:pointer;padding:4px 8px;transition:color .15s;'
+    closeBtn.addEventListener('mouseenter', () => { closeBtn.style.color = 'rgba(var(--gold-rgb), 1)' })
+    closeBtn.addEventListener('mouseleave', () => { closeBtn.style.color = 'rgba(var(--gold-rgb), 0.5)' })
 
     overlay.appendChild(img)
     overlay.appendChild(caption)
@@ -500,7 +500,7 @@ function updateInventoryBadge(charId, count) {
         badge.className = 'inv-count-badge'
         badge.style.cssText = `
             position:absolute;top:4px;right:4px;
-            background:rgba(201,168,76,0.85);color:#1a140a;
+            background:rgba(var(--gold-rgb), 0.85);color:#1a140a;
             font-size:9px;font-family:"Cinzel",serif;font-weight:700;
             border-radius:99px;padding:1px 5px;pointer-events:none;
         `
@@ -540,7 +540,7 @@ function handleItemShow({ playerName, item }) {
         img.alt = item.name
         img.style.cssText = `
             max-width:min(88vw,820px);max-height:70vh;
-            border-radius:8px;border:1px solid rgba(201,168,76,0.25);
+            border-radius:8px;border:1px solid rgba(var(--gold-rgb), 0.25);
             box-shadow:0 8px 80px rgba(0,0,0,0.8);object-fit:contain;
         `
         overlay.appendChild(img)
@@ -557,15 +557,15 @@ function handleItemShow({ playerName, item }) {
     overlay.appendChild(caption)
 
     const shownBy = document.createElement('div')
-    shownBy.style.cssText = 'margin-top:6px;font-family:"Crimson Text",serif;font-size:14px;color:rgba(244,234,213,0.45);font-style:italic;'
+    shownBy.style.cssText = 'margin-top:6px;font-family:"Crimson Text",serif;font-size:14px;color:rgba(var(--parchment-rgb), 0.45);font-style:italic;'
     shownBy.textContent = `Mostrado por ${playerName}`
     overlay.appendChild(shownBy)
 
     const closeBtn = document.createElement('button')
     closeBtn.textContent = '✕'
-    closeBtn.style.cssText = 'position:absolute;top:18px;right:22px;background:none;border:none;color:rgba(201,168,76,0.5);font-size:22px;cursor:pointer;padding:4px 8px;transition:color .15s;'
-    closeBtn.addEventListener('mouseenter', () => { closeBtn.style.color = 'rgba(201,168,76,1)' })
-    closeBtn.addEventListener('mouseleave', () => { closeBtn.style.color = 'rgba(201,168,76,0.5)' })
+    closeBtn.style.cssText = 'position:absolute;top:18px;right:22px;background:none;border:none;color:rgba(var(--gold-rgb), 0.5);font-size:22px;cursor:pointer;padding:4px 8px;transition:color .15s;'
+    closeBtn.addEventListener('mouseenter', () => { closeBtn.style.color = 'rgba(var(--gold-rgb), 1)' })
+    closeBtn.addEventListener('mouseleave', () => { closeBtn.style.color = 'rgba(var(--gold-rgb), 0.5)' })
     overlay.appendChild(closeBtn)
 
     document.body.appendChild(overlay)

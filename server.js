@@ -77,7 +77,7 @@ app.get('/resolve-code/:code', (req, res) => {
 // ninguém sequestrar um código em uso.
 // ══════════════════════════════════════════════════════════════════════════════
 app.post('/register-room', express.json(), (req, res) => {
-    const { code, url, ownerId } = req.body || {}
+    const { code, url, ownerId, sistema } = req.body || {}
 
     if (!code || typeof code !== 'string' || !/^[A-Z0-9]{4,12}$/i.test(code)) {
         return res.status(400).json({ error: 'Código de sala inválido' })
@@ -92,10 +92,14 @@ app.post('/register-room', express.json(), (req, res) => {
 
     const token = existente ? existente.token : crypto.randomBytes(24).toString('hex')
 
+    // O sistema (calico, dnd...) define a cor da sala e quais personagens entram
+    const sistemaValido = typeof sistema === 'string' && /^[a-z0-9-]{1,32}$/.test(sistema) ? sistema : null
+
     roomOwners[sala] = {
         token,
         ownerId: ownerId || (existente && existente.ownerId) || null,
         url: url || (existente && existente.url) || null,
+        sistema: sistemaValido || (existente && existente.sistema) || null,
         createdAt: (existente && existente.createdAt) || Date.now(),
         lastSeen: Date.now(),
     }
@@ -105,7 +109,7 @@ app.post('/register-room', express.json(), (req, res) => {
         urlCodes[normalizeUrl(url)] = sala
     }
 
-    console.log(`[Sala] ${sala} registrada${url ? ' -> ' + url : ''}${existente ? ' (reaproveitando token)' : ''}`)
+    console.log(`[Sala] ${sala} registrada${url ? ' -> ' + url : ''}${roomOwners[sala].sistema ? ' [' + roomOwners[sala].sistema + ']' : ''}${existente ? ' (reaproveitando token)' : ''}`)
     res.json({ ok: true, code: sala, masterToken: token })
 })
 

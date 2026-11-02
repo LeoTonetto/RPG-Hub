@@ -1,6 +1,6 @@
 const state = require('./state')
 const { makeDraggable, clicouEmCamadaFlutuante } = require('./hud')
-const { updateCardStat, flashCard } = require('./characters')
+const { updateCardStat, flashCard, personagensDaSala } = require('./characters')
 const { SYSTEMS } = require('./systems')
 
 const statPopup = document.getElementById('statPopup')
@@ -75,15 +75,19 @@ function openStatPopup(char, ownerName, cardEl) {
     // A ficha do Calico carrega mais coisa que as outras (PV, PD, nivel, tres
     // atributos e os painéis), então o card ganha um pouco mais de largura
     statPopup.classList.toggle('calico', !!(sysDef && sysDef.module === 'calico'))
+    statPopup.classList.toggle('dnd', !!(sysDef && sysDef.module === 'dnd'))
 
     if (sysDef && sysDef.module === 'calico') {
         // Calico tem ficha própria: dados em vez de números, PV e PD com o mesmo
         // peso, painéis de perícias/armas/condições e rolador de teste.
         require('./calicoSheet').buildSheet(statDynamicRows, stats, canEdit)
+    } else if (sysDef && sysDef.module === 'dnd') {
+        // D&D: tudo calculado pelo motor a partir das escolhas da criação
+        require('./dndSheet').buildSheet(statDynamicRows, stats, canEdit)
     } else if (sysDef) {
         buildMainPopup(sysDef, stats, canEdit)
     } else {
-        statDynamicRows.innerHTML = '<div style="padding:8px;color:rgba(244,234,213,0.5);font-size:13px;">Sistema não definido</div>'
+        statDynamicRows.innerHTML = '<div style="padding:8px;color:rgba(var(--parchment-rgb), 0.5);font-size:13px;">Sistema não definido</div>'
     }
 
     renderExpressoesDaFicha()
@@ -93,7 +97,7 @@ function openStatPopup(char, ownerName, cardEl) {
     if (statSwitchPanel) {
         statSwitchPanel.style.display = 'none'
         statSwitchPanel.innerHTML = ''
-        state.playerCharacters.forEach(c => statSwitchPanel.appendChild(buildSwitchItem(c)))
+        personagensDaSala().forEach(c => statSwitchPanel.appendChild(buildSwitchItem(c)))
     }
 
     // Fecha sub-painéis
@@ -468,6 +472,7 @@ function closeStatPopup() {
     antPanel.classList.remove('visible')
     habPanel.classList.remove('visible')
     require('./calicoSheet').fecharPaineis()
+    require('./dndSheet').fecharPaineis()
     if (statCharMgmt) statCharMgmt.style.display = 'none'
     if (statSwitchPanel) statSwitchPanel.style.display = 'none'
     state.statPopupCharId = null

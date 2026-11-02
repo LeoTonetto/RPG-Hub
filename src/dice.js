@@ -93,10 +93,9 @@ function isSecretRoll() {
 function rollDice(sides, label) {
     if (!state.socket) return
 
-    // Usa o nome do personagem ativo, ou o primeiro personagem, ou o nome do player
-    const activeChar = state.activeCharacterId
-        ? state.playerCharacters.find(c => c.id === state.activeCharacterId)
-        : state.playerCharacters[0]
+    // Usa o nome do personagem ativo ou, sem nenhum na sala, o nome do player.
+    // Cair no primeiro da lista poderia trazer um personagem de outro sistema.
+    const activeChar = state.playerCharacters.find(c => c.id === state.activeCharacterId)
     const rollerName = activeChar ? activeChar.name : state.playerName
 
     state.socket.emit('dice_roll', {

@@ -12,12 +12,12 @@
     width: min(680px, 85vw);
     padding: 16px 24px 14px;
     background: linear-gradient(160deg, rgba(15, 12, 8, 0.96) 0%, rgba(8, 6, 4, 0.98) 100%);
-    border: 1.5px solid rgba(201, 168, 76, 0.25);
+    border: 1.5px solid rgba(var(--gold-rgb), 0.25);
     border-radius: 8px;
     box-shadow:
         0 8px 60px rgba(0, 0, 0, 0.9),
-        0 0 0 1px rgba(201, 168, 76, 0.06),
-        inset 0 1px 0 rgba(201, 168, 76, 0.08);
+        0 0 0 1px rgba(var(--gold-rgb), 0.06),
+        inset 0 1px 0 rgba(var(--gold-rgb), 0.08);
     display: none;
     opacity: 0;
     transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
@@ -45,7 +45,7 @@
     text-transform: uppercase;
     color: var(--parchment);
     margin-bottom: 12px;
-    text-shadow: 0 0 20px rgba(244, 234, 213, 0.15);
+    text-shadow: 0 0 20px rgba(var(--parchment-rgb), 0.15);
 }
 
 /* ── Barra com gradiente ──────────────────────────────────────────────────── */
@@ -69,7 +69,7 @@
             #8a7a58 52%,
             #baa870 65%,
             #d4c898 80%,
-            #f4ead5 100%);
+            var(--parchment) 100%);
     box-shadow:
         inset 0 2px 6px rgba(0, 0, 0, 0.5),
         inset 0 -1px 3px rgba(255, 255, 255, 0.05);
@@ -87,7 +87,7 @@
     background: linear-gradient(90deg,
             rgba(255, 100, 80, 0.15),
             rgba(255, 255, 255, 0.08),
-            rgba(244, 234, 213, 0.12));
+            rgba(var(--parchment-rgb), 0.12));
 }
 
 /* ── Ponteiro ──────────────────────────────────────────────────────────────── */
@@ -100,8 +100,8 @@
     background: var(--parchment);
     border-radius: 3px;
     box-shadow:
-        0 0 8px rgba(244, 234, 213, 0.6),
-        0 0 20px rgba(244, 234, 213, 0.2),
+        0 0 8px rgba(var(--parchment-rgb), 0.6),
+        0 0 20px rgba(var(--parchment-rgb), 0.2),
         0 2px 8px rgba(0, 0, 0, 0.7);
     transition: left 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
     z-index: 2;
@@ -151,7 +151,7 @@
     font-family: 'Cinzel', serif;
     font-size: 8px;
     letter-spacing: 0.15em;
-    color: rgba(201, 168, 76, 0.4);
+    color: rgba(var(--gold-rgb), 0.4);
 }
 
 /* ── Marcadores de escala ──────────────────────────────────────────────────── */
@@ -185,7 +185,7 @@
     gap: 8px;
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid rgba(201, 168, 76, 0.1);
+    border-top: 1px solid rgba(var(--gold-rgb), 0.1);
 }
 
 /* Dentro do painel de música (master controls) */
@@ -200,7 +200,7 @@
     font-family: 'Cinzel', serif;
     font-size: 9px;
     letter-spacing: 0.12em;
-    color: rgba(201, 168, 76, 0.5);
+    color: rgba(var(--gold-rgb), 0.5);
     white-space: nowrap;
     flex-shrink: 0;
 }
@@ -209,7 +209,7 @@
     flex: 1;
     -webkit-appearance: none;
     height: 4px;
-    background: linear-gradient(90deg, #8b1a1a, #6b5a3e, #f4ead5);
+    background: linear-gradient(90deg, #8b1a1a, #6b5a3e, var(--parchment));
     border-radius: 2px;
     outline: none;
 }
@@ -236,8 +236,8 @@
 
 .rep-master-send {
     padding: 5px 10px;
-    background: linear-gradient(135deg, #2a1f0f 0%, #1a1208 100%);
-    border: 1px solid rgba(201, 168, 76, 0.3);
+    background: linear-gradient(135deg, var(--botao-topo) 0%, var(--botao-base) 100%);
+    border: 1px solid rgba(var(--gold-rgb), 0.3);
     border-radius: 3px;
     color: var(--gold);
     font-family: 'Cinzel', serif;
@@ -251,5 +251,5 @@
 
 .rep-master-send:hover {
     border-color: var(--gold);
-    box-shadow: 0 0 12px rgba(201, 168, 76, 0.15);
+    box-shadow: 0 0 12px rgba(var(--gold-rgb), 0.15);
 }

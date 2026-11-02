@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="css/lockpicking.css">
     <link rel="stylesheet" href="css/journal.css">
     <link rel="stylesheet" href="css/calico.css">
+    <link rel="stylesheet" href="css/dnd.css">
     <link rel="stylesheet" href="css/config.css">
 </head>
 
@@ -129,6 +130,21 @@
             <div class="card-icon">⚄</div>
             <h1 class="card-title">RPG Lobby</h1>
             <p class="card-subtitle" id="connectSubtitle">Bem-vindo, Aventureiro</p>
+
+            <!-- Sistema da mesa: define a cor da sala e quais personagens entram -->
+            <div class="input-wrap" style="margin-bottom:12px;">
+                <span class="input-label">Sistema da mesa</span>
+                <div class="backend-opts" id="sistemaSalaOpts">
+                    <button type="button" class="backend-opt" data-sistema="calico">
+                        <span class="backend-opt-nome">🤠 Calico</span>
+                        <span class="backend-opt-sub">Velho Oeste · 1890</span>
+                    </button>
+                    <button type="button" class="backend-opt" data-sistema="dnd">
+                        <span class="backend-opt-nome">🐉 D&amp;D 5e</span>
+                        <span class="backend-opt-sub">fantasia medieval</span>
+                    </button>
+                </div>
+            </div>
 
             <!-- Onde a sala vai rodar -->
             <div class="input-wrap" id="backendWrap" style="margin-bottom:12px;">
@@ -277,6 +293,7 @@
             <hr class="panel-divider">
             <div class="npc-panel-wrap" id="npcPanelWrap">
                 <button id="npcInvokeBtn">👤 Invocar NPC</button>
+                <button id="combateMasterBtn" style="display:none;">⚔ Iniciar batalha</button>
                 <button id="lockpickMasterBtn" style="display:none;">🔐 Lockpicking</button>
                 <div id="npcPicker"></div>
             </div>
@@ -303,7 +320,7 @@
     <div id="statPopup">
         <div class="stat-popup-header" id="statPopupHeader">
             <span class="stat-popup-name" id="statPopupName">Personagem</span>
-            <span style="font-size:10px;color:rgba(201,168,76,0.18);margin:0 8px;flex-shrink:0;">⠿</span>
+            <span style="font-size:10px;color:rgba(var(--gold-rgb), 0.18);margin:0 8px;flex-shrink:0;">⠿</span>
             <button class="stat-popup-close" id="statPopupClose">✕</button>
         </div>
         <div class="stat-popup-body" id="statTabStats">

@@ -1,0 +1,17 @@
+Ícones de classes, magias e talentos do D&D
+
+Origem: game-icons.net (https://game-icons.net), repositório
+https://github.com/game-icons/icons
+
+Licença: Creative Commons Attribution 3.0 (CC BY 3.0)
+https://creativecommons.org/licenses/by/3.0/
+
+Autores dos ícones usados aqui (o nome do arquivo começa pelo autor):
+- Lorc            http://lorcblog.blogspot.com
+- Delapouite      https://delapouite.com
+- Sbed            http://opengameart.org/content/95-game-icons
+- Zeromancer
+- Badges
+
+Alteração feita: o quadrado de fundo foi removido e o desenho ficou preto,
+para o app pintar o ícone na cor da sala (máscara CSS).

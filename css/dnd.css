@@ -1,0 +1,1582 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   D&D 5e — tema da sala
+   Carmesim e prata. Só redefine as variáveis de base.css: toda regra que usa
+   var(--gold), rgba(var(--gold-rgb), …) ou as superfícies troca sozinha.
+   O carmesim é um pouco mais claro que o vermelho puro para os textos pequenos
+   em Cinzel continuarem legíveis sobre o fundo escuro.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+:root[data-sistema="dnd"] {
+    --gold: #cf4a53;
+    --gold-rgb: 207, 74, 83;
+    --gold-light: #ec7a80;
+    --gold-light-rgb: 236, 122, 128;
+    --gold-dim: #9c3a43;
+
+    /* Texto em osso frio e prata, no lugar do pergaminho */
+    --parchment: #eee9e6;
+    --parchment-rgb: 238, 233, 230;
+    --parchment-dim-rgb: 210, 206, 212;
+
+    --fundo-rgb: 27, 16, 18;
+    --fundo-escuro-rgb: 13, 9, 10;
+    --fundo-meio: #100b0c;
+    --fundo-base: #170b0d;
+    --botao-topo: #2c1418;
+    --botao-base: #1a0c0f;
+}
+
+/* A ficha e os painéis têm fundo marrom fixo no CSS geral; na sala de D&D
+   eles puxam para o vinho, como o resto da interface */
+:root[data-sistema="dnd"] #statPopup {
+    background: linear-gradient(160deg, #1f1214 0%, #100a0b 100%);
+}
+
+:root[data-sistema="dnd"] .subpanel {
+    background: linear-gradient(160deg, rgba(24, 14, 16, 0.98) 0%, rgba(11, 7, 8, 0.99) 100%);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ CRIAÇÃO DE PERSONAGEM ══
+   Passo a passo: raça, classe, antecedente, atributos, perícias, resumo.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+#charModal .connect-card.dnd-mode {
+    width: min(780px, calc(100vw - 32px));
+    padding: 40px 36px 32px;
+}
+
+.dnd-create {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    text-align: left;
+}
+
+.dc-corpo {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* ── Passos ── */
+.dc-passos {
+    position: sticky;
+    top: -40px;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    padding: 8px 0;
+    background: rgb(var(--fundo-escuro-rgb));
+    border-bottom: 1px solid rgba(var(--gold-rgb), 0.15);
+}
+
+.dc-passo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 4px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.15);
+    border-radius: 3px;
+    color: rgba(var(--parchment-rgb), 0.5);
+    font-family: 'Cinzel', serif;
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    min-width: 0;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.dc-passo-nome { overflow: hidden; text-overflow: ellipsis; }
+
+.dc-passo:hover { border-color: rgba(var(--gold-rgb), 0.4); }
+
+/* Barras de rolagem finas, na cor do tema, em tudo que rola dentro do D&D */
+.dm-grade, .dc-chips, .dc-opcoes-lista, .dnd-panel .subpanel-body, .dnd-nivel-card {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--gold-rgb), 0.4) transparent;
+}
+
+.dm-grade::-webkit-scrollbar, .dc-chips::-webkit-scrollbar, .dc-opcoes-lista::-webkit-scrollbar,
+.dnd-panel .subpanel-body::-webkit-scrollbar, .dnd-nivel-card::-webkit-scrollbar { width: 5px; }
+
+.dm-grade::-webkit-scrollbar-thumb, .dc-chips::-webkit-scrollbar-thumb, .dc-opcoes-lista::-webkit-scrollbar-thumb,
+.dnd-panel .subpanel-body::-webkit-scrollbar-thumb, .dnd-nivel-card::-webkit-scrollbar-thumb {
+    background: rgba(var(--gold-rgb), 0.4);
+    border-radius: 3px;
+}
+
+.dm-grade::-webkit-scrollbar-track, .dc-chips::-webkit-scrollbar-track, .dc-opcoes-lista::-webkit-scrollbar-track,
+.dnd-panel .subpanel-body::-webkit-scrollbar-track, .dnd-nivel-card::-webkit-scrollbar-track { background: transparent; }
+
+.dc-passo-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    border: 1px solid rgba(var(--gold-rgb), 0.3);
+    font-size: 9px;
+}
+
+.dc-passo.feito { color: rgba(var(--parchment-rgb), 0.75); }
+.dc-passo.feito .dc-passo-num { background: rgba(var(--gold-rgb), 0.18); color: var(--gold-light); }
+
+.dc-passo.atual {
+    border-color: var(--gold);
+    color: var(--gold-light);
+    background: rgba(var(--gold-rgb), 0.1);
+}
+
+/* ── Navegação ── */
+.dc-nav {
+    position: sticky;
+    bottom: -32px;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    background: rgb(var(--fundo-escuro-rgb));
+    border-top: 1px solid rgba(var(--gold-rgb), 0.15);
+}
+
+.dc-nav-btn {
+    width: auto;
+    padding: 9px 16px;
+    text-decoration: none;
+}
+
+.dc-nav-status {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-style: italic;
+    color: rgba(var(--gold-light-rgb), 0.75);
+}
+
+.dc-nav-dica {
+    font-size: 12px;
+    font-style: italic;
+    color: rgba(var(--parchment-rgb), 0.45);
+}
+
+/* ── Títulos ── */
+.dc-titulo h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--gold);
+}
+
+.dc-titulo p {
+    font-size: 14px;
+    color: rgba(var(--parchment-rgb), 0.5);
+    margin-top: 2px;
+}
+
+.dc-subtitulo {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+}
+
+.dc-dica {
+    font-size: 13px;
+    font-style: italic;
+    color: rgba(var(--parchment-rgb), 0.5);
+}
+
+.dc-muted { color: rgba(var(--parchment-rgb), 0.4); font-size: 12px; }
+
+/* ── Cartões de raça, classe e antecedente ── */
+.dc-grade {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+    gap: 7px;
+}
+
+.dc-grade-2 { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+
+.dc-cartao {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 11px;
+    text-align: left;
+    background: rgba(0, 0, 0, 0.32);
+    border: 1px solid rgba(var(--gold-rgb), 0.16);
+    border-radius: 3px;
+    color: var(--parchment);
+    font-family: 'Crimson Text', serif;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.dc-cartao:hover { border-color: rgba(var(--gold-rgb), 0.45); }
+
+.dc-cartao.on {
+    border-color: var(--gold);
+    background: rgba(var(--gold-rgb), 0.1);
+    box-shadow: inset 0 0 0 1px rgba(var(--gold-rgb), 0.15);
+}
+
+.dc-cartao-nome {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--gold);
+}
+
+.dc-cartao.on .dc-cartao-nome { color: var(--gold-light); }
+
+.dc-cartao-sub {
+    font-size: 11px;
+    color: rgba(var(--parchment-dim-rgb), 0.8);
+    font-variant-numeric: tabular-nums;
+}
+
+.dc-cartao-desc {
+    font-size: 12.5px;
+    line-height: 1.3;
+    color: rgba(var(--parchment-rgb), 0.5);
+}
+
+/* ── Traços, informações e notas ── */
+.dc-tracos, .dc-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border-left: 2px solid rgba(var(--gold-rgb), 0.35);
+}
+
+.dc-traco { font-size: 14px; line-height: 1.35; }
+.dc-traco b { color: var(--gold-light); font-weight: 600; margin-right: 6px; }
+.dc-traco span { color: rgba(var(--parchment-rgb), 0.75); }
+
+.dc-rodape {
+    margin-top: 2px;
+    font-size: 11px;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.1em;
+    color: var(--gold-dim);
+}
+
+.dc-info-linha {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.dc-info-rotulo {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+    padding-top: 3px;
+}
+
+.dc-info-valor { color: rgba(var(--parchment-rgb), 0.85); }
+
+.dc-magia-nota {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 10px 12px;
+    border: 1px dashed rgba(var(--gold-rgb), 0.3);
+    border-radius: 3px;
+    font-size: 14px;
+    color: rgba(var(--parchment-rgb), 0.8);
+}
+
+.dc-magia-nota b { color: var(--gold); font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.06em; }
+
+/* ── Vagas de escolha ── */
+.dc-vaga {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 11px 12px;
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid rgba(var(--gold-light-rgb), 0.35);
+    border-radius: 3px;
+}
+
+.dc-vaga.completa { border-color: rgba(var(--gold-rgb), 0.15); }
+
+.dc-vaga.piscar { animation: dcPiscar 0.6s ease; }
+
+@keyframes dcPiscar {
+    30% { box-shadow: 0 0 0 2px rgba(var(--gold-light-rgb), 0.6); }
+}
+
+.dc-vaga-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+
+.dc-vaga-rotulo {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--gold);
+}
+
+.dc-vaga-conta {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    color: rgba(var(--parchment-rgb), 0.55);
+    font-variant-numeric: tabular-nums;
+}
+
+.dc-vaga.completa .dc-vaga-conta { color: var(--gold-light); }
+
+.dc-vaga-origem { font-size: 12px; font-style: italic; color: rgba(var(--parchment-rgb), 0.4); margin-top: -4px; }
+
+.dc-chips { display: flex; flex-wrap: wrap; gap: 5px; max-height: 210px; overflow-y: auto; }
+
+.dc-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    padding: 5px 9px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.18);
+    border-radius: 12px;
+    color: rgba(var(--parchment-rgb), 0.75);
+    font-family: 'Crimson Text', serif;
+    font-size: 13.5px;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+}
+
+.dc-chip small { font-size: 10px; color: rgba(var(--parchment-rgb), 0.4); }
+.dc-chip:hover:not(:disabled) { border-color: rgba(var(--gold-rgb), 0.5); }
+
+.dc-chip.on {
+    border-color: var(--gold);
+    background: rgba(var(--gold-rgb), 0.16);
+    color: var(--gold-light);
+}
+
+.dc-chip:disabled, .dc-opcao:disabled { opacity: 0.38; cursor: not-allowed; }
+
+.dc-opcoes-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 6px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.dc-opcao {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    text-align: left;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.16);
+    border-radius: 3px;
+    color: var(--parchment);
+    font-family: 'Crimson Text', serif;
+    cursor: pointer;
+}
+
+.dc-opcao:hover:not(:disabled) { border-color: rgba(var(--gold-rgb), 0.45); }
+.dc-opcao.on { border-color: var(--gold); background: rgba(var(--gold-rgb), 0.12); }
+.dc-opcao-nome { font-family: 'Cinzel', serif; font-size: 11.5px; font-weight: 600; color: var(--gold); letter-spacing: 0.04em; }
+.dc-opcao.on .dc-opcao-nome { color: var(--gold-light); }
+.dc-opcao-desc { font-size: 13px; line-height: 1.3; color: rgba(var(--parchment-rgb), 0.6); }
+.dc-opcao-motivo { font-size: 11px; font-style: italic; color: rgba(var(--gold-light-rgb), 0.7); }
+
+/* ── Incremento de atributo ou talento ── */
+.dc-asi { display: flex; flex-direction: column; gap: 8px; }
+.dc-asi-abas { display: flex; gap: 6px; }
+
+.dc-aba {
+    padding: 5px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.2);
+    border-radius: 3px;
+    color: rgba(var(--parchment-rgb), 0.6);
+    font-family: 'Cinzel', serif;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+}
+
+.dc-aba.on { border-color: var(--gold); color: var(--gold-light); background: rgba(var(--gold-rgb), 0.12); }
+
+.dc-asi-attrs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px 14px; }
+
+.dc-asi-attr {
+    display: grid;
+    grid-template-columns: 1fr 26px 22px 26px 22px 28px;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+.dc-asi-q, .dc-asi-final { text-align: center; }
+.dc-asi-final { color: var(--gold-light); }
+
+/* ── Atributos ── */
+.dc-metodos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.dc-attr-acoes { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dc-btn-pequeno { width: auto; padding: 8px 14px; font-size: 11px; }
+
+.dc-rolagens { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.dc-rolagem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 58px;
+    padding: 5px 8px;
+    border: 1px solid rgba(var(--gold-rgb), 0.25);
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.dc-rolagem b { font-family: 'Cinzel', serif; font-size: 17px; color: var(--gold-light); }
+.dc-rolagem small { font-size: 11px; color: rgba(var(--parchment-rgb), 0.45); letter-spacing: 0.05em; }
+
+.dc-attr-tabela { display: flex; flex-direction: column; gap: 3px; }
+
+.dc-attr-linha {
+    display: grid;
+    grid-template-columns: 1.6fr 1.4fr 0.6fr 0.6fr 0.6fr;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid transparent;
+    border-radius: 3px;
+    font-variant-numeric: tabular-nums;
+}
+
+.dc-attr-linha.cab {
+    background: none;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-family: 'Cinzel', serif;
+    font-size: 9.5px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+}
+
+.dc-attr-linha.chave { border-color: rgba(var(--gold-rgb), 0.3); }
+.dc-attr-nome { display: flex; flex-direction: column; }
+.dc-attr-nome b { font-family: 'Cinzel', serif; font-size: 13px; color: var(--gold); letter-spacing: 0.06em; }
+.dc-attr-nome small { font-size: 12px; color: rgba(var(--parchment-rgb), 0.45); }
+.dc-attr-ctl { display: flex; align-items: center; gap: 8px; }
+.dc-attr-base { min-width: 20px; text-align: center; font-size: 16px; }
+.dc-attr-racial { color: var(--gold-light); font-size: 14px; }
+.dc-attr-total { font-family: 'Cinzel', serif; font-size: 17px; color: var(--parchment); }
+.dc-attr-mod { font-size: 15px; color: rgba(var(--parchment-rgb), 0.7); }
+
+.dc-pontos {
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--gold);
+    text-align: right;
+}
+
+.dc-pontos.erro { color: var(--gold-light); }
+
+.dc-select {
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(var(--gold-rgb), 0.3);
+    border-radius: 3px;
+    color: var(--parchment);
+    font-family: 'Crimson Text', serif;
+    font-size: 14px;
+    outline: none;
+}
+
+.dc-select:focus-visible { border-color: var(--gold); }
+.dc-select option { background: rgb(var(--fundo-escuro-rgb)); color: var(--parchment); }
+
+/* ── Perícias ── */
+.dc-pericias {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 2px 14px;
+}
+
+.dc-pericia {
+    display: grid;
+    grid-template-columns: 14px 1fr 30px 28px;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 4px;
+    font-size: 14px;
+    color: rgba(var(--parchment-rgb), 0.55);
+    font-variant-numeric: tabular-nums;
+}
+
+.dc-pericia.prof { color: var(--parchment); }
+.dc-pericia-marca { color: var(--gold); font-size: 11px; text-align: center; }
+.dc-pericia-attr { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.1em; color: var(--gold-dim); }
+.dc-pericia-bonus { text-align: right; }
+
+/* ── Resumo ── */
+.dc-resumo-titulo {
+    font-family: 'Cinzel', serif;
+    font-size: 14px;
+    letter-spacing: 0.06em;
+    color: var(--gold-light);
+}
+
+.dc-numeros { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; }
+
+.dc-numero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    padding: 8px 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.2);
+    border-radius: 3px;
+    text-align: center;
+}
+
+.dc-numero b { font-family: 'Cinzel', serif; font-size: 18px; color: var(--parchment); font-variant-numeric: tabular-nums; }
+.dc-numero span { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-dim); }
+
+.dc-equip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.dc-equip .input-label { width: 100%; }
+.dc-check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: rgba(var(--parchment-rgb), 0.8); cursor: pointer; }
+.dc-check input { accent-color: var(--gold); }
+
+.dc-personalidade { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dc-campo { display: flex; flex-direction: column; gap: 4px; }
+.dc-textarea { min-height: 52px; resize: vertical; font-size: 14px; padding: 8px 10px; }
+
+.dc-faltando {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    padding: 9px 12px;
+    border: 1px solid rgba(var(--gold-light-rgb), 0.35);
+    border-radius: 3px;
+    font-size: 14px;
+    color: rgba(var(--parchment-rgb), 0.75);
+}
+
+.dc-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--gold-light);
+    font-family: inherit;
+    font-size: 14px;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+@media (max-width: 640px) {
+    .dc-passos { grid-template-columns: repeat(3, 1fr); }
+    .dc-metodos, .dc-personalidade { grid-template-columns: 1fr; }
+    .dc-info-linha { grid-template-columns: 1fr; gap: 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ SUBIDA DE NÍVEL ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+#dndNivelModal {
+    position: fixed;
+    inset: 0;
+    z-index: 3500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(3px);
+}
+
+.dnd-nivel-card {
+    width: min(720px, calc(100vw - 32px));
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 36px 32px 28px;
+}
+
+.dnd-nivel-card .dc-nav { bottom: -28px; }
+.dnd-nivel-card.sem-entrada { animation: none; }
+
+.dn-corpo { margin-top: 4px; }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ FICHA NA SALA ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+#statPopup.dnd { width: 310px; }
+
+.dnd-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ds-titulo {
+    font-family: 'Cinzel', serif;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    line-height: 1.35;
+    color: rgba(var(--parchment-rgb), 0.7);
+}
+
+.ds-subtitulo { font-size: 12px; font-style: italic; color: rgba(var(--parchment-rgb), 0.45); margin-top: -6px; }
+
+.ds-subir {
+    padding: 8px;
+    border: 1px solid var(--gold);
+    border-radius: 3px;
+    background: rgba(var(--gold-rgb), 0.16);
+    color: var(--gold-light);
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    animation: dsBrilho 2s ease-in-out infinite;
+}
+
+@keyframes dsBrilho {
+    50% { box-shadow: 0 0 14px rgba(var(--gold-rgb), 0.45); }
+}
+
+.ds-pendente, .ds-liberar {
+    padding: 6px;
+    border: 1px dashed rgba(var(--gold-rgb), 0.4);
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+}
+
+.ds-mestre { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 12px; color: rgba(var(--parchment-rgb), 0.6); }
+.ds-mestre .ds-liberar { flex: 1; }
+
+.ds-link {
+    background: none;
+    border: none;
+    color: var(--gold-light);
+    font-family: inherit;
+    font-size: 12px;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* ── PV ── */
+.ds-pv { display: flex; flex-direction: column; gap: 5px; }
+.ds-pv-topo { display: flex; justify-content: space-between; align-items: baseline; }
+.ds-pv-rotulo { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.14em; color: var(--gold-dim); }
+.ds-pv-valor { font-variant-numeric: tabular-nums; font-size: 14px; color: rgba(var(--parchment-rgb), 0.6); }
+.ds-pv-valor b { font-size: 18px; color: var(--parchment); }
+.ds-pv-temp { color: #8fb7e0; }
+
+.ds-pv-barra {
+    position: relative;
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(var(--gold-rgb), 0.15);
+    overflow: hidden;
+}
+
+.ds-pv-fill { height: 100%; background: linear-gradient(90deg, #6e1f18, var(--hp)); transition: width 0.3s ease; }
+
+.ds-pv-fill-temp {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    background: rgba(143, 183, 224, 0.55);
+}
+
+.ds-pv-ctl { display: grid; grid-template-columns: 1fr 48px 1fr 1fr; gap: 4px; }
+.ds-pv-qtd { width: 100%; }
+
+.ds-pv-btn {
+    padding: 4px 2px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.2);
+    border-radius: 3px;
+    color: rgba(var(--parchment-rgb), 0.75);
+    font-family: 'Cinzel', serif;
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+}
+
+.ds-pv-btn.dano:hover { border-color: rgba(192, 57, 43, 0.6); }
+.ds-pv-btn.cura:hover { border-color: rgba(107, 163, 104, 0.6); }
+
+/* ── Números e atributos ── */
+.ds-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+
+.ds-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px 2px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.15);
+    border-radius: 3px;
+}
+
+.ds-chip b { font-family: 'Cinzel', serif; font-size: 14px; color: var(--parchment); font-variant-numeric: tabular-nums; }
+.ds-chip span { font-family: 'Cinzel', serif; font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-dim); }
+.ds-chip.clicavel { cursor: pointer; }
+.ds-chip.ativo b, .ds-chip.vantagem b { color: var(--gold-light); }
+.ds-chip.alerta { border-color: rgba(var(--gold-light-rgb), 0.6); }
+
+.ds-attrs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+
+.ds-attr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: "abrev valor" "mod mod" "res res";
+    align-items: center;
+    padding: 5px 7px;
+    background: rgba(0, 0, 0, 0.32);
+    border: 1px solid rgba(var(--gold-rgb), 0.18);
+    border-radius: 3px;
+    font-variant-numeric: tabular-nums;
+}
+
+.ds-attr-abrev { grid-area: abrev; font-family: 'Cinzel', serif; font-size: 9.5px; letter-spacing: 0.12em; color: var(--gold); }
+.ds-attr-valor { grid-area: valor; font-size: 12px; color: rgba(var(--parchment-rgb), 0.45); }
+.ds-attr-mod { grid-area: mod; text-align: center; font-family: 'Cinzel', serif; font-size: 18px; color: var(--parchment); }
+.ds-attr-res { grid-area: res; text-align: center; font-family: 'Cinzel', serif; font-size: 8.5px; letter-spacing: 0.08em; color: rgba(var(--parchment-rgb), 0.4); }
+.ds-attr-res.prof { color: var(--gold-light); }
+.ds-attr-res.prof::before { content: '● '; }
+
+.ds-extras { font-size: 12.5px; line-height: 1.35; color: rgba(var(--parchment-rgb), 0.6); }
+.ds-botoes { flex-wrap: wrap; }
+.ds-botoes .sp-subpanel-btn { flex: 1 1 30%; }
+
+.ds-descanso { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+
+.ds-descanso-btn {
+    padding: 6px 4px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(var(--gold-rgb), 0.15);
+    border-radius: 3px;
+    color: rgba(var(--parchment-rgb), 0.65);
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+}
+
+.ds-descanso-btn:hover, .ds-pendente:hover, .ds-liberar:hover { border-color: rgba(var(--gold-rgb), 0.5); color: var(--gold-light); }
+
+/* ── Painéis ── */
+.dnd-panel { max-width: 320px; }
+.dnd-panel.ds-painel-largo { max-width: 380px; }
+.dnd-panel .subpanel-body { max-height: 70vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.dnd-panel .dc-pericias { grid-template-columns: 1fr; }
+
+.ds-grupo {
+    margin-top: 4px;
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+    border-bottom: 1px solid rgba(var(--gold-rgb), 0.12);
+    padding-bottom: 2px;
+}
+
+.ds-caract { display: flex; flex-direction: column; gap: 1px; }
+.ds-caract-cab { display: flex; justify-content: space-between; gap: 6px; font-size: 13.5px; color: var(--gold-light); }
+.ds-caract-cab b { font-weight: 600; }
+.ds-caract-escolha { font-size: 12.5px; color: var(--gold); font-style: italic; }
+.ds-caract-desc { font-size: 13px; line-height: 1.3; color: rgba(var(--parchment-rgb), 0.7); }
+.ds-muted { font-size: 11.5px; color: rgba(var(--parchment-rgb), 0.4); }
+.ds-legenda { font-size: 11.5px; font-style: italic; color: rgba(var(--parchment-rgb), 0.4); }
+
+.ds-recurso { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; border-bottom: 1px solid rgba(var(--gold-rgb), 0.08); }
+.ds-recurso-cab { display: flex; flex-direction: column; font-size: 13.5px; color: var(--parchment); }
+.ds-recurso-cab b { font-weight: 600; }
+
+.ds-pips { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.ds-pip {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    border: 1px solid rgba(var(--gold-rgb), 0.5);
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+.ds-pip.cheio { background: var(--gold); box-shadow: 0 0 6px rgba(var(--gold-rgb), 0.4); }
+.ds-pip:disabled { cursor: default; }
+
+.ds-contador-num { display: flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.ds-contador-num b { min-width: 60px; text-align: center; font-size: 14px; }
+
+/* Selo no card: o mestre liberou a subida de nível */
+.char-card-nivel {
+    position: absolute;
+    top: 4px;
+    right: 5px;
+    z-index: 2;
+    font-size: 12px;
+    color: var(--gold-light);
+    text-shadow: 0 0 8px rgba(var(--gold-rgb), 0.8);
+    animation: dsBrilho 2s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ ÍCONES ══
+   Os SVG do game-icons.net viram máscara: o ícone pega a cor do texto, então
+   acompanha o tema da sala. --icone vem do JS (dndMagiasUI.icone).
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.dm-icone {
+    display: inline-block;
+    flex-shrink: 0;
+    width: 1.6em;
+    height: 1.6em;
+    background-color: currentColor;
+    -webkit-mask: var(--icone) center / contain no-repeat;
+    mask: var(--icone) center / contain no-repeat;
+}
+
+.dm-icone.grande { width: 46px; height: 46px; color: var(--gold-light); }
+
+.dc-cartao.com-icone { position: relative; padding-left: 50px; min-height: 64px; }
+
+.dc-cartao-icone {
+    position: absolute;
+    left: 11px;
+    top: 11px;
+    width: 28px;
+    height: 28px;
+    color: var(--gold);
+}
+
+.dc-cartao.on .dc-cartao-icone { color: var(--gold-light); }
+
+.ds-titulo { display: flex; align-items: center; gap: 7px; }
+.ds-titulo-icone { width: 22px; height: 22px; color: var(--gold); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ ESCOLHA DE MAGIAS ══
+   Grade de ícones por nível e detalhe ao lado, no espírito do BG3.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.dc-vaga-magia { padding-bottom: 8px; }
+
+.dm-seletor { display: flex; flex-direction: column; gap: 8px; }
+.dm-seletor.piscar { animation: dcPiscar 0.6s ease; }
+
+.dm-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: space-between; }
+.dm-abas { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.dm-aba {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.18);
+    border-radius: 3px;
+    color: rgba(var(--parchment-rgb), 0.6);
+    font-family: 'Cinzel', serif;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+}
+
+.dm-aba b {
+    min-width: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: rgba(var(--gold-rgb), 0.25);
+    color: var(--gold-light);
+    font-size: 9.5px;
+    text-align: center;
+}
+
+.dm-aba.on { border-color: var(--gold); color: var(--gold-light); background: rgba(var(--gold-rgb), 0.12); }
+
+.dm-busca { width: 180px; padding: 6px 10px; font-size: 14px; }
+
+.dm-trocas { font-size: 13px; font-style: italic; color: rgba(var(--gold-light-rgb), 0.8); }
+
+.dm-corpo {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+}
+
+.dm-grade {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+    gap: 5px;
+    max-height: 330px;
+    overflow-y: auto;
+    padding: 2px;
+}
+
+.dm-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 4px 6px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(var(--gold-rgb), 0.16);
+    border-radius: 4px;
+    color: rgba(var(--parchment-rgb), 0.8);
+    font-family: 'Crimson Text', serif;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+}
+
+.dm-tile .dm-icone { width: 32px; height: 32px; color: rgba(var(--parchment-rgb), 0.75); }
+
+.dm-tile-nome {
+    font-size: 11.5px;
+    line-height: 1.15;
+    text-align: center;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.dm-tile-marca {
+    position: absolute;
+    top: 3px;
+    right: 5px;
+    font-family: 'Cinzel', serif;
+    font-size: 8.5px;
+    color: rgba(var(--parchment-rgb), 0.4);
+}
+
+.dm-tile:hover, .dm-tile:focus-visible { border-color: rgba(var(--gold-rgb), 0.55); outline: none; }
+
+.dm-tile.on {
+    border-color: var(--gold);
+    background: rgba(var(--gold-rgb), 0.16);
+    box-shadow: inset 0 0 0 1px rgba(var(--gold-rgb), 0.25), 0 0 10px rgba(var(--gold-rgb), 0.18);
+}
+
+.dm-tile.on .dm-icone { color: var(--gold-light); }
+.dm-tile.bloqueado { opacity: 0.35; }
+.dm-vazio { grid-column: 1 / -1; font-size: 13px; font-style: italic; color: rgba(var(--parchment-rgb), 0.4); }
+
+.dm-detalhe {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(var(--gold-rgb), 0.2);
+    border-radius: 4px;
+    min-height: 120px;
+}
+
+.dm-det-cab { display: flex; gap: 10px; align-items: center; }
+.dm-det-titulo { display: flex; flex-direction: column; min-width: 0; }
+.dm-det-titulo b { font-family: 'Cinzel', serif; font-size: 14px; color: var(--gold-light); letter-spacing: 0.04em; }
+.dm-det-titulo span { font-size: 13px; font-style: italic; color: rgba(var(--parchment-rgb), 0.55); }
+
+.dm-det-aviso {
+    padding: 4px 8px;
+    border-left: 2px solid var(--gold-light);
+    font-size: 12.5px;
+    color: var(--gold-light);
+}
+
+.dm-det-linhas { display: flex; flex-direction: column; gap: 2px; }
+.dm-det-linha { display: grid; grid-template-columns: 92px 1fr; gap: 6px; font-size: 13px; }
+.dm-det-linha span:first-child { font-family: 'Cinzel', serif; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold-dim); padding-top: 2px; }
+.dm-det-linha span:last-child { color: rgba(var(--parchment-rgb), 0.85); }
+
+.dm-det-mec { font-size: 13px; color: var(--gold); }
+.dm-det-resumo { font-size: 14px; line-height: 1.35; color: rgba(var(--parchment-rgb), 0.85); }
+
+.dm-det-rodape {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11.5px;
+    color: rgba(var(--parchment-rgb), 0.4);
+}
+
+.dm-creditos { font-size: 10.5px; color: rgba(var(--parchment-rgb), 0.3); text-align: right; }
+
+.dc-sempre { display: flex; flex-direction: column; gap: 6px; }
+.dc-sempre-fila { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.dc-sempre-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px 4px 6px;
+    border: 1px solid rgba(var(--gold-rgb), 0.3);
+    border-radius: 12px;
+    font-size: 13px;
+    color: var(--parchment);
+}
+
+.dc-sempre-chip .dm-icone { width: 18px; height: 18px; color: var(--gold); }
+
+@media (max-width: 640px) {
+    .dm-corpo { grid-template-columns: 1fr; }
+    .dm-busca { width: 100%; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ ROLAGENS NA FICHA ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.ds-testes-btn { margin-top: 2px; }
+
+.ds-painel-testes { min-width: 280px; }
+.ds-painel-testes .subpanel-body { gap: 2px; }
+
+.dr-modo {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+    margin-bottom: 4px;
+}
+
+.dr-modo-btn {
+    padding: 5px 2px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.18);
+    border-radius: 3px;
+    color: rgba(var(--parchment-rgb), 0.55);
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+}
+
+.dr-modo-btn.on { border-color: var(--gold); color: var(--gold-light); background: rgba(var(--gold-rgb), 0.14); }
+.dr-modo-btn.vantagem.on { border-color: rgba(107, 163, 104, 0.8); color: #9fd49b; background: rgba(107, 163, 104, 0.12); }
+.dr-modo-btn.desvantagem.on { border-color: rgba(192, 57, 43, 0.8); color: #f0928a; background: rgba(192, 57, 43, 0.12); }
+
+.ds-rola {
+    display: grid;
+    grid-template-columns: 14px minmax(0, 1fr) auto 30px 26px;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 2px 2px 4px;
+    border-radius: 3px;
+    font-size: 13.5px;
+    color: rgba(var(--parchment-rgb), 0.6);
+    font-variant-numeric: tabular-nums;
+}
+
+.ds-rola:hover { background: rgba(var(--gold-rgb), 0.06); }
+.ds-rola.prof { color: var(--parchment); }
+.ds-rola-marca { color: var(--gold); font-size: 11px; text-align: center; }
+.ds-rola-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-rola-sub { font-family: 'Cinzel', serif; font-size: 8.5px; letter-spacing: 0.1em; color: var(--gold-dim); }
+.ds-rola-bonus { text-align: right; }
+
+.ds-rola-dado {
+    width: 24px;
+    height: 22px;
+    padding: 0;
+    background: rgba(var(--gold-rgb), 0.08);
+    border: 1px solid rgba(var(--gold-rgb), 0.25);
+    border-radius: 3px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.ds-rola-dado:hover, .ds-rola-dado:focus-visible { background: rgba(var(--gold-rgb), 0.22); border-color: var(--gold); outline: none; }
+
+/* ── Painel de magias da ficha ── */
+.dnd-panel.ds-painel-magia { max-width: 360px; width: 360px; }
+
+.ds-espacos { display: flex; flex-direction: column; gap: 4px; padding: 4px 0; }
+.ds-espaco { display: grid; grid-template-columns: 62px 1fr; align-items: center; gap: 6px; }
+.ds-espaco-nivel { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.08em; color: var(--gold-dim); }
+
+.ds-magias { display: flex; flex-direction: column; gap: 2px; }
+
+.ds-magia {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 6px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    color: rgba(var(--parchment-rgb), 0.85);
+    font-family: 'Crimson Text', serif;
+    font-size: 14px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.ds-magia .dm-icone { width: 20px; height: 20px; color: var(--gold); }
+.ds-magia:hover { background: rgba(var(--gold-rgb), 0.06); }
+.ds-magia.on { border-color: rgba(var(--gold-rgb), 0.45); background: rgba(var(--gold-rgb), 0.1); }
+.ds-magia-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-magia-tags { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.08em; color: rgba(var(--parchment-rgb), 0.45); }
+
+.ds-magia-det { margin-top: 6px; }
+.ds-magia-acoes { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; border-top: 1px solid rgba(var(--gold-rgb), 0.12); }
+.ds-magia-info { font-size: 12px; color: rgba(var(--parchment-rgb), 0.55); }
+.ds-magia-botoes { display: flex; flex-wrap: wrap; gap: 5px; }
+.ds-magia-espaco { flex: 1 1 100%; font-size: 13px; padding: 4px 6px; }
+
+.ds-magia-btn {
+    flex: 1 1 auto;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.3);
+    border-radius: 3px;
+    color: var(--gold-light);
+    font-family: 'Cinzel', serif;
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+}
+
+.ds-magia-btn.principal { background: rgba(var(--gold-rgb), 0.18); border-color: var(--gold); }
+.ds-magia-btn:hover:not(:disabled) { border-color: var(--gold-light); }
+.ds-magia-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Resultado em tela grande ── */
+#dndRollOverlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 3600;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 240px;
+    max-width: min(520px, calc(100vw - 32px));
+    padding: 20px 30px;
+    background: linear-gradient(160deg, rgba(var(--fundo-rgb), 0.97), rgba(var(--fundo-escuro-rgb), 0.99));
+    border: 1px solid var(--gold-dim);
+    border-radius: 5px;
+    box-shadow: 0 10px 60px rgba(0, 0, 0, 0.9);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0.9);
+    transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#dndRollOverlay.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+#dndRollOverlay.critico { border-color: var(--gold-light); box-shadow: 0 10px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(var(--gold-rgb), 0.35); }
+#dndRollOverlay.falha { border-color: rgba(120, 120, 120, 0.7); }
+#dndRollOverlay.cura { border-color: rgba(107, 163, 104, 0.7); }
+
+.dro-quem { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); }
+.dro-rotulo { font-size: 16px; color: rgba(var(--parchment-rgb), 0.8); text-align: center; }
+.dro-dados { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 4px 0; }
+
+.dro-dado {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 40px;
+    padding: 5px 6px;
+    border: 1px solid rgba(var(--gold-rgb), 0.35);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.35);
+    font-variant-numeric: tabular-nums;
+}
+
+.dro-dado b { font-family: 'Cinzel', serif; font-size: 20px; color: var(--parchment); }
+.dro-dado span { font-size: 10px; color: rgba(var(--parchment-rgb), 0.45); }
+.dro-dado.descartado { opacity: 0.35; }
+.dro-dado.vinte { border-color: var(--gold-light); }
+.dro-dado.vinte b { color: var(--gold-light); }
+.dro-dado.um b { color: rgba(var(--parchment-rgb), 0.45); }
+.dro-mais { align-self: center; font-size: 13px; color: rgba(var(--parchment-rgb), 0.5); }
+
+.dro-total { display: flex; align-items: baseline; gap: 8px; }
+.dro-bonus { font-size: 16px; color: rgba(var(--parchment-rgb), 0.6); }
+.dro-total b { font-family: 'Cinzel', serif; font-size: 38px; color: var(--parchment); line-height: 1; font-variant-numeric: tabular-nums; }
+.dro-tipo { font-size: 15px; font-style: italic; color: rgba(var(--parchment-rgb), 0.6); }
+#dndRollOverlay.cura .dro-total b { color: #9fd49b; }
+.dro-notas { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.12em; color: var(--gold-light); text-transform: uppercase; }
+
+/* Resultado de magia com ataque: a linha do ataque antes do dano */
+.dro-ataque { display: flex; align-items: baseline; gap: 8px; font-size: 15px; color: rgba(var(--parchment-rgb), 0.75); }
+.dro-ataque b { font-family: 'Cinzel', serif; font-size: 24px; color: var(--parchment); font-variant-numeric: tabular-nums; }
+.dro-ataque-dados { font-variant-numeric: tabular-nums; }
+.dro-sub { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold-dim); margin-top: 2px; }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ MODO DE BATALHA ══
+   Barra de iniciativa no topo, painel do turno, ferramentas do mestre e a
+   pergunta de reação.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+#combateMasterBtn {
+    width: 100%;
+    padding: 7px 12px;
+    background: rgba(var(--gold-rgb), 0.08);
+    border: 1px solid rgba(var(--gold-rgb), 0.3);
+    border-radius: 3px;
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+#combateMasterBtn:hover { border-color: var(--gold); color: var(--gold-light); }
+
+#combateBarra {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1400;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px 12px;
+    max-width: calc(100vw - 32px);
+    padding: 8px 12px;
+    background: linear-gradient(180deg, rgba(var(--fundo-rgb), 0.96), rgba(var(--fundo-escuro-rgb), 0.97));
+    border: 1px solid rgba(var(--gold-rgb), 0.35);
+    border-radius: 6px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.75);
+}
+
+.cb-rodada {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    white-space: nowrap;
+}
+
+.cb-fila { display: flex; gap: 6px; overflow-x: auto; max-width: 100%; padding-bottom: 2px; scrollbar-width: thin; }
+
+.cb-ent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    width: 72px;
+    flex-shrink: 0;
+    padding: 5px 4px;
+    border: 1px solid rgba(var(--gold-rgb), 0.15);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    opacity: 0.75;
+    transition: opacity 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.cb-ent.atual {
+    opacity: 1;
+    border-color: var(--gold);
+    background: rgba(var(--gold-rgb), 0.12);
+    box-shadow: 0 0 14px rgba(var(--gold-rgb), 0.35);
+    transform: translateY(2px);
+}
+
+.cb-ent.minha .cb-nome { color: var(--gold-light); }
+
+.cb-foto {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    border: 1px solid rgba(var(--gold-rgb), 0.3);
+    color: rgba(var(--parchment-rgb), 0.8);
+}
+
+.cb-ent.criatura .cb-foto { border-color: rgba(192, 57, 43, 0.5); color: #e0574a; }
+.cb-foto img { width: 100%; height: 100%; object-fit: cover; }
+.cb-foto .dm-icone { width: 26px; height: 26px; }
+
+.cb-ini {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    min-width: 20px;
+    padding: 1px 4px;
+    border-radius: 8px;
+    background: rgb(var(--fundo-escuro-rgb));
+    border: 1px solid rgba(var(--gold-rgb), 0.5);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    color: var(--gold-light);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.cb-nome {
+    max-width: 100%;
+    font-family: 'Cinzel', serif;
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+    color: var(--parchment);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cb-fichas { display: flex; gap: 3px; }
+
+.cb-ficha {
+    min-width: 17px;
+    height: 17px;
+    padding: 0 3px;
+    border-radius: 4px;
+    border: 1px solid;
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    font-weight: 600;
+    cursor: pointer;
+    background: none;
+}
+
+.cb-ficha:disabled { cursor: default; }
+.cb-ficha.acao { border-color: rgba(107, 163, 104, 0.7); color: #9fd49b; }
+.cb-ficha.bonus { border-color: rgba(212, 160, 64, 0.75); color: #e6be6a; }
+.cb-ficha.reacao { border-color: rgba(120, 160, 220, 0.75); color: #9dbbe8; }
+.cb-ficha.acao.livre { background: rgba(107, 163, 104, 0.25); }
+.cb-ficha.bonus.livre { background: rgba(212, 160, 64, 0.22); }
+.cb-ficha.reacao.livre { background: rgba(120, 160, 220, 0.22); }
+.cb-ficha.gasta { opacity: 0.35; text-decoration: line-through; }
+
+.cb-fichas.grandes { gap: 6px; flex-wrap: wrap; justify-content: center; }
+.cb-fichas.grandes .cb-ficha { height: 30px; padding: 0 12px; font-size: 11px; letter-spacing: 0.06em; }
+
+.cb-acoes { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.cb-btn {
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.3);
+    border-radius: 3px;
+    color: rgba(var(--parchment-rgb), 0.85);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.cb-btn:hover { border-color: var(--gold); color: var(--gold-light); }
+.cb-btn.principal { background: rgba(var(--gold-rgb), 0.18); border-color: var(--gold); color: var(--gold-light); }
+.cb-btn.perigo:hover { border-color: rgba(192, 57, 43, 0.8); color: #f0928a; }
+
+.cb-ctl { display: flex; gap: 2px; }
+.cb-ctl .cb-btn { padding: 2px 5px; font-size: 9px; }
+
+.cb-nova { display: flex; gap: 6px; flex-basis: 100%; justify-content: center; }
+.cb-nova .room-input { width: 180px; padding: 6px 10px; font-size: 14px; }
+.cb-nova .cb-ini, .cb-setup-cr .cb-ini { position: static; width: 74px; border-radius: 3px; }
+
+/* ── Painel "Seu turno" ── */
+#combateTurno {
+    position: fixed;
+    bottom: 130px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1400;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: linear-gradient(180deg, rgba(var(--fundo-rgb), 0.97), rgba(var(--fundo-escuro-rgb), 0.98));
+    border: 1px solid var(--gold);
+    border-radius: 6px;
+    box-shadow: 0 0 24px rgba(var(--gold-rgb), 0.25), 0 8px 30px rgba(0, 0, 0, 0.75);
+}
+
+.cb-turno-titulo { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-light); }
+
+/* ── Janelas (montagem e anúncio) ── */
+.cb-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(3px);
+}
+
+.cb-setup, .cb-anuncio {
+    width: min(560px, calc(100vw - 32px));
+    max-height: 90vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: left;
+    padding: 34px 30px 26px;
+}
+
+.cb-setup .card-title, .cb-setup .card-subtitle, .cb-setup .card-icon,
+.cb-anuncio .card-title { text-align: center; margin-bottom: 0; }
+
+.cb-setup-lista { display: flex; flex-direction: column; gap: 5px; }
+
+.cb-setup-pj {
+    display: grid;
+    grid-template-columns: 18px 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.15);
+    border-radius: 3px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.cb-setup-pj input { accent-color: var(--gold); }
+.cb-setup-nome { color: var(--parchment); }
+.cb-setup-pj b { color: var(--gold-light); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.cb-setup-cr { display: grid; grid-template-columns: 1fr 74px 26px 26px; gap: 6px; align-items: center; }
+.cb-setup-cr .room-input { padding: 7px 10px; font-size: 14px; }
+.cb-mais { align-self: flex-start; text-decoration: none; }
+
+.cb-form { display: flex; flex-direction: column; gap: 8px; }
+.cb-campo { display: flex; flex-direction: column; gap: 4px; }
+.cb-campo .room-input, .cb-campo .dc-select { padding: 7px 10px; font-size: 14px; }
+.cb-num { width: 120px; }
+
+/* ── Resultado para o mestre ── */
+#combateResultado {
+    position: fixed;
+    top: 120px;
+    right: 16px;
+    z-index: 1450;
+    width: min(320px, calc(100vw - 32px));
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px;
+    background: linear-gradient(160deg, rgba(var(--fundo-rgb), 0.97), rgba(var(--fundo-escuro-rgb), 0.98));
+    border: 1px solid rgba(var(--gold-rgb), 0.45);
+    border-radius: 5px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.75);
+}
+
+#combateResultado .subpanel-close { position: absolute; top: 6px; right: 8px; }
+.cb-res-titulo { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.08em; color: var(--gold-light); padding-right: 18px; }
+.cb-res-linha { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.04em; }
+.cb-res-linha.acerto { color: #e0574a; }
+.cb-res-linha.erro { color: #9fd49b; }
+.cb-res-reacao { font-size: 13.5px; color: rgba(var(--parchment-rgb), 0.85); }
+.cb-res-reacao.acerto { color: #9fd49b; }
+.cb-dano { display: flex; gap: 6px; align-items: center; }
+.cb-dano .room-input { width: 90px; padding: 6px 8px; font-size: 14px; }
+
+/* ── Pergunta de reação ── */
+#combatePrompt {
+    position: fixed;
+    left: 50%;
+    bottom: 140px;
+    z-index: 3500;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    width: min(420px, calc(100vw - 32px));
+    padding: 14px 16px;
+    transform: translateX(-50%);
+    background: linear-gradient(160deg, rgba(var(--fundo-rgb), 0.98), rgba(var(--fundo-escuro-rgb), 0.99));
+    border: 1px solid #9dbbe8;
+    border-radius: 6px;
+    box-shadow: 0 0 26px rgba(120, 160, 220, 0.35), 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+#combatePrompt.show { display: flex; animation: cbEntra 0.25s ease; }
+
+@keyframes cbEntra {
+    from { opacity: 0; transform: translate(-50%, 10px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.cb-prompt-titulo { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #9dbbe8; }
+.cb-prompt-texto { font-size: 15px; color: var(--parchment); }
+.cb-prompt-op { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cb-prompt-op .dc-select { padding: 4px 6px; font-size: 13px; }
+
+#combateAviso {
+    position: fixed;
+    top: 110px;
+    left: 50%;
+    z-index: 3550;
+    padding: 10px 22px;
+    transform: translateX(-50%);
+    background: rgba(var(--fundo-escuro-rgb), 0.96);
+    border: 1px solid var(--gold);
+    border-radius: 5px;
+    font-family: 'Cinzel', serif;
+    font-size: 15px;
+    letter-spacing: 0.1em;
+    color: var(--gold-light);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+#combateAviso.show { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ds-subir, .char-card-nivel, .dc-vaga.piscar, .dm-seletor.piscar { animation: none; }
+    #dndRollOverlay { transition: opacity 0.2s ease; transform: translate(-50%, -50%); }
+    #combatePrompt.show { animation: none; }
+    .cb-ent { transition: none; }
+}

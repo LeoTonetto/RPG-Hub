@@ -3,7 +3,7 @@ const state = require('./state')
 
 const { applyScene } = require('./scene')
 const { playYouTubeVideo, stopYouTubeVideo, loadYouTubeAPI, initMusicPanel, showMusicActive, hideMusicActive } = require('./music')
-const { renderCharacterBar, updateCardStat, flashCard, loadAndShareCharacters } = require('./characters')
+const { renderCharacterBar, updateCardStat, flashCard, loadAndShareCharacters, definirSistemaDaSala } = require('./characters')
 const { showDiceResult, updateDiceMasterUI } = require('./dice')
 const { initChat, addChatMessage } = require('./chat')
 const { showHUDButtons } = require('./hud')
@@ -23,6 +23,11 @@ function connectToRoom(url, roomCode) {
 
     state.currentRoomCode = (roomCode || 'DEFAULT').toString().trim().toUpperCase()
     if (!state.serverUrl) state.serverUrl = url.replace(/\/$/, '')
+
+    // O sistema da sala anterior não vale aqui; o servidor manda o desta
+    state.roomSystem = null
+    state.personagensCarregados = false
+    require('./dndCombate').limpar()
 
     // O token so existe para quem criou a sala. Recuperamos do localStorage
     // tambem, para o mestre reassumir depois de fechar e reabrir o app.
@@ -72,6 +77,9 @@ function connectToRoom(url, roomCode) {
         showJournalButtons()
         updateDiceMasterUI()   // mostra/esconde o interruptor de rolagem secreta
 
+        require('./dndCombate').atualizarBotaoMestre()
+        require('./dndCombate').aoEstado(state.combate)   // redesenha com as permissões novas
+
         const { openLockpickPicker } = require('./lockpicking')
         const lockBtn = document.getElementById('lockpickMasterBtn')
         if (lockBtn) {
@@ -82,6 +90,23 @@ function connectToRoom(url, roomCode) {
             }
         }
     })
+
+    // ── Sistema da sala: define a cor e quais personagens entram ─────────────
+    state.socket.on('room_system', ({ sistema } = {}) => {
+        definirSistemaDaSala(sistema)
+        // Sala de D&D: já busca magias e talentos no Supabase
+        if (sistema === 'dnd') require('./dndConteudo').carregar()
+        require('./dndCombate').atualizarBotaoMestre()
+    })
+
+    // ── D&D: modo de batalha ─────────────────────────────────────────────────
+    state.socket.on('combate_estado', estado => require('./dndCombate').aoEstado(estado))
+    state.socket.on('combate_anuncio', a => require('./dndCombate').aoAnuncio(a))
+    state.socket.on('combate_reacao', r => require('./dndCombate').aoReacao(r))
+
+    // ── D&D: resultado de rolagem da ficha para a sala ───────────────────────
+    state.socket.on('dnd_result', res => require('./dndRolagem').mostrar(res))
+    state.socket.on('dnd_ack', ({ id } = {}) => require('./dndRolagem').confirmar(id))
 
     state.socket.on('connect_error', err => {
         console.error('[Socket] Erro:', err.message)
@@ -117,8 +142,17 @@ function connectToRoom(url, roomCode) {
 
         updateCardStat(charId, field, value)
 
+        // D&D: o mestre liberou a subida. O card ganha o selo ⬆, e o dono
+        // grava a liberação, para ela sobreviver se ele fechar o app.
+        if (field === 'nivel_liberado' && entry?.character?.system === 'dnd') {
+            renderCharacterBar(state.allCharsCache)
+            require('./dndSheet').persistirSeForMeu(charId)
+        }
+
         if (state.statPopupCharId === charId && (field === 'expressao' || field === 'expressoes')) {
             require('./statPopup').renderExpressoesDaFicha()
+        } else if (state.statPopupCharId === charId && require('./dndSheet').isDnd(state.statPopupChar)) {
+            require('./dndSheet').onRemoteStatUpdate(charId)
         } else if (state.statPopupCharId === charId) {
             const { onRemoteStatUpdate, isCalico } = require('./calicoSheet')
             if (isCalico(state.statPopupChar)) {
