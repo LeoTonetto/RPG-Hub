@@ -14,6 +14,10 @@
 //   truquesFixos / truquesExtras (subclasse) — truques que vêm de graça
 //   niveis     — { nível: [característica] }, cada uma { nome, desc, escolhas? }
 //   recursos   — (nivel, mod) => [{ id, nome, max, recarga, dado? }]
+//   equipamentoInicial — o pacote do livro: cada grupo é uma escolha (a)/(b)/(c),
+//                  grupo de uma opção só é fixo. Opção: { armas: [id | [id, qtd]],
+//                  escolher: [{ cat, corpo?, qtd? }], armadura?, escudo?, itens?,
+//                  seProf? (só vale com proficiência) }
 //
 // O Patrulheiro segue a versão revisada que está no livro da mesa
 // (Conclaves da Besta, do Caçador e do Rastreador Subterrâneo).
@@ -39,7 +43,11 @@ const CLASSES = {
         resistencias: ['for', 'con'],
         armaduras: ['leve', 'media', 'escudo'], armas: { categorias: ['simples', 'marcial'] },
         pericias: { qtd: 2, de: ['adestrar', 'atletismo', 'intimidacao', 'natureza', 'percepcao', 'sobrevivencia'] },
-        armaduraInicial: [], escudoInicial: false,
+        equipamentoInicial: [
+            [{ armas: ['machado-grande'] }, { escolher: [{ cat: 'marcial', corpo: true }] }],
+            [{ armas: [['machadinha', 2]] }, { escolher: [{ cat: 'simples' }] }],
+            [{ itens: ['Pacote de aventureiro'], armas: [['azagaia', 4]] }],
+        ],
         asi: ASI,
         subclasse: { nivel: 3, rotulo: 'Caminho Primitivo' },
         defesaSemArmadura: 'con',
@@ -92,7 +100,12 @@ const CLASSES = {
         armaduras: ['leve'], armas: { categorias: ['simples'], lista: ['besta-de-mao', 'espada-longa', 'rapieira', 'espada-curta'] },
         pericias: { qtd: 3 },
         escolhasIniciais: [{ id: 'instrumentos', rotulo: 'Instrumentos musicais', tipo: 'ferramenta', qtd: 3, de: FERRAMENTAS.instrumentos }],
-        armaduraInicial: ['couro'], escudoInicial: false,
+        equipamentoInicial: [
+            [{ armas: ['rapieira'] }, { armas: ['espada-longa'] }, { escolher: [{ cat: 'simples' }] }],
+            [{ itens: ['Pacote de diplomata'] }, { itens: ['Pacote de artista'] }],
+            [{ itens: ['Alaúde'] }, { itens: ['Outro instrumento musical'] }],
+            [{ armadura: 'couro', armas: ['adaga'] }],
+        ],
         asi: ASI,
         subclasse: { nivel: 3, rotulo: 'Colégio de Bardo' },
         conjuracao: {
@@ -148,7 +161,12 @@ const CLASSES = {
         resistencias: ['sab', 'car'],
         armaduras: ['leve'], armas: { categorias: ['simples'] },
         pericias: { qtd: 2, de: ['arcanismo', 'enganacao', 'historia', 'intimidacao', 'investigacao', 'natureza', 'religiao'] },
-        armaduraInicial: ['couro'], escudoInicial: false,
+        equipamentoInicial: [
+            [{ armas: ['besta-leve'], itens: ['20 virotes'] }, { escolher: [{ cat: 'simples' }] }],
+            [{ itens: ['Bolsa de componentes'] }, { itens: ['Foco arcano'] }],
+            [{ itens: ['Pacote de estudioso'] }, { itens: ['Pacote de explorador'] }],
+            [{ armadura: 'couro', escolher: [{ cat: 'simples' }], armas: [['adaga', 2]] }],
+        ],
         asi: ASI,
         subclasse: { nivel: 1, rotulo: 'Patrono Transcendental' },
         conjuracao: {
@@ -213,7 +231,13 @@ const CLASSES = {
         resistencias: ['sab', 'car'],
         armaduras: ['leve', 'media', 'escudo'], armas: { categorias: ['simples'] },
         pericias: { qtd: 2, de: ['historia', 'intuicao', 'medicina', 'persuasao', 'religiao'] },
-        armaduraInicial: ['brunea', 'couro', 'cota-de-malha'], escudoInicial: true,
+        equipamentoInicial: [
+            [{ armas: ['maca'] }, { armas: ['martelo-de-guerra'], seProf: true }],
+            [{ armadura: 'brunea' }, { armadura: 'couro' }, { armadura: 'cota-de-malha', seProf: true }],
+            [{ armas: ['besta-leve'], itens: ['20 virotes'] }, { escolher: [{ cat: 'simples' }] }],
+            [{ itens: ['Pacote de sacerdote'] }, { itens: ['Pacote de aventureiro'] }],
+            [{ escudo: true, itens: ['Símbolo sagrado'] }],
+        ],
         asi: ASI,
         subclasse: { nivel: 1, rotulo: 'Domínio Divino' },
         conjuracao: {
@@ -332,7 +356,12 @@ const CLASSES = {
         ferramentas: ['Kit de herbalismo'],
         idiomas: ['Druídico'],
         pericias: { qtd: 2, de: ['arcanismo', 'adestrar', 'intuicao', 'medicina', 'natureza', 'percepcao', 'religiao', 'sobrevivencia'] },
-        armaduraInicial: ['couro'], escudoInicial: true,
+        equipamentoInicial: [
+            [{ escudo: true, rotulo: 'Escudo de madeira' }, { escolher: [{ cat: 'simples' }] }],
+            [{ armas: ['cimitarra'] }, { escolher: [{ cat: 'simples', corpo: true }] }],
+            [{ itens: ['Pacote de estudioso'] }, { itens: ['Pacote de explorador'] }],
+            [{ armadura: 'couro', itens: ['Pacote de aventureiro', 'Foco druídico'] }],
+        ],
         asi: ASI,
         subclasse: { nivel: 2, rotulo: 'Círculo Druídico' },
         conjuracao: {
@@ -387,7 +416,13 @@ const CLASSES = {
         resistencias: ['con', 'car'],
         armaduras: [], armas: { lista: ['adaga', 'dardo', 'funda', 'bordao', 'besta-leve'] },
         pericias: { qtd: 2, de: ['arcanismo', 'enganacao', 'intuicao', 'intimidacao', 'persuasao', 'religiao'] },
-        armaduraInicial: [], escudoInicial: false,
+        // O livro da mesa esqueceu as duas adagas do feiticeiro; vêm do original
+        equipamentoInicial: [
+            [{ armas: ['besta-leve'], itens: ['20 virotes'] }, { escolher: [{ cat: 'simples' }] }],
+            [{ itens: ['Bolsa de componentes'] }, { itens: ['Foco arcano'] }],
+            [{ itens: ['Pacote de explorador'] }, { itens: ['Pacote de aventureiro'] }],
+            [{ armas: [['adaga', 2]] }],
+        ],
         asi: ASI,
         subclasse: { nivel: 1, rotulo: 'Origem de Feitiçaria' },
         conjuracao: {
@@ -440,7 +475,12 @@ const CLASSES = {
         resistencias: ['for', 'con'],
         armaduras: ['leve', 'media', 'pesada', 'escudo'], armas: { categorias: ['simples', 'marcial'] },
         pericias: { qtd: 2, de: ['acrobacia', 'adestrar', 'atletismo', 'historia', 'intuicao', 'intimidacao', 'percepcao', 'sobrevivencia'] },
-        armaduraInicial: ['cota-de-malha', 'couro'], escudoInicial: true,
+        equipamentoInicial: [
+            [{ armadura: 'cota-de-malha' }, { armadura: 'gibao-de-peles', armas: ['arco-longo'], itens: ['20 flechas'] }],
+            [{ escolher: [{ cat: 'marcial' }], escudo: true }, { escolher: [{ cat: 'marcial', qtd: 2 }] }],
+            [{ armas: ['besta-leve'], itens: ['20 virotes'] }, { armas: [['machadinha', 2]] }],
+            [{ itens: ['Pacote de aventureiro'] }, { itens: ['Pacote de explorador'] }],
+        ],
         asi: [4, 6, 8, 12, 14, 16, 19],
         subclasse: { nivel: 3, rotulo: 'Arquétipo Marcial' },
         niveis: {
@@ -515,7 +555,12 @@ const CLASSES = {
         ferramentas: ['Ferramentas de ladrão'],
         idiomas: ['Gíria de Ladrão'],
         pericias: { qtd: 4, de: ['acrobacia', 'atletismo', 'atuacao', 'enganacao', 'furtividade', 'intimidacao', 'intuicao', 'investigacao', 'percepcao', 'persuasao', 'prestidigitacao'] },
-        armaduraInicial: ['couro'], escudoInicial: false,
+        equipamentoInicial: [
+            [{ armas: ['rapieira'] }, { armas: ['espada-longa'] }],
+            [{ armas: ['arco-curto'], itens: ['Aljava com 20 flechas'] }, { armas: ['espada-curta'] }],
+            [{ itens: ['Pacote de assaltante'] }, { itens: ['Pacote de aventureiro'] }, { itens: ['Pacote de explorador'] }],
+            [{ armadura: 'couro', armas: [['adaga', 2]], itens: ['Ferramentas de ladrão'] }],
+        ],
         asi: [4, 8, 10, 12, 16, 19],
         subclasse: { nivel: 3, rotulo: 'Arquétipo de Ladino' },
         niveis: {
@@ -582,7 +627,12 @@ const CLASSES = {
         resistencias: ['int', 'sab'],
         armaduras: [], armas: { lista: ['adaga', 'dardo', 'funda', 'bordao', 'besta-leve'] },
         pericias: { qtd: 2, de: ['arcanismo', 'historia', 'intuicao', 'investigacao', 'medicina', 'religiao'] },
-        armaduraInicial: [], escudoInicial: false,
+        equipamentoInicial: [
+            [{ armas: ['bordao'] }, { armas: ['adaga'] }],
+            [{ itens: ['Bolsa de componentes'] }, { itens: ['Foco arcano'] }],
+            [{ itens: ['Pacote de estudioso'] }, { itens: ['Pacote de explorador'] }],
+            [{ itens: ['Grimório'] }],
+        ],
         asi: ASI,
         subclasse: { nivel: 2, rotulo: 'Tradição Arcana' },
         conjuracao: {
@@ -691,7 +741,11 @@ const CLASSES = {
         armaduras: [], armas: { categorias: ['simples'], lista: ['espada-curta'] },
         pericias: { qtd: 2, de: ['acrobacia', 'atletismo', 'furtividade', 'historia', 'intuicao', 'religiao'] },
         escolhasIniciais: [{ id: 'ferramenta', rotulo: 'Ferramenta de artesão ou instrumento', tipo: 'ferramenta', qtd: 1, de: [...FERRAMENTAS.artesao, ...FERRAMENTAS.instrumentos] }],
-        armaduraInicial: [], escudoInicial: false,
+        equipamentoInicial: [
+            [{ armas: ['espada-curta'] }, { escolher: [{ cat: 'simples' }] }],
+            [{ itens: ['Pacote de explorador'] }, { itens: ['Pacote de aventureiro'] }],
+            [{ armas: [['dardo', 10]] }],
+        ],
         asi: ASI,
         subclasse: { nivel: 3, rotulo: 'Tradição Monástica' },
         defesaSemArmadura: 'sab',
@@ -758,7 +812,12 @@ const CLASSES = {
         resistencias: ['sab', 'car'],
         armaduras: ['leve', 'media', 'pesada', 'escudo'], armas: { categorias: ['simples', 'marcial'] },
         pericias: { qtd: 2, de: ['atletismo', 'intuicao', 'intimidacao', 'medicina', 'persuasao', 'religiao'] },
-        armaduraInicial: ['cota-de-malha'], escudoInicial: true,
+        equipamentoInicial: [
+            [{ escolher: [{ cat: 'marcial' }], escudo: true }, { escolher: [{ cat: 'marcial', qtd: 2 }] }],
+            [{ armas: [['azagaia', 5]] }, { escolher: [{ cat: 'simples', corpo: true }] }],
+            [{ itens: ['Pacote de sacerdote'] }, { itens: ['Pacote de aventureiro'] }],
+            [{ armadura: 'cota-de-malha', itens: ['Símbolo sagrado'] }],
+        ],
         asi: ASI,
         subclasse: { nivel: 3, rotulo: 'Juramento Sagrado' },
         conjuracao: { atributo: 'car', tipo: 'meio', porAtributo: 'meio', inicio: 2 },
@@ -829,7 +888,12 @@ const CLASSES = {
         resistencias: ['for', 'des'],
         armaduras: ['leve', 'media', 'escudo'], armas: { categorias: ['simples', 'marcial'] },
         pericias: { qtd: 3, de: ['adestrar', 'atletismo', 'furtividade', 'intuicao', 'investigacao', 'natureza', 'percepcao', 'sobrevivencia'] },
-        armaduraInicial: ['brunea', 'couro'], escudoInicial: false,
+        equipamentoInicial: [
+            [{ armadura: 'brunea' }, { armadura: 'couro' }],
+            [{ armas: [['espada-curta', 2]] }, { escolher: [{ cat: 'simples', corpo: true, qtd: 2 }] }],
+            [{ itens: ['Pacote de explorador'] }, { itens: ['Pacote de aventureiro'] }],
+            [{ armas: ['arco-longo'], itens: ['Aljava com 20 flechas'] }],
+        ],
         asi: ASI,
         subclasse: { nivel: 3, rotulo: 'Conclave de Patrulheiro' },
         conjuracao: {

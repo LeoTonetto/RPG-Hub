@@ -2,7 +2,7 @@
 // src/dndCreate.js — CRIAÇÃO DE PERSONAGEM E SUBIDA DE NÍVEL DO D&D 5e
 //
 // A criação é um passo a passo no estilo do Baldur's Gate 3: raça, classe,
-// antecedente, atributos, perícias e resumo. Cada passo mostra só as escolhas
+// antecedente, atributos, perícias, magias, equipamento e resumo. Cada passo mostra só as escolhas
 // dele; o motor (dnd.js) diz quais vagas existem, que opções valem e o que
 // ainda falta. characters.js chama render/validar/montarStats, como faz com o
 // Calico.
@@ -25,6 +25,7 @@ const PASSOS = [
     { id: 'atributos', nome: 'Atributos' },
     { id: 'pericias', nome: 'Perícias' },
     { id: 'magias', nome: 'Magias' },
+    { id: 'equipamento', nome: 'Equipamento' },
     { id: 'resumo', nome: 'Resumo' },
 ]
 const PASSOS_DE_ESCOLHA = PASSOS.slice(0, -1)
@@ -66,7 +67,7 @@ function redesenhar() {
     c.classList.add('dnd-create')
     c.appendChild(barraDePassos())
     const corpo = mk('div', 'dc-corpo')
-    const desenhar = { raca: passoRaca, classe: passoClasse, antecedente: passoAntecedente, atributos: passoAtributos, pericias: passoPericias, magias: passoMagias, resumo: passoResumo }
+    const desenhar = { raca: passoRaca, classe: passoClasse, antecedente: passoAntecedente, atributos: passoAtributos, pericias: passoPericias, magias: passoMagias, equipamento: passoEquipamento, resumo: passoResumo }
     desenhar[PASSOS[passo].id](corpo)
     c.appendChild(corpo)
     c.appendChild(navegacao())
@@ -94,6 +95,7 @@ function passoCompleto(id) {
         case 'atributos': return atributosValidos().ok
         case 'pericias': return !!classe && vagasDoPasso('pericias').every(v => dnd.vagaCompleta(ficha, v))
         case 'magias': return !!classe && vagasDoPasso('magias').every(v => dnd.vagaCompleta(ficha, v))
+        case 'equipamento': return !!classe && !dnd.faltaNoPacote(ficha)
         case 'resumo': return PASSOS_DE_ESCOLHA.every(p => passoCompleto(p.id))
     }
     return false
@@ -142,7 +144,8 @@ function faltaNoPasso(id) {
     if (id === 'classe' && !classe) return 'Escolha uma classe'
     if (id === 'antecedente' && !ficha.antecedente) return 'Escolha um antecedente'
     if (id === 'atributos') return atributosValidos().msg
-    if ((id === 'pericias' || id === 'magias') && !classe) return 'Escolha a classe antes'
+    if ((id === 'pericias' || id === 'magias' || id === 'equipamento') && !classe) return 'Escolha a classe antes'
+    if (id === 'equipamento') return dnd.faltaNoPacote(ficha)
     const v = vagasDoPasso(id).find(x => !dnd.vagaCompleta(ficha, x))
     return v ? `Falta: ${v.rotulo}` : ''
 }
@@ -224,7 +227,7 @@ function passoClasse(corpo) {
                 if (ficha.classe === id) return
                 ficha.classe = id
                 ficha.subclasse = null
-                ficha.equipamento = { armadura: c.armaduraInicial[0] || null, escudo: false }
+                ficha.pacote = null      // o pacote inicial é da classe
                 mudou()
             },
         }))
@@ -537,7 +540,23 @@ function tabelaPericias(f) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// ── Passo 6: Resumo ──────────────────────────────────────────────────────────
+// ── Passo 7: Equipamento ─────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+function passoEquipamento(corpo) {
+    corpo.appendChild(titulo('Equipamento inicial', 'O pacote da classe e o do antecedente, como no livro. Depois, armas novas vêm do mestre.'))
+    const { classe } = dnd.fontes(ficha)
+    if (!classe) {
+        corpo.appendChild(mk('div', 'dc-muted', 'Escolha a classe antes.'))
+        return
+    }
+    const armasUI = require('./dndArmas')
+    corpo.appendChild(armasUI.pacoteUI(ficha, mudou))
+    corpo.appendChild(armasUI.previaDoPacote(ficha))
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── Passo 8: Resumo ──────────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════════
 
 function passoResumo(corpo) {
@@ -557,7 +576,9 @@ function passoResumo(corpo) {
     const { classe } = dnd.fontes(ficha)
     if (!classe || !ficha.raca) return
 
-    const f = dnd.calcular(ficha)
+    // Os números já contam com o equipamento escolhido (armadura e escudo)
+    const comPacote = dnd.faltaNoPacote(ficha) ? ficha : dnd.aplicarPacote(JSON.parse(JSON.stringify(ficha)))
+    const f = dnd.calcular(comPacote)
     corpo.appendChild(mk('div', 'dc-resumo-titulo', f.titulo))
 
     const numeros = mk('div', 'dc-numeros')
@@ -570,33 +591,14 @@ function passoResumo(corpo) {
         })
     corpo.appendChild(numeros)
 
-    // Armadura inicial: a classe diz quais estão no pacote inicial
-    const eq = mk('div', 'dc-equip')
-    eq.appendChild(mk('span', 'input-label', 'Armadura inicial'))
-    const sel = document.createElement('select')
-    sel.className = 'dc-select'
-    sel.appendChild(new Option('Sem armadura', ''))
-    classe.armaduraInicial.forEach(id => {
-        const a = D.ARMADURAS[id]
-        const o = new Option(`${a.nome} (CA ${a.ca}${a.maxDes === 0 ? '' : a.maxDes ? ' + DES máx. 2' : ' + DES'})`, id)
-        o.disabled = !f.proficiencias.armaduras.includes(a.tipo)
-        sel.appendChild(o)
-    })
-    sel.value = ficha.equipamento.armadura || ''
-    sel.addEventListener('change', () => { ficha.equipamento.armadura = sel.value || null; mudou() })
-    eq.appendChild(sel)
-    if (classe.escudoInicial && f.proficiencias.armaduras.includes('escudo')) {
-        const lbl = mk('label', 'dc-check')
-        const cb = document.createElement('input')
-        cb.type = 'checkbox'
-        cb.checked = !!ficha.equipamento.escudo
-        cb.addEventListener('change', () => { ficha.equipamento.escudo = cb.checked; mudou() })
-        lbl.appendChild(cb)
-        lbl.appendChild(mk('span', null, 'Escudo (+2 CA)'))
-        eq.appendChild(lbl)
+    if (comPacote !== ficha) {
+        const armas = dnd.armasDoPersonagem(comPacote).filter(a => a.base !== dnd.DESARMADO)
+            .map(a => (D.ARMAS[a.base].nome + ((a.qtd || 1) > 1 ? ` ×${a.qtd}` : '')))
+        const eq = mk('div', 'dc-info')
+        eq.appendChild(linhaInfo('Armas', armas.join(', ') || 'Nenhuma'))
+        eq.appendChild(linhaInfo('Armadura', f.caDetalhe))
+        corpo.appendChild(eq)
     }
-    eq.appendChild(mk('small', 'dc-muted', f.caDetalhe))
-    corpo.appendChild(eq)
 
     const info = mk('div', 'dc-info')
     info.appendChild(linhaInfo('Atributos', D.ATRIBUTOS.map(a => `${a.abrev} ${f.atributos[a.key]} (${dnd.sinal(f.mods[a.key])})`).join(' · ')))
@@ -649,6 +651,7 @@ function validar(nome) {
 function montarStats() {
     const s = JSON.parse(JSON.stringify(ficha))
     delete s.atribuicao
+    dnd.aplicarPacote(s)
     dnd.materializar(s)
     s.hp = s.hp_max
     return s

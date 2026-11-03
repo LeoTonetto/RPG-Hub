@@ -1,9 +1,41 @@
 const {
     rooms, roomCodes, urlCodes, roomChars,
     roomMusic, roomMasters, roomScene, roomNPCs,
-    roomReputation, roomMissions, roomOwners, roomCombate,
+    roomReputation, roomMissions, roomOwners, roomCombate, roomBolsa,
     normalizeUrl, tocarSala
 } = require('./roomState')
+
+// ── Bolsa do grupo (D&D) ──────────────────────────────────────────────────────
+// Valor de cada moeda em peças de cobre (LdJ p. 143)
+const VALOR_MOEDA = { pc: 1, pp: 10, pe: 50, po: 100, pl: 1000 }
+const MOEDAS = ['pl', 'po', 'pe', 'pp', 'pc']
+const moedasLimpas = m => Object.fromEntries(MOEDAS.map(k => [k, Math.max(0, Math.min(10000000, Math.round(+(m && m[k]) || 0)))]))
+const valorTotal = m => MOEDAS.reduce((s, k) => s + (m[k] || 0) * VALOR_MOEDA[k], 0)
+
+/**
+ * Tira `qtd` moedas do tipo `tipo`, dando troco se faltar daquela moeda:
+ * usa as menores primeiro e, se preciso, quebra uma maior (troco em po, pp e
+ * pc). Devolve a bolsa nova ou null se não houver dinheiro.
+ */
+function pagar(bolsa, tipo, qtd) {
+    const b = { ...bolsa }
+    if (valorTotal(b) < qtd * VALOR_MOEDA[tipo]) return null
+    const usa = Math.min(b[tipo], qtd)
+    b[tipo] -= usa
+    let resto = (qtd - usa) * VALOR_MOEDA[tipo]
+    for (const t of [...MOEDAS].reverse()) {
+        if (t === tipo) continue
+        while (resto > 0 && b[t] > 0 && VALOR_MOEDA[t] <= resto) { b[t]--; resto -= VALOR_MOEDA[t] }
+    }
+    if (resto > 0) {
+        const t = [...MOEDAS].reverse().find(x => b[x] > 0 && VALOR_MOEDA[x] > resto)
+        if (!t) return null
+        b[t]--
+        let troco = VALOR_MOEDA[t] - resto
+        for (const x of ['po', 'pp', 'pc']) { const n = Math.floor(troco / VALOR_MOEDA[x]); b[x] += n; troco -= n * VALOR_MOEDA[x] }
+    }
+    return b
+}
 
 // Remetente das linhas de rolagem no chat, no mesmo espírito do "⚙ Sistema"
 // que o lockpicking já usa.
@@ -68,6 +100,7 @@ function setupSocketHandlers(io) {
         }
         // Quem entra no meio da batalha já recebe a ordem e o turno
         if (roomCombate[roomCode]) socket.emit('combate_estado', roomCombate[roomCode])
+        socket.emit('bolsa_estado', roomBolsa[roomCode] || null)
 
         // ── Música ──────────────────────────────────────────────────────────
         socket.on('play_music', ({ videoId, startedBy }) => { if (roomMasters[roomCode] !== socket.id) return; if (!videoId || typeof videoId !== 'string' || !videoId.trim()) return; roomMusic[roomCode] = { videoId: videoId.trim(), startedBy: startedBy || 'unknown', startTime: Date.now() }; io.to(roomCode).emit('music_play', roomMusic[roomCode]); console.log(`[Música] ${startedBy} tocou ${videoId} na sala ${roomCode}`) })
@@ -260,6 +293,8 @@ function setupSocketHandlers(io) {
                 corpo = `${res.expressao || 'dados'}(${valores}) = ${res.total}`
                     + (res.tipo === 'cura' ? ' de cura' : res.tipoDano ? ` de ${res.tipoDano}` : '')
                     + (res.critico ? '  ✦ crítico' : '')
+            } else if (!res.dados.length && res.falha) {
+                corpo = 'falha automática'
             } else {
                 const valores = res.dados.map(d => d.valor).join(', ')
                 corpo = `d20(${valores})${res.modo !== 'normal' ? ' ' + res.modo : ''}`
@@ -376,6 +411,7 @@ function setupSocketHandlers(io) {
                 total: Math.round(+a.total) || 0,
                 corpo: !!a.corpo,
                 dano: Math.max(0, Math.round(+a.dano) || 0),
+                tipoDano: a.tipoDano ? String(a.tipoDano).slice(0, 20) : '',
             }
             io.to(roomCode).emit('combate_anuncio', anuncio)
             const alvo = roomCombate[roomCode].ordem.find(e => e.id === anuncio.alvoId)
@@ -383,9 +419,45 @@ function setupSocketHandlers(io) {
                 magia: `${anuncio.criatura} começa a conjurar ${anuncio.magia || 'uma magia'}${anuncio.nivel ? ` (${anuncio.nivel}º nível)` : ''}.`,
                 ataque: `${anuncio.criatura} ataca ${alvo ? alvo.nome : '?'} (${anuncio.total} no ataque${anuncio.corpo ? ', corpo-a-corpo' : ''}).`,
                 oportunidade: `${anuncio.criatura} sai do alcance de ${alvo ? alvo.nome : '?'}.`,
-                dano: `${alvo ? alvo.nome : '?'} sofre ${anuncio.dano} de dano de ${anuncio.criatura}.`,
+                dano: `${alvo ? alvo.nome : '?'} sofre ${anuncio.dano} de dano${anuncio.tipoDano ? ` ${anuncio.tipoDano}` : ''} de ${anuncio.criatura}.`,
             }[anuncio.tipo]
             avisarBatalha(texto)
+        })
+
+        // ── Bolsa do grupo ─────────────────────────────────────────────────
+        // O mestre traz a bolsa guardada ao abrir a sala (bolsa_definir); todo
+        // mundo pode pôr e tirar (bolsa_mudar), e cada mudança vira linha no chat.
+        socket.on('bolsa_definir', ({ moedas, historico } = {}) => {
+            if (!ehMestreAgora()) return
+            roomBolsa[roomCode] = {
+                moedas: moedasLimpas(moedas),
+                historico: (Array.isArray(historico) ? historico : []).slice(-15).map(x => ({
+                    quem: String(x?.quem ?? '').slice(0, 40), texto: String(x?.texto ?? '').slice(0, 120), quando: +x?.quando || 0,
+                })),
+            }
+            io.to(roomCode).emit('bolsa_estado', roomBolsa[roomCode])
+        })
+
+        socket.on('bolsa_mudar', ({ moeda, qtd, motivo, quem } = {}) => {
+            if (!roomChars[roomCode]?.[socket.id] && !ehMestreAgora()) return
+            if (!VALOR_MOEDA[moeda]) return
+            const n = Math.round(+qtd) || 0
+            if (!n || Math.abs(n) > 1000000) return
+            const b = roomBolsa[roomCode] || (roomBolsa[roomCode] = { moedas: moedasLimpas({}), historico: [] })
+            let nova
+            if (n > 0) nova = { ...b.moedas, [moeda]: b.moedas[moeda] + n }
+            else nova = pagar(b.moedas, moeda, -n)
+            const nome = String(quem ?? '').slice(0, 40) || '?'
+            const porque = String(motivo ?? '').slice(0, 80)
+            if (!nova) {
+                socket.emit('bolsa_erro', { texto: 'A bolsa do grupo não tem dinheiro para isso.' })
+                return
+            }
+            b.moedas = nova
+            const texto = `${n > 0 ? '+' : '−'}${Math.abs(n)} ${moeda}${porque ? ` (${porque})` : ''}`
+            b.historico = [...b.historico, { quem: nome, texto, quando: Date.now() }].slice(-15)
+            io.to(roomCode).emit('bolsa_estado', b)
+            io.to(roomCode).emit('chat_message', { playerName: '💰 Bolsa', message: `${nome}: ${texto}`, type: 'text' })
         })
 
         // Resposta de um jogador a um anúncio: gasta a reação dele

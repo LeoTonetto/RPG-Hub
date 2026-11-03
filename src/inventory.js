@@ -40,10 +40,14 @@ let currentInvCharId = null
 async function loadAllItems() {
     if (!state.supabase || allItemsCache.length > 0) return
     try {
-        const { data, error } = await state.supabase
+        // A coluna sistema vem do sql/dnd/03_itens_bolsa.sql; sem ela, lista tudo
+        let { data, error } = await state.supabase
             .from('items')
-            .select('id, name, photo, icon, viewable')
+            .select('id, name, photo, icon, viewable, sistema')
             .order('name')
+        if (error) {
+            ;({ data, error } = await state.supabase.from('items').select('id, name, photo, icon, viewable').order('name'))
+        }
         if (error) { console.error('[Inventory] Erro ao carregar itens:', error.message); return }
         allItemsCache = data || []
         console.log(`[Inventory] ${allItemsCache.length} itens disponíveis no banco`)
@@ -151,9 +155,11 @@ function buildMasterFooter() {
     function renderDropdown(query) {
         dropdown.innerHTML = ''
         const q = (query || '').toLowerCase().trim()
+        const sistema = state.roomSystem || 'calico'
+        const doSistema = allItemsCache.filter(i => !i.sistema || i.sistema === sistema)
         const filtered = q
-            ? allItemsCache.filter(i => i.name.toLowerCase().includes(q))
-            : allItemsCache
+            ? doSistema.filter(i => i.name.toLowerCase().includes(q))
+            : doSistema
 
         if (filtered.length === 0) { dropdown.style.display = 'none'; return }
 
@@ -710,4 +716,4 @@ function handleItemTransferred({ toCharId, item }) {
     updateInventoryBadge(toCharId, state.inventories[toCharId].length)
 }
 
-module.exports = { openInventoryModal, renderInvGrid, handleInventoryUpdate, handleItemShow, handleItemTransferred }
+module.exports = { openInventoryModal, renderInvGrid, handleInventoryUpdate, handleItemShow, handleItemTransferred, loadCharInventoryFromDB }

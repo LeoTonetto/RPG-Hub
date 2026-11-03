@@ -28,6 +28,7 @@ function connectToRoom(url, roomCode) {
     state.roomSystem = null
     state.personagensCarregados = false
     require('./dndCombate').limpar()
+    require('./dndBolsa').limpar()
 
     // O token so existe para quem criou a sala. Recuperamos do localStorage
     // tambem, para o mestre reassumir depois de fechar e reabrir o app.
@@ -79,6 +80,7 @@ function connectToRoom(url, roomCode) {
 
         require('./dndCombate').atualizarBotaoMestre()
         require('./dndCombate').aoEstado(state.combate)   // redesenha com as permissões novas
+        require('./dndBolsa').aoMestre()
 
         const { openLockpickPicker } = require('./lockpicking')
         const lockBtn = document.getElementById('lockpickMasterBtn')
@@ -97,7 +99,12 @@ function connectToRoom(url, roomCode) {
         // Sala de D&D: já busca magias e talentos no Supabase
         if (sistema === 'dnd') require('./dndConteudo').carregar()
         require('./dndCombate').atualizarBotaoMestre()
+        require('./dndBolsa').desenharBotao()
     })
+
+    // ── D&D: bolsa do grupo ──────────────────────────────────────────────────
+    state.socket.on('bolsa_estado', b => require('./dndBolsa').aoEstado(b))
+    state.socket.on('bolsa_erro', e => require('./dndBolsa').aoErro(e || {}))
 
     // ── D&D: modo de batalha ─────────────────────────────────────────────────
     state.socket.on('combate_estado', estado => require('./dndCombate').aoEstado(estado))
@@ -142,11 +149,14 @@ function connectToRoom(url, roomCode) {
 
         updateCardStat(charId, field, value)
 
-        // D&D: o mestre liberou a subida. O card ganha o selo ⬆, e o dono
-        // grava a liberação, para ela sobreviver se ele fechar o app.
-        if (field === 'nivel_liberado' && entry?.character?.system === 'dnd') {
-            renderCharacterBar(state.allCharsCache)
+        // D&D: o que o mestre muda na ficha (nível liberado, armas dadas, dano)
+        // o dono grava, para sobreviver se ele fechar o app. A liberação de
+        // nível também põe o selo ⬆ no card.
+        if (entry?.character?.system === 'dnd') {
+            if (field === 'nivel_liberado') renderCharacterBar(state.allCharsCache)
             require('./dndSheet').persistirSeForMeu(charId)
+            // Teste de concentração pedido por quem aplicou o dano
+            require('./dndEstadoUI').aoMudarCampo(charId, field, value)
         }
 
         if (state.statPopupCharId === charId && (field === 'expressao' || field === 'expressoes')) {

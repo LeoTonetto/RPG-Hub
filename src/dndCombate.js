@@ -22,6 +22,8 @@ const dnd = require('./dnd')
 const conteudo = require('./dndConteudo')
 const rolagem = require('./dndRolagem')
 const magiasUI = require('./dndMagiasUI')
+const D = require('./dndDados')
+const CD = require('./dndCondicoes')
 
 const ICONE_CRIATURA = 'sbed/death-skull'
 const PROMPT_MS = 30000
@@ -53,6 +55,22 @@ function minhaEntrada() {
     return state.combate.ordem.find(e => e.tipo === 'pj' && state.playerCharacters.some(c => c.id === e.charId)) || null
 }
 
+/** A entrada do personagem na batalha, se ele está nela. */
+function entradaDoChar(charId) {
+    return emBatalha() ? state.combate.ordem.find(e => e.charId === charId) || null : null
+}
+
+/** É a vez deste personagem? */
+function turnoDoChar(charId) {
+    const atual = entradaAtual()
+    return !!atual && atual.charId === charId
+}
+
+/** Muda a cada turno e a cada rodada: serve para "uma vez por turno". */
+function chaveDoTurno() {
+    return emBatalha() ? `${state.combate.rodada}:${state.combate.turno}` : 'fora'
+}
+
 function charDaEntrada(ent) {
     if (!ent || !ent.charId) return null
     const meu = state.playerCharacters.find(c => c.id === ent.charId)
@@ -75,13 +93,7 @@ function podeMexer(ent) {
 
 /** Espaços de magia livres a partir de um nível: [{ id: '3' | 'pacto', nivel }] */
 function espacosLivres(stats, f, minimo) {
-    const cj = f.conjuracao
-    const usados = stats.espacos_usados || {}
-    const livres = []
-    if (!cj) return livres
-    cj.espacos.forEach((qtd, i) => { const n = i + 1; if (n >= minimo && qtd - (usados[n] || 0) > 0) livres.push({ id: String(n), nivel: n }) })
-    if (cj.pacto && cj.pacto.nivel >= minimo && cj.pacto.qtd - (usados.pacto || 0) > 0) livres.push({ id: 'pacto', nivel: cj.pacto.nivel })
-    return livres
+    return dnd.espacosLivres(stats, f, minimo)
 }
 
 function gastarEspaco(char, espaco) {
@@ -114,6 +126,7 @@ function aoEstado(estado) {
     state.combate = estado && estado.ordem && estado.ordem.length ? estado : null
     clearTimeout(esperandoServidor)
     if (!state.combate) { editandoOrdem = false; anuncioAtual = null }
+    if (antes && !state.combate) require('./dndArmas').aoFimDaBatalha()
     desenharBarra()
     desenharTurno()
     desenharResultado()
@@ -122,7 +135,18 @@ function aoEstado(estado) {
     // Começou o meu turno: um aviso rápido
     const atual = entradaAtual()
     const mudouTurno = !antes || antes.turno !== (state.combate && state.combate.turno) || antes.rodada !== (state.combate && state.combate.rodada)
-    if (atual && mudouTurno && minhaEntrada() && atual.id === minhaEntrada().id) aviso(`⚔ Seu turno, ${atual.nome}!`)
+    if (atual && mudouTurno && minhaEntrada() && atual.id === minhaEntrada().id) {
+        const char = charDaEntrada(atual)
+        const st = (char && char.stats) || {}
+        const ef = st.efeitos || {}
+        if (char && (ef.esquivando || ef.desengajou)) {
+            const novo = { ...ef }
+            delete novo.esquivando
+            delete novo.desengajou
+            require('./dndSheet').gravar(char.id, { efeitos: novo })
+        }
+        aviso(CD.caido(st) && !(st.morte && st.morte.estavel) ? `💀 ${atual.nome}: teste contra a morte!` : `⚔ Seu turno, ${atual.nome}!`)
+    }
 }
 
 function limpar() {
@@ -260,6 +284,19 @@ function montarOrdem(pjs) {
             foto: character.photo || null, iniciativa: total, desempate: f.mods.des + 0.5 + Math.random() / 100,
         }
     })
+    // Familiar e companheiro animal rolam a própria iniciativa (LdJ p. 119, p. 241)
+    pjs.forEach(({ playerName, character }) => {
+        ;((character.stats || {}).companheiros || []).filter(a => a.tipo === 'companheiro' || a.tipo === 'familiar').forEach(a => {
+            const cr = require('./dndCriaturas').criatura(a.criatura)
+            if (!cr) return
+            const des = require('./dndCriaturas').mod(cr.atributos.des)
+            const r = rolagem.rolarD20('normal')
+            const total = r.natural + des
+            const nome = `${a.nome || cr.nome} (${character.name})`
+            linhas.push(`${nome} d20(${r.natural}) ${dnd.sinal(des)} = ${total}`)
+            ordem.push({ id: `al:${character.id}:${a.id}`, tipo: 'criatura', nome, charId: character.id, dono: playerName, iniciativa: total, desempate: des + 0.4 + Math.random() / 100 })
+        })
+    })
     criaturasRascunho.filter(c => c.nome.trim()).forEach(c => {
         ordem.push({
             id: 'cr:' + Math.random().toString(36).slice(2, 9), tipo: 'criatura', nome: c.nome.trim(),
@@ -303,12 +340,22 @@ function desenharBarra() {
         else {
             const ch = charDaEntrada(e)
             const cls = ch && dnd.fontes(ch.stats || {}).classe
-            foto.appendChild(magiasUI.icone(e.tipo === 'criatura' ? ICONE_CRIATURA : (cls && cls.icone) || 'lorc/crossed-swords'))
+            const aliado = e.tipo === 'criatura' && e.charId
+            foto.appendChild(magiasUI.icone(aliado ? 'lorc/wolf-head' : e.tipo === 'criatura' ? ICONE_CRIATURA : (cls && cls.icone) || 'lorc/crossed-swords'))
         }
         foto.appendChild(mk('span', 'cb-ini', String(e.iniciativa)))
         el.appendChild(foto)
         el.appendChild(mk('div', 'cb-nome', e.nome))
         if (e.tipo === 'pj') el.appendChild(fichas(e, true))
+        // O que o mestre precisa saber ao atacar este personagem
+        if (e.tipo === 'pj') {
+            const marcas = marcasDoAlvo(charDaEntrada(e))
+            if (marcas.length) {
+                const m = mk('div', 'cb-marcas', marcas.map(x => x.icone).join(''))
+                m.title = marcas.map(x => x.texto).join('\n')
+                el.appendChild(m)
+            }
+        }
 
         // Mestre ajustando a ordem
         if (editandoOrdem && state.isRoomMaster) {
@@ -418,6 +465,18 @@ function desenharTurno() {
     let el = document.getElementById('combateTurno')
     const minha = minhaEntrada()
     const atual = entradaAtual()
+    // Turno de um aliado meu (familiar, companheiro): eu decido o que ele faz
+    const aliado = atual && atual.id.startsWith('al:') && state.playerCharacters.find(c => c.id === atual.charId)
+    if (emBatalha() && aliado) {
+        if (!el) { el = mk('div'); el.id = 'combateTurno'; segurar(el); document.body.appendChild(el) }
+        el.innerHTML = ''
+        el.appendChild(mk('div', 'cb-turno-titulo', `Turno de ${atual.nome}`))
+        const linha = mk('div', 'cb-acoes-linha')
+        require('./dndCompanheiros').ataquesDoAliado(aliado, atual.id.split(':')[2]).forEach(b => linha.appendChild(botao(b.rotulo, 'Rola ataque e dano', b.acao)))
+        if (linha.childNodes.length) el.appendChild(linha)
+        el.appendChild(botao('Encerrar turno ▶', 'Passar a vez', () => emitir('combate_proximo'), 'principal'))
+        return
+    }
     if (!emBatalha() || !minha || atual.id !== minha.id) { if (el) el.remove(); return }
     if (!el) {
         el = mk('div')
@@ -429,8 +488,25 @@ function desenharTurno() {
     el.appendChild(mk('div', 'cb-turno-titulo', `Seu turno · ${minha.nome}`))
     el.appendChild(fichas(minha, false))
 
-    // Surto de Ação: uma ação a mais neste turno
     const char = charDaEntrada(minha)
+    const st = (char && char.stats) || {}
+    // A 0 PV o turno é só o teste contra a morte
+    if (char && CD.caido(st)) {
+        const estavel = st.morte && st.morte.estavel
+        el.appendChild(mk('div', 'cb-turno-restam', estavel ? 'Estável a 0 PV: nada a fazer até ser curado.' : 'A 0 PV: role o teste contra a morte.'))
+        if (!estavel) el.appendChild(botao('💀 Teste contra a morte', '10 ou mais é sucesso', () => { require('./dndEstadoUI').testeMorte(char); desenharTurno() }, 'principal'))
+        el.appendChild(botao('Encerrar turno ▶', 'Passar a vez', () => emitir('combate_proximo')))
+        return
+    }
+    if (char && CD.semAcoes(st)) el.appendChild(mk('div', 'cb-turno-restam', 'Incapacitado: sem ações nem reações neste turno.'))
+    if (char) {
+        const restam = require('./dndArmas').ataquesRestantes(char)
+        if (restam > 0) el.appendChild(mk('div', 'cb-turno-restam', `Ação de Ataque: ${restam === 1 ? 'resta 1 ataque' : `restam ${restam} ataques`}`))
+        el.appendChild(botao('⚔ Armas', 'Abre a ficha no painel de armas', () => abrirArmas(char)))
+        if (!CD.semAcoes(st)) el.appendChild(acoesDeCombate(minha, char))
+    }
+
+    // Surto de Ação: uma ação a mais neste turno
     if (char) {
         const f = dnd.calcular(char.stats || {})
         const surto = recursoLivre(char, f, 'surto-acao')
@@ -446,17 +522,152 @@ function desenharTurno() {
     el.appendChild(botao('Encerrar turno ▶', 'Passar a vez', () => emitir('combate_proximo'), 'principal'))
 }
 
+/** Abre a ficha do personagem já no painel de armas. */
+function abrirArmas(char) {
+    const card = document.querySelector(`.char-card[data-char-id="${char.id}"]`)
+    if (!card) return
+    if (!state.statPopupChar || state.statPopupChar.id !== char.id || !document.getElementById('statPopup').classList.contains('visible')) card.click()
+    const atual = state.statPopupChar
+    if (atual && atual.id === char.id) require('./dndArmas').abrirPainel(atual.stats || {}, true)
+}
+
 /** Chamado pela ficha ao conjurar: gasta a ação certa conforme o tempo da magia. */
-function aoConjurar(char, magia) {
+function aoConjurar(char, magia, opc = {}) {
     if (!emBatalha()) return
-    const ent = state.combate.ordem.find(e => e.charId === char.id)
+    const ent = state.combate.ordem.find(e => e.charId === char.id && e.tipo === 'pj')
     if (!ent) return
     const ec = economia(ent.id)
     if (!ec) return
-    const t = (magia.tempo || '').toLowerCase()
+    let t = (magia.tempo || '').toLowerCase()
+    // Magia Acelerada: de 1 ação para 1 ação bônus
+    if (opc.acelerada && /^1 ação/.test(t)) t = '1 ação bônus'
+    if (turnoDoChar(char.id)) {
+        const r = magiasDoTurno(char)
+        if (t.includes('bônus')) r.bonus = true
+        else r.outras.push({ nivel: magia.nivel, tempo: t })
+    }
     if (t.includes('reação')) gastar(ent.id, 'reacaoUsada', true)
     else if (t.includes('bônus')) gastar(ent.id, 'bonusUsada', true)
     else if (/^1 ação/.test(t)) gastar(ent.id, 'acoesUsadas', Math.min(ec.acoes, ec.acoesUsadas + 1))
+}
+
+// Magias do turno, para a regra da magia de ação bônus (LdJ p. 202)
+const turnoMagias = {}
+function magiasDoTurno(char) {
+    const chave = chaveDoTurno()
+    if (!turnoMagias[char.id] || turnoMagias[char.id].chave !== chave) turnoMagias[char.id] = { chave, bonus: false, outras: [] }
+    return turnoMagias[char.id]
+}
+
+/**
+ * Quem conjura uma magia com ação bônus só pode conjurar, no mesmo turno,
+ * um truque de 1 ação. Devolve o motivo do bloqueio ou ''.
+ */
+function regraMagiaBonus(char, magia) {
+    if (!emBatalha() || !turnoDoChar(char.id)) return ''
+    const r = magiasDoTurno(char)
+    const t = (magia.tempo || '').toLowerCase()
+    const ehBonus = t.includes('bônus')
+    if (ehBonus && r.outras.some(o => o.nivel > 0 || !/^1 ação/.test(o.tempo))) return 'Já conjurou outra magia neste turno: a de ação bônus só junto com um truque de 1 ação'
+    if (!ehBonus && !t.includes('reação') && r.bonus && !(magia.nivel === 0 && /^1 ação/.test(t))) return 'Conjurou magia de ação bônus neste turno: agora só um truque de 1 ação'
+    return ''
+}
+
+/** Gasta a ação bônus do personagem, se for o turno dele numa batalha. */
+function gastarBonusDe(char) {
+    const ent = entradaDoChar(char.id)
+    if (ent && turnoDoChar(char.id)) gastar(ent.id, 'bonusUsada', true)
+}
+
+// ── Ações de combate (LdJ p. 192) e as versões de ação bônus ──────────────────
+
+function acoesDeCombate(ent, char) {
+    const w = mk('div', 'cb-acoes-combate')
+    const st = char.stats || {}
+    const f = dnd.calcular(st)
+    const ec = economia(ent.id) || { acoes: 1, acoesUsadas: 0 }
+    const temAcao = ec.acoesUsadas < ec.acoes
+    const sheet = require('./dndSheet')
+    const chat = msg => emitir('chat_message', { playerName: '⚔ Batalha', message: msg, type: 'text' })
+    const marcar = (efeito, valor = true) => sheet.gravar(char.id, { efeitos: { ...((charDaEntrada(ent) || char).stats.efeitos || {}), [efeito]: valor } })
+    const rolarPericia = (pericia, rot) => {
+        const p = D.PERICIAS.find(x => x.key === pericia)
+        rolagem.testeD20({ personagem: char.name, rotulo: rot, bonus: f.pericias[pericia].bonus, auto: CD.modoAutomatico(st, f, { tipo: 'pericia', atributo: p.attr, pericia }) })
+    }
+    const AC = {
+        esquivar: { nome: 'Esquivar', desc: 'Até o seu próximo turno, ataques contra você têm desvantagem e você tem vantagem em resistências de DES.', faz: () => { marcar('esquivando'); chat(`${char.name} se esquiva (ataques contra ele com desvantagem até o próximo turno).`) } },
+        disparada: { nome: 'Disparada', desc: 'Ganha deslocamento extra igual ao seu deslocamento.', faz: () => chat(`${char.name} usa Disparada (+${String(f.deslocamento).replace('.', ',')} m de movimento).`) },
+        desengajar: { nome: 'Desengajar', desc: 'Seu movimento não provoca ataques de oportunidade neste turno.', faz: () => { marcar('desengajou'); chat(`${char.name} desengaja (sem ataques de oportunidade contra ele neste turno).`) } },
+        esconder: { nome: 'Esconder', desc: 'Teste de Destreza (Furtividade).', faz: () => rolarPericia('furtividade', 'Esconder (Furtividade)') },
+        ajudar: { nome: 'Ajudar', desc: 'Um aliado tem vantagem no próximo teste ou ataque contra uma criatura a 1,5 m de você.', faz: () => chat(`${char.name} usa Ajudar: o próximo teste ou ataque de um aliado tem vantagem.`) },
+        preparar: { nome: 'Preparar', desc: 'Escolhe um gatilho e reage a ele com a reação.', faz: () => chat(`${char.name} prepara uma ação (usa a reação quando o gatilho acontecer).`) },
+        procurar: { nome: 'Procurar', desc: 'Teste de Sabedoria (Percepção) ou Inteligência (Investigação).', faz: () => rolarPericia('percepcao', 'Procurar (Percepção)') },
+        objeto: { nome: 'Usar objeto', desc: 'Usa um objeto que exige a ação.', faz: () => chat(`${char.name} usa um objeto.`) },
+    }
+    const linha = mk('div', 'cb-acoes-linha')
+    linha.appendChild(mk('span', 'cb-acoes-rot', 'Ação'))
+    Object.values(AC).forEach(a => {
+        const b = botao(a.nome, temAcao ? a.desc : 'A ação já foi usada', () => { gastar(ent.id, 'acoesUsadas', Math.min(ec.acoes, ec.acoesUsadas + 1)); a.faz() })
+        b.disabled = !temAcao
+        linha.appendChild(b)
+    })
+    w.appendChild(linha)
+
+    // Agarrar e empurrar: trocam um ataque da ação de Ataque por um teste de Atletismo
+    const luta = mk('div', 'cb-acoes-linha')
+    luta.appendChild(mk('span', 'cb-acoes-rot', 'Ataque'))
+    ;[['Agarrar', 'Atletismo contra Atletismo ou Acrobacia do alvo; agarrado fica com deslocamento 0'],
+      ['Empurrar', 'Atletismo contra Atletismo ou Acrobacia do alvo; derruba ou empurra 1,5 m']].forEach(([nome, desc]) => {
+        luta.appendChild(botao(nome, desc + ' (gasta um ataque da ação de Ataque)', () => {
+            require('./dndArmas').usarAtaqueDaAcao(char)
+            rolarPericia('atletismo', `${nome} (Atletismo)`)
+        }))
+    })
+    w.appendChild(luta)
+
+    // Ação bônus: Ação Ardilosa (ladino 2º), Defesa Paciente e Passo do Vento (monge 2º, 1 chi)
+    const bonus = []
+    if (st.classe === 'ladino' && f.nivel >= 2) ['disparada', 'desengajar', 'esconder'].forEach(id => bonus.push({ ...AC[id], nome: `${AC[id].nome} (Ação Ardilosa)` }))
+    if (st.classe === 'monge' && f.nivel >= 2) {
+        bonus.push({ ...AC.esquivar, nome: 'Defesa Paciente (1 chi)', chi: true })
+        bonus.push({ ...AC.disparada, nome: 'Passo do Vento: Disparada (1 chi)', chi: true })
+        bonus.push({ ...AC.desengajar, nome: 'Passo do Vento: Desengajar (1 chi)', chi: true })
+    }
+    if (bonus.length) {
+        const lb = mk('div', 'cb-acoes-linha')
+        lb.appendChild(mk('span', 'cb-acoes-rot', 'Bônus'))
+        bonus.forEach(a => {
+            const semChi = a.chi && !recursoLivre(char, f, 'chi')
+            const b = botao(a.nome, ec.bonusUsada ? 'A ação bônus já foi usada' : semChi ? 'Sem chi' : a.desc, () => {
+                if (a.chi) gastarRecurso(char, 'chi')
+                gastar(ent.id, 'bonusUsada', true)
+                a.faz()
+            })
+            b.disabled = !!ec.bonusUsada || semChi
+            lb.appendChild(b)
+        })
+        w.appendChild(lb)
+    }
+    return w
+}
+
+/** Para o mestre: o que muda num ataque contra este personagem agora. */
+function marcasDoAlvo(char) {
+    if (!char) return []
+    const st = char.stats || {}
+    const out = []
+    if (CD.morto(st)) return [{ icone: '💀', texto: 'Morto' }]
+    if (CD.caido(st)) out.push({ icone: '💀', texto: 'A 0 PV: ataque a 1,5 m é crítico; cada acerto é uma falha no teste contra a morte (crítico, duas)' })
+    const ef = st.efeitos || {}
+    if (ef.esquivando) out.push({ icone: '🛡', texto: 'Esquivando: ataques contra ele com desvantagem' })
+    if (ef.desengajou) out.push({ icone: '🏃', texto: 'Desengajou: sem ataque de oportunidade contra ele' })
+    if (ef.furia) out.push({ icone: '🔥', texto: 'Em fúria: resistência a concussão, cortante e perfurante' })
+    CD.condicoesAtivas(st).forEach(c => {
+        const cond = D.CONDICOES[c]
+        if (cond.efeitos.contra) out.push({ icone: cond.icone, texto: `${cond.nome}: ataques contra ele com ${cond.efeitos.contra}` })
+    })
+    if (st.concentracao) out.push({ icone: '◉', texto: `Concentrando em ${st.concentracao.nome}` })
+    return out
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -521,7 +732,15 @@ function abrirAnuncio() {
         const corpo = mk('label', 'dc-check')
         const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true
         corpo.appendChild(cb); corpo.appendChild(mk('span', null, 'Corpo-a-corpo'))
-        ;[cr, alvo, total, corpo].forEach(x => form.appendChild(x))
+        const dicas = mk('div', 'cb-dicas')
+        const mostrarDicas = () => {
+            const ent = pjs.find(p => p.id === valorDe(alvo))
+            const marcas = marcasDoAlvo(ent && charDaEntrada(ent))
+            dicas.textContent = marcas.length ? marcas.map(m => `${m.icone} ${m.texto}`).join(' · ') : ''
+        }
+        alvo.querySelector('select').addEventListener('change', mostrarDicas)
+        mostrarDicas()
+        ;[cr, alvo, dicas, total, corpo].forEach(x => form.appendChild(x))
         enviar = () => ({ tipo: 'ataque', criatura: valorDe(cr) || 'Criatura', alvoId: valorDe(alvo), total: +valorDe(total) || 0, corpo: cb.checked })
     } else if (abaAnuncio === 'magia') {
         const cr = campoCriatura()
@@ -615,17 +834,38 @@ function desenharResultado() {
             inp.placeholder = 'Dano'
             inp.setAttribute('aria-label', 'Dano do ataque')
             inp.addEventListener('keydown', e => e.stopPropagation())
-            const aplicar = botao('Aplicar dano', 'Desconta dos PV do alvo (PV temporários primeiro)', () => {
+            const tipo = document.createElement('select')
+            tipo.className = 'dc-select'
+            tipo.setAttribute('aria-label', 'Tipo de dano')
+            tipo.appendChild(new Option('tipo de dano…', ''))
+            D.TIPOS_DANO.forEach(t => tipo.appendChild(new Option(t, t)))
+            const marca = (rot, titulo) => {
+                const l = mk('label', 'dc-check')
+                l.title = titulo
+                const c = document.createElement('input')
+                c.type = 'checkbox'
+                l.appendChild(c)
+                l.appendChild(mk('span', null, rot))
+                return { l, c }
+            }
+            const crit = marca('crítico', 'Num personagem a 0 PV, conta duas falhas')
+            const magico = marca('mágico', 'Ataque mágico ignora a Maestria em Armadura Pesada')
+            const aplicar = botao('Aplicar dano', 'Resistência, PV temporários, Forma Selvagem e 0 PV, como manda o livro', () => {
                 let dano = Math.max(0, parseInt(inp.value, 10) || 0)
                 if (metade) dano = Math.floor(dano / 2)
                 dano = Math.max(0, dano - reducao)
-                aplicarDano(alvo, char, dano, a.criatura)
+                aplicarDano(alvo, char, dano, a.criatura, { tipo: tipo.value, critico: crit.c.checked, magico: magico.c.checked })
                 anuncioAtual = null
                 desenharResultado()
             }, 'principal')
             linha.appendChild(inp)
+            linha.appendChild(tipo)
             linha.appendChild(aplicar)
             el.appendChild(linha)
+            const extras = mk('div', 'cb-dano')
+            extras.appendChild(crit.l)
+            extras.appendChild(magico.l)
+            el.appendChild(extras)
             const notas = []
             if (metade) notas.push('metade (Esquiva Sobrenatural)')
             if (reducao) notas.push(`−${reducao} (Aparar)`)
@@ -643,16 +883,10 @@ function desenharResultado() {
     }
 }
 
-function aplicarDano(alvo, char, dano, criatura) {
+function aplicarDano(alvo, char, dano, criatura, op = {}) {
     if (dano <= 0) return
-    const st = char.stats || {}
-    let temp = st.hp_temp || 0
-    const absorvido = Math.min(temp, dano)
-    temp -= absorvido
-    const hp = Math.max(0, (st.hp ?? st.hp_max ?? 0) - (dano - absorvido))
-    require('./dndSheet').gravar(char.id, { hp_temp: temp, hp })
-    require('./characters').flashCard(char.id, 'red')
-    emitir('combate_anuncio', { tipo: 'dano', criatura, alvoId: alvo.id, dano })
+    const r = require('./dndEstadoUI').danoNoPersonagem(char, dano, { ...op, fonte: criatura })
+    emitir('combate_anuncio', { tipo: 'dano', criatura, alvoId: alvo.id, dano: r.dano, tipoDano: op.tipo || '' })
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -696,7 +930,10 @@ function opcoesDeReacao(a) {
     }
 
     if (a.tipo === 'oportunidade' && a.alvoId === ent.id) {
-        ops.push({ id: 'oportunidade', rotulo: 'Ataque de oportunidade', nota: `atacar ${a.criatura}` })
+        // Só armas corpo-a-corpo (e o golpe desarmado), a que está em mãos primeiro
+        const armas = dnd.armasDoPersonagem(stats).filter(x => x.base === dnd.DESARMADO || !D.ARMAS[x.base].distancia)
+            .map(x => ({ id: x.id, nome: x.base === dnd.DESARMADO ? 'Golpe desarmado' : (x.nome || D.ARMAS[x.base].nome), item: x }))
+        ops.push({ id: 'oportunidade', rotulo: 'Ataque de oportunidade', armas, nota: `atacar ${a.criatura}` })
     }
 
     if (a.tipo === 'dano' && a.alvoId === ent.id) {
@@ -734,9 +971,16 @@ function oferecerReacao(a) {
             sel.setAttribute('aria-label', 'Espaço de magia')
             op.espacos.forEach(e => sel.appendChild(new Option(e.id === 'pacto' ? `Pacto ${e.nivel}º` : `${e.nivel}º nível`, e.id)))
         }
+        if (op.armas && op.armas.length > 1) {
+            sel = document.createElement('select')
+            sel.className = 'dc-select'
+            sel.setAttribute('aria-label', 'Arma')
+            op.armas.forEach(x => sel.appendChild(new Option(x.nome, x.id)))
+        }
         const b = botao(op.rotulo, op.nota || '', () => {
             const espaco = op.espacos && op.espacos.length ? op.espacos.find(e => e.id === (sel ? sel.value : op.espacos[0].id)) : null
-            usarReacao(a, ent, op, espaco)
+            const arma = op.armas && op.armas.length ? op.armas.find(x => x.id === (sel ? sel.value : op.armas[0].id)) : null
+            usarReacao(a, ent, op, espaco, arma)
             fecharPrompt()
         }, 'principal')
         linha.appendChild(b)
@@ -750,7 +994,7 @@ function oferecerReacao(a) {
     promptTimer = setTimeout(fecharPrompt, PROMPT_MS)
 }
 
-function usarReacao(a, ent, op, espaco) {
+function usarReacao(a, ent, op, espaco, arma) {
     const char = charDaEntrada(ent)
     if (!char) return
     const f = dnd.calcular(char.stats || {})
@@ -785,7 +1029,9 @@ function usarReacao(a, ent, op, espaco) {
         efeito = a.total < f.ca + f.prof ? 'erra' : 'nada'
         texto = `Duelista Defensivo (+${f.prof} CA): ${efeito === 'erra' ? 'o ataque erra' : 'o ataque ainda acerta'}.`
     } else if (op.id === 'oportunidade') {
-        texto = `ataque de oportunidade em ${a.criatura}.`
+        texto = `ataque de oportunidade em ${a.criatura}${arma ? ` com ${arma.nome.toLowerCase()}` : ''}.`
+        // A reação é marcada pelo servidor ao receber combate_reacao
+        if (arma) require('./dndArmas').atacar(char, arma.item, { tipo: 'reacao', rotuloExtra: ' (oportunidade)' })
     } else if (op.id === 'repreensao') {
         let dados = '3d10'   // racial: conjurada como 2º nível
         if (op.racial) gastarRecurso(char, 'racial:repreensao-infernal')
@@ -794,6 +1040,32 @@ function usarReacao(a, ent, op, espaco) {
         texto = `Repreensão Infernal em ${a.criatura} (${dados} de fogo, CD ${op.magia.cd} DES para metade).`
     }
     emitir('combate_reacao', { anuncioId: a.id, entradaId: ent.id, reacao: op.id, texto, efeito, reducao })
+}
+
+/**
+ * Pergunta rápida no canto (teste de concentração). Fica separada do prompt
+ * de reação para um não apagar o outro.
+ *   opcoes: [{ rotulo, acao, principal }] · semRecusa: sem o botão "Agora não"
+ */
+function perguntar({ titulo, texto, opcoes, semRecusa }) {
+    let el = document.getElementById('dndPergunta')
+    if (!el) {
+        el = mk('div')
+        el.id = 'dndPergunta'
+        el.setAttribute('role', 'alertdialog')
+        segurar(el)
+        document.body.appendChild(el)
+    }
+    el.innerHTML = ''
+    el.setAttribute('aria-label', titulo)
+    el.appendChild(mk('div', 'cb-prompt-titulo', titulo))
+    el.appendChild(mk('div', 'cb-prompt-texto', texto))
+    const linha = mk('div', 'cb-prompt-op')
+    const fechar = () => el.classList.remove('show')
+    opcoes.forEach(o => linha.appendChild(botao(o.rotulo, o.titulo || '', () => { fechar(); o.acao() }, o.principal ? 'principal' : '')))
+    if (!semRecusa) linha.appendChild(botao('Agora não', '', fechar))
+    el.appendChild(linha)
+    el.classList.add('show')
 }
 
 function overlayPrompt() {
@@ -873,4 +1145,11 @@ function mk(tag, cls, text) {
     return e
 }
 
-module.exports = { aoEstado, aoAnuncio, aoReacao, aoConjurar, atualizarBotaoMestre, limpar, minhaEntrada }
+module.exports = {
+    aoEstado, aoAnuncio, aoReacao, aoConjurar, atualizarBotaoMestre, limpar, minhaEntrada,
+    regraMagiaBonus, gastarBonusDe, perguntar, marcasDoAlvo,
+    // usados pelo painel de armas (dndArmas.js)
+    emBatalha, entradaDoChar, turnoDoChar, chaveDoTurno, economia, gastar,
+    gastarRecurso, gastarEspaco, espacosLivres, recursoLivre,
+    atualizarTurno: () => desenharTurno(),
+}

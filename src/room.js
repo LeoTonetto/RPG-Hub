@@ -208,6 +208,7 @@ function initRoom() {
             state.roomSystem = null
             mostrarSistemaEscolhido()
             require('./dndCombate').limpar()
+            require('./dndBolsa').limpar()
 
             hideJournalButtons()
 

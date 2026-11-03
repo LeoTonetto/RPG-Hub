@@ -78,6 +78,8 @@ function renderCharacterBar(allChars) {
     })
     bar.style.display = 'flex'
     updateActiveIndicator()
+    // D&D: o ouro inicial de quem acabou de chegar à mesa vai para a bolsa do grupo
+    if (state.roomSystem === 'dnd') require('./dndBolsa').entregarMoedasIniciais()
 }
 
 function buildCharCard(char, ownerName) {
@@ -134,6 +136,8 @@ function buildCharCard(char, ownerName) {
     if (sysDef?.cardCondicoes) {
         info.appendChild(buildCondicoesRow(stats.condicoes))
     }
+    // D&D: condições, exaustão, concentração e Forma Selvagem em ícones
+    if (char.system === 'dnd') info.appendChild(linhaEstadoDnd(stats))
 
     card.appendChild(info)
 
@@ -147,7 +151,9 @@ function buildCharCard(char, ownerName) {
     }
 
     // Indicador de morte (HP = 0)
-    if ((stats.hp ?? 1) <= 0) {
+    // No D&D, 0 PV é "caído" (testes contra a morte); morto só com 3 falhas
+    if (char.system === 'dnd') aplicarEstadoDnd(card, stats)
+    else if ((stats.hp ?? 1) <= 0) {
         card.classList.add('char-dead')
     }
 
@@ -336,8 +342,45 @@ function updateCardStat(charId, field, value) {
     }
 
     // Indicador de morte
-    if (field === 'hp') {
+    if (card.dataset.system === 'dnd') {
+        if (['hp', 'morte', 'condicoes', 'exaustao', 'concentracao', 'forma'].includes(field)) {
+            const meu = state.playerCharacters.find(c => c.id === charId)
+            aplicarEstadoDnd(card, (meu && meu.stats) || stats)
+        }
+    } else if (field === 'hp') {
         card.classList.toggle('char-dead', value <= 0)
+    }
+}
+
+/** D&D: ícones de condição, exaustão, concentração e forma no card. */
+function linhaEstadoDnd(stats) {
+    const row = document.createElement('div')
+    row.className = 'char-card-dnd-estado'
+    const D = require('./dndDados')
+    const itens = []
+    if (stats.forma) itens.push(['🐾', 'Forma Selvagem'])
+    ;(stats.condicoes || []).forEach(c => { if (D.CONDICOES[c]) itens.push([D.CONDICOES[c].icone, D.CONDICOES[c].nome]) })
+    if (stats.exaustao) itens.push(['😩', `Exaustão ${stats.exaustao}`])
+    if (stats.concentracao) itens.push(['◉', `Concentrando: ${stats.concentracao.nome}`])
+    itens.forEach(([icone, titulo]) => {
+        const span = document.createElement('span')
+        span.textContent = icone
+        span.title = titulo
+        row.appendChild(span)
+    })
+    return row
+}
+
+function aplicarEstadoDnd(card, stats) {
+    const morto = !!(stats.morte && stats.morte.morto)
+    card.classList.toggle('char-dead', morto)
+    card.classList.toggle('char-caido', !morto && (stats.hp ?? 1) <= 0)
+    const info = card.querySelector('.char-card-info')
+    const velha = card.querySelector('.char-card-dnd-estado')
+    if (info) {
+        const nova = linhaEstadoDnd(stats)
+        if (velha) velha.replaceWith(nova)
+        else info.appendChild(nova)
     }
 }
 
@@ -747,6 +790,8 @@ async function handleCreateChar(name, photoFile) {
     emitCharacters()
 
     if (itensIniciais) seedInventarioInicial(charId, itensIniciais)
+    // D&D: os itens do pacote vão para o Inventário (o que não achar fica na ficha)
+    if (sysDef.module === 'dnd') require('./dndItens').entregarDaFicha(newChar).catch(e => console.warn('[D&D] itens:', e.message))
 }
 
 /**

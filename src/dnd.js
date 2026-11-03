@@ -21,6 +21,7 @@ const D = require('./dndDados')
 const { CLASSES, porNivel } = require('./dndClasses')
 const { LISTAS } = require('./dndListas')
 const C = require('./dndConteudo')
+const CR = require('./dndCriaturas')
 
 const NIVEL_MAX = 20
 
@@ -71,6 +72,9 @@ function novaFicha() {
         alinhamento: null,
         personalidade: { tracos: '', ideais: '', vinculos: '', defeitos: '' },
         equipamento: { armadura: null, escudo: false },
+        armas: [],                 // ver ataqueComArma
+        itens: [],                 // o resto do pacote inicial, em texto
+        efeitos: {},               // fúria, arma sagrada: o que está ligado agora
         hp: 1, hp_max: 1, hp_temp: 0, ca: 10,
         recursos_usados: {}, espacos_usados: {}, dados_vida_usados: 0,
         inspiracao: false,
@@ -279,11 +283,36 @@ function magiasDoPersonagem(stats) {
         vistos.add(id)
         lista.push({ ...m, ...extra })
     }
-    magiasSempre(stats).forEach(x => incluir(x.id, { origem: x.origem, atributo: x.atributo || atrClasse, sempre: true, usos: x.usos }))
+    // Como cada magia é conjurada fora da regra comum dos espaços:
+    //   semEspaco + recurso: 1 vez por descanso longo, sem espaço (raça, Arcana, Iniciado)
+    //   semEspaco sem recurso: à vontade (invocações)
+    //   recurso com espaço: 1 vez por descanso longo GASTANDO espaço de pacto (invocações)
+    //   nivelFixo: conjurada sempre nesse nível
+    magiasSempre(stats).forEach(x => incluir(x.id, {
+        origem: x.origem, atributo: x.atributo || atrClasse, sempre: true, usos: x.usos,
+        ...(x.usos ? { semEspaco: true, recurso: 'racial:' + x.id, rotuloUso: 'raça', nivelFixo: /2º nível/.test(x.usos) ? 2 : undefined } : {}),
+    }))
     vagasDeEscolha(stats).filter(v => v.tipo === 'magia').forEach(v => {
         const atributo = v.atributo || (v.lista && v.lista !== 'todas' && v.key.includes(':talento:') ? ATRIBUTO_DA_LISTA[v.lista] : null) || atrClasse || 'car'
-        ;((stats.escolhas || {})[v.key] || []).forEach(id => incluir(id, { origem: v.origem, atributo }))
+        let uso = {}
+        if (/:arcana$/.test(v.key)) uso = { usos: '1 vez por descanso longo, sem espaço', semEspaco: true, recurso: 'arcana:' }
+        if (/:talento:magia$/.test(v.key)) uso = { usos: '1 vez por descanso longo, no 1º nível', semEspaco: true, recurso: 'iniciado:', nivelFixo: 1 }
+        ;((stats.escolhas || {})[v.key] || []).forEach(id => incluir(id, {
+            origem: v.origem, atributo,
+            ...(uso.recurso ? { ...uso, recurso: uso.recurso + id, rotuloUso: uso.recurso === 'arcana:' ? 'Arcana Mística' : 'Iniciado em Magia' } : {}),
+        }))
     })
+    // Invocações místicas que dão magia
+    if (stats.classe === 'bruxo') {
+        escolhidos(stats, 'invocacoes').forEach(inv => {
+            const dado = MAGIAS_DE_INVOCACAO[inv]
+            if (!dado) return
+            const nomeInv = (D.OPCOES.invocacoes.find(o => o.id === inv) || {}).nome || inv
+            incluir(dado.id, dado.vontade
+                ? { origem: `Invocação · ${nomeInv}`, atributo: 'car', sempre: true, usos: 'à vontade', semEspaco: true, nivelFixo: dado.nivelFixo }
+                : { origem: `Invocação · ${nomeInv}`, atributo: 'car', sempre: true, usos: '1 vez por descanso longo, com espaço de pacto', recurso: 'invocacao:' + inv, rotuloUso: nomeInv })
+        })
+    }
     return lista.sort((a, b) => a.nivel - b.nivel || a.nome.localeCompare(b.nome, 'pt'))
 }
 
@@ -637,6 +666,29 @@ function espacosDeMagia(conj, nivel) {
     return { espacos: efetivo > 0 ? ESPACOS_COMPLETO[efetivo - 1] : [], pacto: null }
 }
 
+/**
+ * Espaços de magia livres a partir de um nível: [{ id: '3' | 'pacto', nivel, livres }].
+ * Conta os criados com pontos de feitiçaria (stats.espacos_extras), que
+ * somem no descanso longo.
+ */
+function espacosLivres(stats, f, minimo = 1) {
+    const cj = f.conjuracao
+    if (!cj) return []
+    const usados = stats.espacos_usados || {}
+    const extras = stats.espacos_extras || {}
+    const out = []
+    cj.espacos.forEach((qtd, i) => {
+        const n = i + 1
+        const livres = qtd + (extras[n] || 0) - (usados[n] || 0)
+        if (n >= minimo && livres > 0) out.push({ id: String(n), nivel: n, livres })
+    })
+    if (cj.pacto && cj.pacto.nivel >= minimo) {
+        const livres = cj.pacto.qtd - (usados.pacto || 0)
+        if (livres > 0) out.push({ id: 'pacto', nivel: cj.pacto.nivel, livres })
+    }
+    return out
+}
+
 function resumoConjuracao(stats, mods, prof) {
     const conj = conjuracaoAtiva(stats)
     if (!conj) return null
@@ -672,6 +724,11 @@ function calcular(stats) {
     const atributos = atributosFinais(stats)
     const mods = {}
     D.TODOS_ATRIBUTOS.forEach(k => { mods[k] = mod(atributos[k]) })
+    // Forma Selvagem: FOR, DES e CON passam a ser os da besta (os PV máximos
+    // do druida continuam com a CON dele)
+    const conPropria = mods.con
+    const forma = stats.forma ? CR.criatura(stats.forma.id) : null
+    if (forma) ['for', 'des', 'con'].forEach(k => { atributos[k] = forma.atributos[k]; mods[k] = mod(forma.atributos[k]) })
 
     const p = proficiencias(stats)
     const talentos = talentosEscolhidos(stats)
@@ -715,15 +772,18 @@ function calcular(stats) {
 
     // ── CA ────────────────────────────────────────────────────────────────────
     const eq = stats.equipamento || {}
-    const armadura = D.ARMADURAS[eq.armadura] || null
-    const escudo = !!eq.escudo
+    const vestida = armaduraVestida(stats)
+    const armadura = vestida ? { ...D.ARMADURAS[vestida.base], nome: vestida.nome || D.ARMADURAS[vestida.base].nome } : null
+    const escudoItem = escudoEmpunhado(stats)
+    const escudo = !!escudoItem
     let ca, caDetalhe
     if (armadura) {
         let teto = armadura.maxDes
         if (armadura.tipo === 'media' && temTalento('maestria-armadura-media')) teto = 3
-        const des = teto == null ? mods.des : Math.min(mods.des, teto)
-        ca = armadura.ca + des
-        caDetalhe = `${armadura.nome} ${armadura.ca}` + (teto === 0 ? '' : ` ${sinal(des)} DES`)
+        // Armadura pesada ignora a Destreza, inclusive a negativa
+        const des = teto === 0 ? 0 : teto == null ? mods.des : Math.min(mods.des, teto)
+        ca = armadura.ca + des + (vestida.bonus || 0)
+        caDetalhe = `${armadura.nome} ${armadura.ca + (vestida.bonus || 0)}` + (teto === 0 ? '' : ` ${sinal(des)} DES`)
     } else {
         const opcoes = [{ ca: 10 + mods.des, txt: `10 ${sinal(mods.des)} DES` }]
         if (classe && classe.defesaSemArmadura === 'con') opcoes.push({ ca: 10 + mods.des + mods.con, txt: `10 ${sinal(mods.des)} DES ${sinal(mods.con)} CON` })
@@ -733,9 +793,12 @@ function calcular(stats) {
         ca = melhor.ca
         caDetalhe = 'Sem armadura: ' + melhor.txt
     }
-    if (escudo) { ca += 2; caDetalhe += ' + escudo 2' }
+    if (escudo) { const b = 2 + (escudoItem.bonus || 0); ca += b; caDetalhe += ` + escudo ${b}` }
     const estilos = estilosDeLuta(stats)
     if (armadura && estilos.includes('defesa')) { ca += 1; caDetalhe += ' + Defesa 1' }
+    // Ambidestro: +1 com uma arma corpo-a-corpo em cada mão (o jogador marca nas armas)
+    if (temTalento('ambidestro') && (stats.efeitos || {})['duas-armas']) { ca += 1; caDetalhe += ' + Ambidestro 1' }
+    if (forma) { ca = forma.ca; caDetalhe = `${forma.nome} (Forma Selvagem)` }
     const semProfArmadura = (armadura && !p.armaduras.has(armadura.tipo)) || (escudo && !p.armaduras.has('escudo'))
 
     // ── Deslocamento ──────────────────────────────────────────────────────────
@@ -744,16 +807,22 @@ function calcular(stats) {
     if (stats.classe === 'barbaro' && nivel >= 5 && !(armadura && armadura.tipo === 'pesada')) deslocamento += 3
     if (stats.classe === 'monge' && !armadura && !escudo) deslocamento += porNivel([[1, 0], ...MOVIMENTO_MONGE], nivel)
     if (armadura && armadura.forca && atributos.for < armadura.forca && !(raca && raca.pesadaSemPenalidade)) deslocamento -= 3
+    if (forma) deslocamento = CR.deslocamentoBase(forma.deslocamento)
+    const exaustao = Math.max(0, Math.min(6, stats.exaustao || 0))
+    if (exaustao >= 2) deslocamento = deslocamento / 2
+    const parado = exaustao >= 5 || (stats.condicoes || []).some(c => D.CONDICOES[c] && D.CONDICOES[c].efeitos.parado)
+    if (parado) deslocamento = 0
 
     // ── PV ────────────────────────────────────────────────────────────────────
     const dv = classe ? classe.dadoVida : 8
     const media = dv / 2 + 1
-    let pvMax = Math.max(1, dv + mods.con)
-    for (let n = 2; n <= nivel; n++) pvMax += Math.max(1, media + mods.con)
+    let pvMax = Math.max(1, dv + conPropria)
+    for (let n = 2; n <= nivel; n++) pvMax += Math.max(1, media + conPropria)
     const pvPorNivel = ((subraca && subraca.concede && subraca.concede.pvPorNivel) || 0)
         + ((subclasse && subclasse.pvPorNivel) || 0)
         + (temTalento('robusto') ? 2 : 0)
     pvMax += pvPorNivel * nivel
+    if (exaustao >= 4) pvMax = Math.max(1, Math.floor(pvMax / 2))
 
     // ── Sentidos e resistências a dano ────────────────────────────────────────
     const visao = Math.max(
@@ -789,10 +858,10 @@ function calcular(stats) {
     }
     if (stats.raca === 'meio-orc') recursos.push({ id: 'resistencia-implacavel', nome: 'Resistência Implacável', max: 1, recarga: 'longo' })
     talentos.forEach(t => { if (t.talento.recurso) recursos.push(t.talento.recurso) })
-    // Magia racial de "1 vez por descanso longo" vira um uso marcável
-    magiasSempre(stats).filter(m => m.usos).forEach(m => {
-        const mg = C.magia(m.id)
-        recursos.push({ id: 'racial:' + m.id, nome: `${mg ? mg.nome : m.id} (raça)`, max: 1, recarga: 'longo' })
+    // Magia de "1 vez por descanso longo" (raça, Arcana Mística, Iniciado em
+    // Magia, invocações) vira um uso marcável
+    magias.filter(m => m.recurso).forEach(m => {
+        recursos.push({ id: m.recurso, nome: `${m.nome} (${m.rotuloUso})`, max: 1, recarga: 'longo' })
     })
 
     // ── Características, na ordem em que aparecem ─────────────────────────────
@@ -817,7 +886,10 @@ function calcular(stats) {
         percepcaoPassiva, investigacaoPassiva,
         iniciativa, vantagemIniciativa,
         ca, caDetalhe, semProfArmadura, armadura, escudo,
-        deslocamento, pvMax, dadoVida: dv,
+        deslocamento, pvMax, dadoVida: dv, exaustao,
+        forma: forma ? { ...forma, pv: stats.forma.pv, pvMax: forma.pv } : null,
+        semConjurar: !!forma && !(stats.classe === 'druida' && nivel >= 18),
+        talentos: talentos.map(t => t.id),
         visaoEscuro: visao, resistenciasDano: [...resistenciasDano],
         proficiencias: {
             armaduras: [...p.armaduras], categoriasArma: [...p.categoriasArma], armas: [...p.armas],
@@ -828,6 +900,517 @@ function calcular(stats) {
         pendencias: pendencias(stats, nivel),
         titulo: tituloDoPersonagem(stats),
     }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── ATAQUES COM ARMA ─────────────────────────────────────────────────────────
+// stats.armas: [{ id, base, qtd?, nome?, bonus?, dano?, tipoDano?, danoExtra?,
+// nota?, pacto? }]. `base` é a arma do livro (D.ARMAS), de onde vêm as
+// propriedades; o resto é o que a mesa mudou (uma espada longa +1, uma arma
+// que causa 1d6 de fogo a mais). O golpe desarmado não fica na lista: todo
+// personagem tem.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Invocações que dão uma magia (LdJ p. 59-61): à vontade, ou uma vez por
+// descanso longo gastando um espaço de magia de bruxo
+const MAGIAS_DE_INVOCACAO = {
+    'armadura-sombras': { id: 'armadura-arcana', vontade: true },
+    'correntes-carceri': { id: 'imobilizar-monstro', vontade: true },
+    'idioma-bestial': { id: 'falar-com-animais', vontade: true },
+    'mascara-faces': { id: 'disfarcar-se', vontade: true },
+    'mestre-formas': { id: 'alterar-se', vontade: true },
+    'passo-ascendente': { id: 'levitacao', vontade: true },
+    'salto-transcendental': { id: 'salto', vontade: true },
+    'sussurros-sepultura': { id: 'falar-com-os-mortos', vontade: true },
+    'vigor-abissal': { id: 'vitalidade-falsa', vontade: true, nivelFixo: 1 },
+    'visao-mistica': { id: 'detectar-magia', vontade: true },
+    'visoes-brumas': { id: 'imagem-silenciosa', vontade: true },
+    'visoes-reinos': { id: 'olho-arcano', vontade: true },
+    'encharcar-mente': { id: 'lentidao' },
+    'escultor-carne': { id: 'metamorfose' },
+    'lacaios-caos': { id: 'conjurar-elemental' },
+    'larapio-destinos': { id: 'perdicao' },
+    'palavra-terrivel': { id: 'confusao' },
+    'sinal-agouro': { id: 'rogar-maldicao' },
+    'sussurros-sedutores': { id: 'compulsao' },
+}
+
+// ── Armaduras possuídas ───────────────────────────────────────────────────────
+// stats.armaduras: [{ id, base, nome?, bonus? }], com base em D.ARMADURAS ou
+// 'escudo'. stats.equipamento guarda o que está vestido: { armadura: id,
+// escudo: id }. Ficha antiga (sem a lista) tem só o que estava vestindo, com
+// o id do catálogo no lugar do id do item.
+
+function armadurasDoPersonagem(stats) {
+    if (Array.isArray(stats.armaduras)) return stats.armaduras.filter(a => a && (D.ARMADURAS[a.base] || a.base === 'escudo'))
+    const eq = stats.equipamento || {}
+    const lista = []
+    if (D.ARMADURAS[eq.armadura]) lista.push({ id: eq.armadura, base: eq.armadura })
+    if (eq.escudo) lista.push({ id: 'escudo', base: 'escudo' })
+    return lista
+}
+
+function armaduraVestida(stats) {
+    const eq = stats.equipamento || {}
+    if (!eq.armadura) return null
+    const lista = armadurasDoPersonagem(stats)
+    return lista.find(a => a.id === eq.armadura && a.base !== 'escudo')
+        || (D.ARMADURAS[eq.armadura] ? { id: eq.armadura, base: eq.armadura } : null)
+}
+
+function escudoEmpunhado(stats) {
+    const eq = stats.equipamento || {}
+    if (!eq.escudo) return null
+    const lista = armadurasDoPersonagem(stats)
+    return lista.find(a => a.id === eq.escudo && a.base === 'escudo') || (eq.escudo === true || eq.escudo === 'escudo' ? { id: 'escudo', base: 'escudo' } : null)
+}
+
+const DESARMADO = 'desarmado'
+const DADO_ARTES_MARCIAIS = [[1, 4], [5, 6], [11, 8], [17, 10]]
+// Golpe Divino do clérigo (8º nível): o tipo do dano depende do domínio
+const GOLPE_DIVINO = { guerra: null, natureza: 'frio, fogo ou elétrico', tempestade: 'trovejante', enganacao: 'veneno', vida: 'radiante' }
+// Manobras que somam o dado de superioridade ao dano de um acerto, e as que
+// ainda pedem um teste de resistência do alvo
+const MANOBRAS_DE_DANO = ['ameacador', 'encontrao', 'finta', 'manobra', 'desarmante', 'estendido', 'provocante', 'derrubar', 'distrativo']
+const MANOBRAS_COM_TESTE = { ameacador: 'SAB', encontrao: 'FOR', desarmante: 'FOR', provocante: 'SAB', derrubar: 'FOR' }
+// Maestria em Arma de Haste vale para estas (LdJ p. 168)
+const ARMAS_DE_HASTE = ['glaive', 'alabarda', 'bordao']
+
+/** Todas as respostas de vagas com este id, de qualquer nível ("nv3:manobras", "nv4:talento:manobras"). */
+function escolhidos(stats, id) {
+    const re = new RegExp(`(^|:)${id}$`)
+    return Object.entries(stats.escolhas || {})
+        .filter(([k, v]) => re.test(k) && Array.isArray(v))
+        .flatMap(([, v]) => v)
+}
+
+/** A arma como o motor usa: o catálogo do livro com o que a mesa mudou por cima. */
+function definicaoDaArma(item) {
+    if (!item || item.base === DESARMADO) return { ...D.GOLPE_DESARMADO, id: DESARMADO }
+    const base = D.ARMAS[item.base]
+    if (!base) return null
+    return { ...base, id: item.base, nome: item.nome || base.nome, dano: item.dano || base.dano, tipo: item.tipoDano || base.tipo }
+}
+
+/** As armas da ficha que o motor reconhece, mais o golpe desarmado no fim. */
+function armasDoPersonagem(stats) {
+    return [...(stats.armas || []).filter(a => a && D.ARMAS[a.base]), { id: DESARMADO, base: DESARMADO }]
+}
+
+function ehArmaDeMonge(id) {
+    const a = D.ARMAS[id]
+    return id === 'espada-curta' || (!!a && a.cat === 'simples' && !a.distancia && !a.props.includes('duas-maos') && !a.props.includes('pesada'))
+}
+
+const mediaDoDado = expr => {
+    const m = String(expr || '').match(/^(\d*)d(\d+)$/)
+    return m ? (parseInt(m[1] || '1', 10) * (parseInt(m[2], 10) + 1)) / 2 : parseInt(expr, 10) || 0
+}
+
+/** "1d6 fogo" → { dados: '1d6', tipo: 'fogo' } */
+function lerDano(texto) {
+    const m = String(texto || '').trim().match(/^(\d+d\d+|\d+)\s*(.*)$/)
+    return m ? { dados: m[1], tipo: m[2] || '' } : null
+}
+
+/**
+ * Um ataque com a arma, com tudo somado.
+ *   op.duasMaos  — arma versátil empunhada com as duas mãos
+ *   op.arremesso — arma corpo-a-corpo arremessada (vira ataque à distância)
+ *   op.poderoso  — −5 no ataque e +10 no dano (Mestre de Armas Grandes, Atirador Aguçado)
+ *   op.outraMao  — ataque da ação bônus com a outra mão: sem o modificador no dano
+ *   op.favorito  — contra o inimigo favorito do Patrulheiro
+ *   op.haste     — a outra ponta da arma de haste (1d4 de concussão)
+ * O dano extra que vem sempre (arma de fogo, Destruição Divina Aprimorada)
+ * entra em `extras`; o que depende de o jogador decidir depois do acerto
+ * fica em extrasDoAcerto().
+ */
+function ataqueComArma(stats, item, op = {}, f = calcular(stats)) {
+    const def = definicaoDaArma(item)
+    if (!def) return null
+    const nivel = f.nivel
+    const desarmado = def.id === DESARMADO
+    const props = new Set(def.props)
+    const talentos = talentosEscolhidos(stats).map(t => t.id)
+    const efeitos = stats.efeitos || {}
+    const notas = []
+
+    const arremessada = !!op.arremesso && props.has('arremesso') && !def.distancia
+    const corpo = !def.distancia && !arremessada
+    const monge = stats.classe === 'monge' && (desarmado || ehArmaDeMonge(def.id))
+
+    // Atributo: acuidade e armas de monge usam o melhor entre FOR e DES
+    let atributo = def.distancia ? 'des' : 'for'
+    if (props.has('acuidade') || monge) atributo = f.mods.des > f.mods.for ? 'des' : 'for'
+    // Bordão Místico: a clava ou o bordão usam o atributo de magia e causam d8
+    const mistico = !!efeitos['bordao-mistico'] && (def.id === 'clava' || def.id === 'bordao') && !op.haste
+    if (mistico) {
+        const m = f.magias.find(x => x.id === 'bordao-mistico')
+        const attr = m ? m.atributo : 'sab'
+        if (f.mods[attr] > f.mods[atributo]) atributo = attr
+        notas.push('Bordão Místico')
+    }
+    const mod = f.mods[atributo]
+
+    const proficiente = desarmado || !!item.pacto
+        || f.proficiencias.categoriasArma.includes(def.cat) || f.proficiencias.armas.includes(def.id)
+    if (!proficiente) notas.push('sem proficiência')
+
+    // Dado de dano
+    let dados = def.dano
+    let tipo = def.tipo
+    if (op.haste) { dados = '1d4'; tipo = 'concussão' }
+    else if (op.duasMaos && props.has('versatil') && def.versatil && !item.dano) dados = def.versatil
+    if (mistico && mediaDoDado(dados) < 4.5) dados = '1d8'
+    if (desarmado) dados = talentos.includes('especialista-em-briga') ? '1d4' : '1'
+    if (monge) {
+        const am = porNivel(DADO_ARTES_MARCIAIS, nivel)
+        if (mediaDoDado(dados) < (am + 1) / 2) { dados = `1d${am}`; notas.push(`Artes Marciais d${am}`) }
+    }
+
+    // Jogada de ataque
+    let bonus = mod + (proficiente ? f.prof : 0) + (item.bonus || 0)
+    if (def.distancia && f.estilos.includes('arquearia')) { bonus += 2; notas.push('Arquearia +2') }
+    if (efeitos['arma-sagrada'] && !desarmado) { bonus += Math.max(1, f.mods.car); notas.push(`Arma Sagrada ${sinal(Math.max(1, f.mods.car))}`) }
+    if (op.poderoso) bonus -= 5
+
+    // Dano fixo
+    let bonusDano = item.bonus || 0
+    if (!op.outraMao || mod < 0 || f.estilos.includes('duas-armas')) bonusDano += mod
+    const emUmaMao = corpo && !desarmado && !props.has('duas-maos') && !(op.duasMaos && props.has('versatil'))
+    if (f.estilos.includes('duelismo') && emUmaMao && !op.outraMao && !op.haste) { bonusDano += 2; notas.push('Duelismo +2') }
+    if (efeitos.furia && stats.classe === 'barbaro' && corpo && atributo === 'for') {
+        const furia = porNivel([[1, 2], [9, 3], [16, 4]], nivel)
+        bonusDano += furia
+        notas.push(`Fúria +${furia}`)
+    }
+    if (op.poderoso) { bonusDano += 10; notas.push('−5/+10') }
+    if (op.favorito && stats.classe === 'patrulheiro') { const b = nivel >= 6 ? 4 : 2; bonusDano += b; notas.push(`Inimigo favorito +${b}`) }
+
+    // Dano extra em todo acerto
+    const extras = []
+    const extraDaArma = lerDano(item.danoExtra)
+    if (extraDaArma) extras.push({ ...extraDaArma, rotulo: item.nome || def.nome })
+    if (stats.classe === 'paladino' && nivel >= 11 && corpo) extras.push({ dados: '1d8', tipo: 'radiante', rotulo: 'Destruição Divina Aprimorada' })
+    if (item.pacto && nivel >= 12 && escolhidos(stats, 'invocacoes').includes('sorvedor-vida')) {
+        extras.push({ dados: String(Math.max(1, f.mods.car)), tipo: 'necrótico', rotulo: 'Sorvedor de Vida' })
+    }
+
+    // Crítico
+    let critMin = 20
+    if (stats.classe === 'guerreiro' && stats.subclasse === 'campeao') critMin = nivel >= 15 ? 18 : nivel >= 3 ? 19 : 20
+    if (critMin < 20) notas.push(`crítico ${critMin}–20`)
+    let dadosCritExtra = 0
+    if (corpo && stats.classe === 'barbaro' && nivel >= 9) dadosCritExtra += nivel >= 17 ? 3 : nivel >= 13 ? 2 : 1
+    if (corpo && stats.raca === 'meio-orc') dadosCritExtra += 1
+    const duasMaosDeVerdade = props.has('duas-maos') || (props.has('versatil') && op.duasMaos)
+    const rerrolarAte = f.estilos.includes('armas-grandes') && corpo && duasMaosDeVerdade && !op.haste ? 2 : 0
+    if (rerrolarAte) notas.push('rola de novo 1 e 2')
+
+    const expressao = [dados, ...extras.map(e => e.dados)].filter(Boolean).join('+')
+    return {
+        item, def, nome: item.nome || def.nome, icone: def.icone,
+        bonus, dados, bonusDano, tipo, extras, expressao,
+        critMin, dadosCritExtra, rerrolarAte,
+        corpo, distancia: !corpo, arremessada, atributo, proficiente, monge,
+        acuidade: props.has('acuidade'), armaDistancia: !!def.distancia,
+        semDano: !def.dano && !desarmado,
+        notas,
+        pode: {
+            duasMaos: props.has('versatil'),
+            arremesso: props.has('arremesso') && !def.distancia,
+            poderoso: (talentos.includes('mestre-armas-grandes') && corpo && props.has('pesada'))
+                || (talentos.includes('atirador-agucado') && !!def.distancia),
+            favorito: stats.classe === 'patrulheiro',
+        },
+    }
+}
+
+/** "1d8 + 3 cortante (+1d8 radiante)" — o dano como a lista mostra. */
+function textoDoDano(a) {
+    if (a.semDano) return 'sem dano'
+    const fixo = a.bonusDano ? ` ${a.bonusDano > 0 ? '+' : '−'} ${Math.abs(a.bonusDano)}` : ''
+    const base = /^\d+$/.test(a.dados) ? String(Math.max(0, parseInt(a.dados, 10) + a.bonusDano)) : `${a.dados}${fixo}`
+    return `${base} ${a.tipo}`.trim() + a.extras.map(e => ` +${e.dados} ${e.tipo}`).join('')
+}
+
+/** Quantos ataques a ação de Ataque dá. */
+function ataquesPorAcao(stats, f = calcular(stats)) {
+    const nv = f.nivel
+    const cl = stats.classe
+    if (cl === 'guerreiro') return nv >= 20 ? 4 : nv >= 11 ? 3 : nv >= 5 ? 2 : 1
+    if (['barbaro', 'monge', 'paladino'].includes(cl) && nv >= 5) return 2
+    if (cl === 'patrulheiro' && ['cacador', 'rastreador'].includes(stats.subclasse) && nv >= 5) return 2
+    if (cl === 'bardo' && stats.subclasse === 'bravura' && nv >= 6) return 2
+    // Lâmina Sedenta: dois ataques, mas só com a arma do pacto (a tela confere)
+    if (cl === 'bruxo' && nv >= 5 && escolhidos(stats, 'invocacoes').includes('lamina-sedenta')) return 2
+    return 1
+}
+
+/**
+ * Ataques que a ação bônus permite, com as armas que servem para cada um.
+ * `apos` diz o que precisa ter acontecido no turno ("ataque": ter usado a
+ * ação de Ataque); a tela só confere isso durante a batalha.
+ */
+function ataquesBonus(stats, f = calcular(stats)) {
+    const nv = f.nivel
+    const cl = stats.classe
+    const talentos = talentosEscolhidos(stats).map(t => t.id)
+    const armas = armasDoPersonagem(stats)
+    const corpo = armas.filter(a => a.base !== DESARMADO && !D.ARMAS[a.base].distancia)
+    const lista = []
+
+    // Combate com duas armas: as duas leves (Ambidestro: qualquer uma de uma mão)
+    const serveNaOutraMao = a => { const p = D.ARMAS[a.base].props; return talentos.includes('ambidestro') ? !p.includes('duas-maos') : p.includes('leve') }
+    const outraMao = corpo.filter(serveNaOutraMao)
+    if (outraMao.reduce((s, a) => s + (a.qtd || 1), 0) >= 2) {
+        lista.push({ id: 'outra-mao', nome: 'Ataque com a outra mão', apos: 'ataque', armas: outraMao.map(a => a.id), op: { outraMao: true },
+            desc: 'Depois de atacar com uma arma leve, ataca com a outra' + (f.estilos.includes('duas-armas') ? '.' : ', sem somar o modificador no dano.') })
+    }
+    if (cl === 'monge') {
+        lista.push({ id: 'artes-marciais', nome: 'Golpe desarmado (Artes Marciais)', apos: 'ataque', armas: [DESARMADO],
+            desc: 'Depois de atacar com golpe desarmado ou arma de monge.' })
+        if (nv >= 2) lista.push({ id: 'rajada', nome: 'Rajada de Golpes', apos: 'ataque', armas: [DESARMADO], golpes: 2, recurso: 'chi',
+            desc: '1 chi: dois golpes desarmados depois da ação de Ataque.' })
+    }
+    if (cl === 'barbaro' && stats.subclasse === 'furioso' && nv >= 3 && (stats.efeitos || {}).furia) {
+        lista.push({ id: 'frenesi', nome: 'Frenesi', armas: corpo.map(a => a.id).concat(DESARMADO),
+            desc: 'Em fúria frenética: um ataque corpo-a-corpo. Ao fim da fúria, 1 nível de exaustão.' })
+    }
+    if (talentos.includes('maestria-arma-haste')) {
+        const haste = corpo.filter(a => ARMAS_DE_HASTE.includes(a.base))
+        if (haste.length) lista.push({ id: 'haste', nome: 'Outra ponta da arma (Arma de Haste)', apos: 'ataque', armas: haste.map(a => a.id), op: { haste: true },
+            desc: 'Depois de atacar com a arma de haste: 1d4 de concussão com o cabo.' })
+    }
+    if (talentos.includes('especialista-em-besta')) {
+        const bm = armas.filter(a => a.base === 'besta-de-mao')
+        if (bm.length) lista.push({ id: 'besta-de-mao', nome: 'Besta de mão (Especialista em Besta)', apos: 'ataque', armas: bm.map(a => a.id),
+            desc: 'Depois de atacar com uma arma de uma mão.' })
+    }
+    if (talentos.includes('mestre-armas-grandes')) {
+        lista.push({ id: 'armas-grandes', nome: 'Ataque bônus (Mestre de Armas Grandes)', armas: corpo.map(a => a.id).concat(DESARMADO),
+            desc: 'Depois de um crítico ou de derrubar uma criatura a 0 PV com arma corpo-a-corpo.' })
+    }
+    if (cl === 'clerigo' && stats.subclasse === 'guerra') {
+        lista.push({ id: 'sacerdote', nome: 'Sacerdote da Guerra', apos: 'ataque', armas: armas.map(a => a.id), recurso: 'sacerdote-guerra',
+            desc: 'Depois da ação de Ataque, mais um ataque com arma.' })
+    }
+    if (cl === 'guerreiro' && stats.subclasse === 'cavaleiro-arcano' && nv >= 7) {
+        lista.push({ id: 'magia-guerra', nome: 'Magia de Guerra', armas: armas.map(a => a.id),
+            desc: nv >= 18 ? 'Depois de conjurar uma magia com a ação.' : 'Depois de conjurar um truque com a ação.' })
+    }
+    if (cl === 'bardo' && stats.subclasse === 'bravura' && nv >= 14) {
+        lista.push({ id: 'magia-batalha', nome: 'Magia de Batalha', armas: armas.map(a => a.id), desc: 'Depois de conjurar uma magia com a ação.' })
+    }
+    return lista
+}
+
+/**
+ * O que o jogador pode somar DEPOIS que o mestre diz que acertou (decidido
+ * com o mestre em 2026-11-02: viram botões no resultado do ataque).
+ *   uso: 'turno' (uma vez por turno) | 'acerto' (a cada acerto)
+ *   recurso / espaco / chi: o que gasta
+ */
+function extrasDoAcerto(stats, ataque, f = calcular(stats)) {
+    const nv = f.nivel
+    const cl = stats.classe
+    const sub = stats.subclasse
+    const lista = []
+    const conhece = id => f.magias.some(m => m.id === id)
+
+    if (cl === 'ladino' && (ataque.acuidade || ataque.armaDistancia)) {
+        lista.push({ id: 'furtivo', nome: 'Ataque Furtivo', dados: `${Math.ceil(nv / 2)}d6`, tipo: ataque.tipo, uso: 'turno',
+            desc: 'Com vantagem, ou com um aliado a 1,5 m do alvo e sem desvantagem.' })
+    }
+    if (cl === 'paladino' && nv >= 2 && ataque.corpo) {
+        lista.push({ id: 'destruicao', nome: 'Destruição Divina', espaco: true, tipo: 'radiante', uso: 'acerto',
+            desc: '2d8 radiante com espaço de 1º, +1d8 por nível acima (máx. 5d8); +1d8 contra morto-vivo ou corruptor.' })
+    }
+    if (cl === 'clerigo' && nv >= 8 && sub in GOLPE_DIVINO) {
+        lista.push({ id: 'golpe-divino', nome: 'Golpe Divino', dados: nv >= 14 ? '2d8' : '1d8', tipo: GOLPE_DIVINO[sub] || ataque.tipo, uso: 'turno',
+            desc: 'Uma vez por turno, num acerto com arma.' })
+    }
+    if (conhece('marca-do-cacador')) {
+        lista.push({ id: 'marca', nome: 'Marca do Caçador', dados: '1d6', tipo: ataque.tipo, uso: 'acerto', desc: 'Se o alvo está marcado.' })
+    }
+    if (conhece('bruxaria')) {
+        lista.push({ id: 'bruxaria', nome: 'Bruxaria', dados: '1d6', tipo: 'necrótico', uso: 'acerto', desc: 'Se o alvo está amaldiçoado.' })
+    }
+    if (cl === 'patrulheiro' && sub === 'cacador' && escolhidos(stats, 'presa').includes('colossos')) {
+        lista.push({ id: 'colossos', nome: 'Assassino de Colossos', dados: '1d8', tipo: ataque.tipo, uso: 'turno', desc: 'Se o alvo já não está com todos os PV.' })
+    }
+    if (cl === 'patrulheiro' && nv >= 20) {
+        lista.push({ id: 'matador', nome: 'Matador de Inimigos', dados: String(Math.max(0, f.mods.sab)), tipo: ataque.tipo, uso: 'turno', desc: 'Soma SAB ao dano, uma vez por turno.' })
+    }
+
+    // Manobras: cada uma gasta um dado de superioridade
+    const sup = f.recursos.find(r => r.id === 'superioridade') || f.recursos.find(r => r.id === 'superioridade-talento')
+    if (sup) {
+        const dado = sup.dado || 'd6'
+        const cd = 8 + f.prof + Math.max(f.mods.for, f.mods.des)
+        const conhecidas = escolhidos(stats, 'manobras')
+        D.OPCOES.manobras.filter(o => conhecidas.includes(o.id)).forEach(o => {
+            if (MANOBRAS_DE_DANO.includes(o.id)) {
+                const teste = MANOBRAS_COM_TESTE[o.id]
+                lista.push({ id: 'manobra:' + o.id, nome: o.nome, dados: '1' + dado, tipo: ataque.tipo, uso: 'acerto', recurso: sup.id,
+                    cd: teste ? `${cd} ${teste}` : null, desc: o.desc })
+            }
+            else if (o.id === 'trespassante') lista.push({ id: 'manobra:' + o.id, nome: o.nome, dados: '1' + dado, tipo: ataque.tipo, uso: 'acerto', recurso: sup.id, outroAlvo: true, desc: o.desc })
+            else if (o.id === 'precisao') lista.push({ id: 'manobra:' + o.id, nome: o.nome, dados: '1' + dado, uso: 'acerto', recurso: sup.id, noAtaque: true, desc: o.desc })
+        })
+    }
+    if (cl === 'monge' && nv >= 5 && ataque.corpo) {
+        lista.push({ id: 'atordoante', nome: 'Ataque Atordoante', recurso: 'chi', uso: 'acerto', cd: `${8 + f.prof + f.mods.sab} CON`,
+            desc: `1 chi: o alvo faz CON (CD ${8 + f.prof + f.mods.sab}) ou fica atordoado até o fim do seu próximo turno.` })
+    }
+    return lista
+}
+
+// ── Pacote inicial (equipamento do livro) ─────────────────────────────────────
+// Na criação o jogador escolhe uma opção de cada grupo (a)/(b)/(c) da classe;
+// as respostas ficam em stats.pacote = { escolha: [opção de cada grupo],
+// armas: { 'grupo:i': [ids] } } até o personagem ser criado, quando
+// aplicarPacote() troca isso pelas armas, armadura e itens de verdade.
+
+// Riqueza inicial por classe (LdJ p. 143): [dados d4, multiplicador]. É a
+// alternativa ao pacote: no lugar dele (e do equipamento do antecedente), o
+// personagem começa só com o ouro.
+const RIQUEZA_INICIAL = {
+    barbaro: [2, 10], bardo: [5, 10], bruxo: [4, 10], clerigo: [5, 10], druida: [2, 10], feiticeiro: [3, 10],
+    guerreiro: [5, 10], ladino: [4, 10], mago: [4, 10], monge: [5, 1], paladino: [5, 10], patrulheiro: [5, 10],
+}
+
+/** As moedas que vêm escritas nos itens ("Algibeira com 15 po", "5 po"). */
+function moedasDosItens(itens) {
+    const moedas = {}
+    ;(itens || []).forEach(t => {
+        const m = String(t).match(/(?:^|com )(\d+) (po|pp|pc|pe|pl)$/)
+        if (m) moedas[m[2]] = (moedas[m[2]] || 0) + parseInt(m[1], 10)
+    })
+    return moedas
+}
+
+function gruposDoPacote(stats) {
+    const { classe } = fontes(stats)
+    return (classe && classe.equipamentoInicial) || []
+}
+
+/** Armas que valem para um "qualquer arma ..." do pacote. */
+function armasParaEscolher(e) {
+    return Object.entries(D.ARMAS)
+        .filter(([, a]) => (!e.cat || a.cat === e.cat) && (!e.corpo || !a.distancia))
+        .map(([id, a]) => ({ id, nome: a.nome }))
+}
+
+/** A opção pode ser escolhida? As marcadas "se for proficiente" pedem proficiência. */
+function opcaoDoPacoteValida(stats, opcao, f = calcular(stats)) {
+    if (!opcao.seProf) return true
+    if (opcao.armadura && !f.proficiencias.armaduras.includes(D.ARMADURAS[opcao.armadura].tipo)) return false
+    return (opcao.armas || []).every(a => {
+        const id = Array.isArray(a) ? a[0] : a
+        return f.proficiencias.categoriasArma.includes(D.ARMAS[id].cat) || f.proficiencias.armas.includes(id)
+    })
+}
+
+/** "Gibão de peles, arco longo e 20 flechas" */
+function rotuloDaOpcao(o) {
+    if (o.rotulo) return o.rotulo
+    const partes = []
+    const comoArmadura = { couro: 'Armadura de couro', 'couro-batido': 'Armadura de couro batido', acolchoada: 'Armadura acolchoada', placas: 'Armadura de placas' }
+    if (o.armadura) partes.push(comoArmadura[o.armadura] || D.ARMADURAS[o.armadura].nome)
+    ;(o.armas || []).forEach(a => {
+        const [id, qtd] = Array.isArray(a) ? a : [a, 1]
+        partes.push(qtd > 1 ? `${qtd} × ${D.ARMAS[id].nome}` : D.ARMAS[id].nome)
+    })
+    ;(o.escolher || []).forEach(e => {
+        const qtd = e.qtd || 1
+        const tipo = e.cat === 'marcial' ? (qtd > 1 ? 'marciais' : 'marcial') : 'simples'
+        partes.push(`${qtd > 1 ? 'duas armas' : 'qualquer arma'} ${tipo}${e.corpo ? ' corpo-a-corpo' : ''}`)
+    })
+    if (o.escudo) partes.push('Escudo')
+    ;(o.itens || []).forEach(i => partes.push(i))
+    const txt = partes.map((p, i) => (i === 0 ? p.charAt(0).toUpperCase() + p.slice(1) : p.charAt(0).toLowerCase() + p.slice(1)))
+    return txt.length > 1 ? `${txt.slice(0, -1).join(', ')} e ${txt[txt.length - 1]}` : txt[0] || ''
+}
+
+function pacoteDe(stats) {
+    const p = stats.pacote || {}
+    return { escolha: Array.isArray(p.escolha) ? p.escolha : [], armas: p.armas || {}, modo: p.modo || 'pacote', ouro: p.ouro || 0 }
+}
+
+/** O que ainda falta escolher no pacote (texto) ou '' se está completo. */
+function faltaNoPacote(stats, f = calcular(stats)) {
+    const grupos = gruposDoPacote(stats)
+    const p = pacoteDe(stats)
+    if (p.modo === 'ouro') return p.ouro ? '' : 'Role o ouro inicial'
+    for (let g = 0; g < grupos.length; g++) {
+        const i = grupos[g].length === 1 ? 0 : p.escolha[g]
+        const o = grupos[g][i]
+        if (!o) return 'Escolha uma opção de cada grupo do equipamento'
+        if (!opcaoDoPacoteValida(stats, o, f)) return `${rotuloDaOpcao(o)} pede proficiência`
+        const faltaArma = (o.escolher || []).some((e, k) => {
+            const v = p.armas[`${g}:${k}`] || []
+            return v.filter(id => D.ARMAS[id]).length < (e.qtd || 1)
+        })
+        if (faltaArma) return 'Escolha as armas do equipamento'
+    }
+    return ''
+}
+
+/**
+ * Troca stats.pacote pelas armas, armadura e itens que ele dá, somando o
+ * equipamento do antecedente. Chamado ao criar o personagem (ou na ficha,
+ * para quem foi criado antes das armas).
+ */
+function aplicarPacote(stats) {
+    const grupos = gruposDoPacote(stats)
+    const p = pacoteDe(stats)
+    if (p.modo === 'ouro') {
+        stats.armas = []
+        stats.itens = []
+        stats.armaduras = []
+        stats.equipamento = { armadura: null, escudo: null }
+        stats.moedas_iniciais = { po: p.ouro }
+        delete stats.pacote
+        return stats
+    }
+    const armas = []
+    const itens = []
+    let armadura = null
+    let escudo = false
+    const novaId = () => 'a' + Math.random().toString(36).slice(2, 9)
+    const darArma = (id, qtd = 1) => {
+        if (!D.ARMAS[id]) return
+        const igual = armas.find(a => a.base === id)
+        if (igual) igual.qtd = (igual.qtd || 1) + qtd
+        else armas.push({ id: novaId(), base: id, qtd })
+    }
+    grupos.forEach((grupo, g) => {
+        const o = grupo[grupo.length === 1 ? 0 : p.escolha[g]]
+        if (!o) return
+        if (o.armadura) armadura = o.armadura
+        if (o.escudo) escudo = true
+        ;(o.armas || []).forEach(a => (Array.isArray(a) ? darArma(a[0], a[1]) : darArma(a)))
+        ;(o.escolher || []).forEach((e, k) => (p.armas[`${g}:${k}`] || []).slice(0, e.qtd || 1).forEach(id => darArma(id)))
+        ;(o.itens || []).forEach(i => itens.push(i))
+    })
+    const ant = D.EQUIPAMENTO_ANTECEDENTE[stats.antecedente]
+    if (ant) {
+        ;(ant.armas || []).forEach(id => darArma(id))
+        ;(ant.itens || []).forEach(i => itens.push(i))
+    }
+    stats.armas = armas
+    stats.moedas_iniciais = moedasDosItens(itens)
+    stats.itens = itens.filter(t => !/^\d+ (po|pp|pc|pe|pl)$/.test(t))
+    stats.armaduras = []
+    if (armadura) stats.armaduras.push({ id: novaId(), base: armadura })
+    if (escudo) stats.armaduras.push({ id: novaId(), base: 'escudo' })
+    stats.equipamento = {
+        armadura: armadura ? stats.armaduras[0].id : null,
+        escudo: escudo ? stats.armaduras[stats.armaduras.length - 1].id : null,
+    }
+    delete stats.pacote
+    return stats
 }
 
 function estilosDeLuta(stats) {
@@ -914,4 +1497,8 @@ module.exports = {
     caracteristicasPorNivel, tituloDoPersonagem, talentosEscolhidos,
     totaisDeMagia, magiasDoPersonagem, magiasSempre, conjuracaoAtiva,
     ATRIBUTO_DA_LISTA, NOME_DA_LISTA,
+    DESARMADO, escolhidos, definicaoDaArma, armasDoPersonagem, ehArmaDeMonge,
+    armadurasDoPersonagem, armaduraVestida, escudoEmpunhado, MAGIAS_DE_INVOCACAO,
+    ataqueComArma, textoDoDano, ataquesPorAcao, ataquesBonus, extrasDoAcerto,
+    espacosLivres, RIQUEZA_INICIAL, moedasDosItens, gruposDoPacote, armasParaEscolher, opcaoDoPacoteValida, rotuloDaOpcao, faltaNoPacote, aplicarPacote,
 }

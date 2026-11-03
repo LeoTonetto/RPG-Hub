@@ -10,6 +10,7 @@ const roomNPCs = {}  // { roomCode: { npcId: npcData } }  — NPCs ativos na cen
 const roomReputation = {}  // { roomCode: number (-10 a +10) }
 const roomMissions = {}  // { roomCode: [{ id, objective, status }] }
 const roomCombate = {}  // { roomCode: { rodada, turno, ordem: [...], economia: { id: {...} } } } — batalha de D&D
+const roomBolsa = {}  // { roomCode: { moedas: { pc, pp, pe, po, pl }, historico: [...] } } — dinheiro do grupo no D&D
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ── DONO DA SALA ─────────────────────────────────────────────────────────────
@@ -90,6 +91,7 @@ function fecharSala(code, motivo = 'inatividade') {
     delete roomReputation[code]
     delete roomMissions[code]
     delete roomCombate[code]
+    delete roomBolsa[code]
 
     // Avisa quem precisa limpar o que ficou para trás (cenas, por exemplo)
     ouvintesDeFechamento.forEach(fn => {
@@ -149,7 +151,7 @@ function salasAtivas() {
 module.exports = {
     rooms, roomCodes, urlCodes, roomChars,
     roomMusic, roomMasters, roomScene, roomNPCs,
-    roomReputation, roomMissions, roomOwners, roomCombate,
+    roomReputation, roomMissions, roomOwners, roomCombate, roomBolsa,
     normalizeUrl, tocarSala, fecharSala, limparSalasVencidas,
     registrarAoFecharSala, salasAtivas,
     SALA_TTL_MS, SALA_VAZIA_MS,

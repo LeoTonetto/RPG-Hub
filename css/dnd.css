@@ -66,7 +66,7 @@
     top: -40px;
     z-index: 3;
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(8, 1fr);
     gap: 4px;
     padding: 8px 0;
     background: rgb(var(--fundo-escuro-rgb));
@@ -596,7 +596,7 @@
 }
 
 @media (max-width: 640px) {
-    .dc-passos { grid-template-columns: repeat(3, 1fr); }
+    .dc-passos { grid-template-columns: repeat(4, 1fr); }
     .dc-metodos, .dc-personalidade { grid-template-columns: 1fr; }
     .dc-info-linha { grid-template-columns: 1fr; gap: 0; }
 }
@@ -1580,3 +1580,290 @@
     #combatePrompt.show { animation: none; }
     .cb-ent { transition: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ ARMAS E ATAQUES ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.cb-turno-restam { font-size: 13px; color: rgba(var(--parchment-rgb), 0.75); }
+
+.da-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 13px; color: rgba(var(--parchment-rgb), 0.7); }
+.da-restam { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.08em; color: var(--gold-light); }
+
+/* Fúria, Descuidado, Arma Sagrada: interruptores */
+.da-efeitos { display: flex; flex-wrap: wrap; gap: 5px; }
+.da-efeito {
+    padding: 5px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.3);
+    border-radius: 12px;
+    color: rgba(var(--parchment-rgb), 0.7);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+}
+.da-efeito.on { background: rgba(var(--gold-rgb), 0.22); border-color: var(--gold-light); color: var(--gold-light); }
+.da-efeito:hover:not(:disabled) { border-color: var(--gold-light); }
+.da-efeito:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Lista: nome e dano em duas linhas, bônus de ataque à direita */
+.da-arma { padding: 5px 6px; }
+.da-arma-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.da-arma-sub { font-size: 12px; color: rgba(var(--parchment-rgb), 0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.da-arma-bonus { font-family: 'Cinzel', serif; font-size: 13px; color: var(--gold-light); font-variant-numeric: tabular-nums; }
+.da-arma-bonus.sem-prof { color: rgba(var(--parchment-rgb), 0.45); }
+
+/* Detalhe da arma em foco */
+.da-det { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; padding-top: 8px; border-top: 1px solid rgba(var(--gold-rgb), 0.15); }
+.da-det-cab { display: flex; align-items: center; gap: 10px; }
+.da-det-icone { width: 34px; height: 34px; flex: none; color: var(--gold); }
+.da-det-nome { font-family: 'Cinzel', serif; font-size: 15px; color: var(--gold-light); }
+.da-det-sub { font-size: 12px; color: rgba(var(--parchment-rgb), 0.5); }
+.da-opcoes { display: flex; flex-direction: column; gap: 3px; }
+.da-opcoes .dc-check { font-size: 13px; }
+.da-alerta { font-size: 12px; color: var(--gold-light); }
+.da-alerta:empty { display: none; }
+
+.da-numeros { display: grid; grid-template-columns: auto 1fr; gap: 4px; }
+.da-numero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 10px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(var(--gold-rgb), 0.15);
+    border-radius: 3px;
+}
+.da-numero b { font-family: 'Cinzel', serif; font-size: 15px; color: var(--parchment); text-align: center; }
+.da-numero span { font-family: 'Cinzel', serif; font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-dim); }
+
+.da-mestre { display: flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(var(--parchment-rgb), 0.7); }
+.da-mestre .ds-magia-btn { flex: 0 1 auto; margin-left: auto; }
+.ds-magia-btn.perigo { border-color: rgba(var(--gold-light-rgb), 0.5); }
+
+/* Ação bônus e o resultado do último ataque */
+.da-secao, .da-ultimo, .da-dar { display: flex; flex-direction: column; gap: 5px; }
+.da-bonus { text-align: left; }
+.da-ultimo { padding: 8px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(var(--gold-rgb), 0.25); border-radius: 4px; }
+.da-ultimo.critico { border-color: var(--gold-light); box-shadow: 0 0 10px rgba(var(--gold-light-rgb), 0.2); }
+.da-ultimo.falha { opacity: 0.75; }
+.da-ultimo-linha { font-size: 14px; color: var(--parchment); }
+.da-extra { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.da-extra .ds-magia-btn { flex: 0 1 auto; }
+.da-extra .dc-select { width: auto; padding: 4px 6px; font-size: 13px; }
+
+/* Mestre: dar arma */
+.da-campo { display: flex; flex-direction: column; gap: 2px; }
+.da-campo .room-input, .da-campo .dc-select { padding: 6px 9px; font-size: 14px; }
+
+/* ── Pacote inicial (criação e ficha antiga) ── */
+.da-pacote { display: flex; flex-direction: column; gap: 10px; }
+.da-grupo { display: flex; flex-direction: column; gap: 4px; }
+.da-grupo-titulo { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-dim); }
+.da-opcao-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.da-opcao {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 260px;
+    padding: 7px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.2);
+    border-radius: 3px;
+    color: rgba(var(--parchment-rgb), 0.85);
+    font-family: 'Crimson Text', serif;
+    font-size: 15px;
+    text-align: left;
+    cursor: pointer;
+}
+.da-opcao .dm-icone { width: 20px; height: 20px; flex: none; color: var(--gold); }
+.da-opcao:hover:not(:disabled) { border-color: rgba(var(--gold-rgb), 0.5); }
+.da-opcao.on { border-color: var(--gold); background: rgba(var(--gold-rgb), 0.14); color: var(--parchment); }
+.da-opcao:disabled { cursor: default; }
+.da-opcao:disabled:not(.on) { opacity: 0.45; }
+.da-grupo.fixo .da-opcao { border-style: dashed; background: none; }
+.da-opcao-letra { font-family: 'Cinzel', serif; font-size: 11px; color: var(--gold-dim); }
+.da-opcao.on .da-opcao-letra { color: var(--gold-light); }
+.da-opcao-nome { flex: 1; }
+.da-escolher { flex: 1 1 180px; width: auto; }
+
+.da-previa { display: flex; flex-direction: column; gap: 3px; }
+.da-previa-arma { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 14px; color: rgba(var(--parchment-rgb), 0.8); }
+.da-previa-arma .dm-icone { width: 18px; height: 18px; color: var(--gold); }
+.da-previa-arma b { font-weight: 400; font-size: 13px; color: var(--gold-light); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ ESTADO EM JOGO: 0 PV, CONDIÇÕES, CONCENTRAÇÃO, FORMA SELVAGEM ══
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.ds-pv-tipo { width: 100%; margin-top: 4px; padding: 3px 6px; font-size: 12px; }
+
+.de-estado { display: flex; flex-direction: column; gap: 6px; }
+.de-estado:empty { display: none; }
+
+.de-forma { display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; border: 1px solid rgba(var(--gold-rgb), 0.35); border-radius: 4px; background: rgba(var(--gold-rgb), 0.06); }
+.de-forma-cab { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--parchment); }
+.de-forma-cab b { font-family: 'Cinzel', serif; font-size: 12px; color: var(--gold-light); }
+.de-forma-fill { background: linear-gradient(90deg, #5d8a4a, #8fbf6a); }
+
+.de-morte { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px solid rgba(var(--gold-light-rgb), 0.5); border-radius: 4px; background: rgba(0, 0, 0, 0.35); }
+.de-morte b { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.08em; color: var(--gold-light); }
+.de-morte.morto { flex-direction: row; align-items: center; justify-content: space-between; opacity: 0.85; }
+.de-morte-pips { display: flex; flex-direction: column; gap: 3px; }
+.de-morte-linha { display: flex; align-items: center; gap: 5px; font-size: 12px; color: rgba(var(--parchment-rgb), 0.7); }
+.de-morte-linha > span:first-child { width: 64px; }
+.de-pip { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(var(--parchment-rgb), 0.4); }
+.de-pip.ok.on { background: #7fb069; border-color: #7fb069; }
+.de-pip.falha.on { background: var(--gold); border-color: var(--gold-light); }
+.de-morte-botoes { display: flex; flex-wrap: wrap; gap: 5px; }
+
+.de-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.de-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.3);
+    border-radius: 10px;
+    font-size: 12px;
+    color: var(--parchment);
+}
+.de-chip.alerta { border-color: rgba(var(--gold-light-rgb), 0.6); }
+.de-chip.conc { border-color: #9dbbe8; color: #c9daf3; }
+.de-chip-add { cursor: pointer; color: rgba(var(--parchment-rgb), 0.6); font-family: inherit; }
+.de-chip-add:hover { border-color: var(--gold-light); color: var(--parchment); }
+.de-chip-x { background: none; border: none; padding: 0 0 0 2px; color: inherit; font-size: 11px; cursor: pointer; opacity: 0.7; }
+.de-chip-x:hover { opacity: 1; }
+
+.de-cond-lista { display: flex; flex-direction: column; gap: 3px; }
+.de-cond {
+    display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start;
+    padding: 5px 7px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    color: rgba(var(--parchment-rgb), 0.8);
+    font-family: 'Crimson Text', serif;
+    text-align: left;
+    cursor: pointer;
+}
+.de-cond:hover:not(:disabled) { background: rgba(var(--gold-rgb), 0.06); }
+.de-cond.on { border-color: var(--gold); background: rgba(var(--gold-rgb), 0.14); color: var(--parchment); }
+.de-cond-icone { font-size: 16px; line-height: 1.2; }
+.de-cond-txt { display: flex; flex-direction: column; }
+.de-cond-txt b { font-size: 14px; }
+.de-cond-txt span { font-size: 12px; color: rgba(var(--parchment-rgb), 0.55); line-height: 1.25; }
+.de-exaustao { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+
+/* Rolagens com vantagem ou desvantagem automática */
+.ds-rola-auto { margin-left: 5px; font-family: 'Cinzel', serif; font-size: 9px; padding: 1px 4px; border-radius: 3px; border: 1px solid currentColor; }
+.ds-rola-auto.V { color: #7fb069; }
+.ds-rola-auto.D, .ds-rola-auto.F { color: var(--gold-light); }
+
+/* Magias: concentração ativa, feitiçaria, recuperação arcana, metamágica */
+.ds-magia.conc .ds-magia-nome { color: #c9daf3; }
+.ds-feiticaria, .ds-metamagia { display: flex; flex-direction: column; gap: 4px; padding: 6px 0; border-top: 1px solid rgba(var(--gold-rgb), 0.12); }
+.ds-recupera { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+.ds-recupera input { width: 56px; }
+
+/* Card: caído a 0 PV (morto continua com o ✕ do lobby) e ícones de estado */
+.char-card.char-caido .char-card-photo-wrap { filter: grayscale(0.7) brightness(0.7); }
+.char-card.char-caido::after {
+    content: '💀';
+    position: absolute; top: 4px; right: 6px;
+    font-size: 14px;
+    pointer-events: none;
+}
+.char-card-dnd-estado { display: flex; flex-wrap: wrap; gap: 2px; font-size: 11px; line-height: 1; margin-top: 2px; }
+.char-card-dnd-estado:empty { display: none; }
+
+/* ══ BATALHA: ações de combate, marcas do alvo, pergunta ══ */
+.cb-acoes-combate { display: flex; flex-direction: column; gap: 4px; width: min(520px, calc(100vw - 48px)); }
+.cb-acoes-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.cb-acoes-linha .cb-btn { padding: 4px 8px; font-size: 10px; }
+.cb-acoes-rot { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-dim); width: 46px; }
+.cb-marcas { font-size: 11px; line-height: 1; text-align: center; }
+.cb-dicas { font-size: 13px; color: var(--gold-light); }
+.cb-dicas:empty { display: none; }
+
+#dndPergunta {
+    position: fixed;
+    right: 24px;
+    bottom: 150px;
+    z-index: 3500;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    width: min(360px, calc(100vw - 32px));
+    padding: 14px 16px;
+    background: linear-gradient(160deg, rgba(var(--fundo-rgb), 0.98), rgba(var(--fundo-escuro-rgb), 0.99));
+    border: 1px solid #9dbbe8;
+    border-radius: 6px;
+    box-shadow: 0 0 26px rgba(120, 160, 220, 0.3), 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+#dndPergunta.show { display: flex; }
+
+/* ══ BOLSA DO GRUPO ══ */
+#dndBolsaBtn {
+    position: fixed;
+    top: 16px;
+    left: 136px;
+    z-index: 1010;
+    height: 34px;
+    padding: 0 12px;
+    background: rgba(10, 8, 6, 0.65);
+    border: 1px solid rgba(var(--gold-rgb), 0.3);
+    border-radius: 3px;
+    color: var(--gold-light);
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+}
+#dndBolsaBtn:hover { border-color: var(--gold-light); }
+body.hud-hidden #dndBolsaBtn { opacity: 0.25; }
+
+#dndBolsaPainel {
+    position: fixed;
+    top: 58px;
+    left: 16px;
+    z-index: 1500;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: min(360px, calc(100vw - 32px));
+    padding: 12px 14px;
+    background: linear-gradient(180deg, rgba(var(--fundo-rgb), 0.97), rgba(var(--fundo-escuro-rgb), 0.98));
+    border: 1px solid rgba(var(--gold-rgb), 0.45);
+    border-radius: 6px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.75);
+}
+.db-cab { display: flex; justify-content: space-between; align-items: center; }
+.db-cab b { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.08em; color: var(--gold-light); }
+.db-cab .subpanel-close { position: static; }
+.db-moedas { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.db-moeda { display: flex; flex-direction: column; align-items: center; padding: 6px 2px; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(var(--gold-rgb), 0.2); border-radius: 3px; }
+.db-moeda b { font-family: 'Cinzel', serif; font-size: 15px; color: var(--parchment); font-variant-numeric: tabular-nums; }
+.db-moeda span { font-size: 10px; color: rgba(var(--parchment-rgb), 0.5); text-align: center; }
+.db-moeda.zero b { color: rgba(var(--parchment-rgb), 0.3); }
+.db-form { display: grid; grid-template-columns: 70px 1fr 1fr; gap: 5px; }
+.db-form .room-input, .db-form .dc-select { padding: 5px 8px; font-size: 13px; }
+.db-form .dc-select { grid-column: 2 / -1; }
+.db-form input[placeholder] { grid-column: 1 / -1; }
+.db-hist { display: flex; flex-direction: column; gap: 2px; max-height: 140px; overflow-y: auto; font-size: 12.5px; color: rgba(var(--parchment-rgb), 0.65); }
+
+/* ══ CRIATURAS: Forma Selvagem e aliados ══ */
+.dk-secao { display: flex; flex-direction: column; gap: 6px; }
+.dk-secao + .dk-secao { padding-top: 6px; border-top: 1px solid rgba(var(--gold-rgb), 0.12); }
+.dk-aliado { display: flex; flex-direction: column; gap: 4px; padding: 8px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(var(--gold-rgb), 0.2); border-radius: 4px; }
+.dk-aliado-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.dk-aliado-cab b { font-family: 'Cinzel', serif; font-size: 13px; color: var(--gold-light); }
+.dk-ficha { display: flex; flex-direction: column; gap: 3px; }
+.dk-nums { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 13px; color: var(--parchment); }
+.dk-pv { display: inline-flex; align-items: center; gap: 4px; }
+.dk-qtd { width: 44px; }
+.da-forma-ataque { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-size: 13px; color: rgba(var(--parchment-rgb), 0.8); }
+.da-forma-ataque b { color: var(--parchment); font-weight: 600; }
+.da-forma-ataque .ds-magia-btn { flex: none; }

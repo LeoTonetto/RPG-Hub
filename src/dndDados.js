@@ -78,67 +78,100 @@ const TODAS_FERRAMENTAS = [...FERRAMENTAS.artesao, ...FERRAMENTAS.instrumentos, 
 // CA base, Destreza máxima (null = sem teto) e Força mínima. A armadura pesada
 // sem a Força pedida tira 3 m do deslocamento (anões não sofrem isso).
 const ARMADURAS = {
-    'acolchoada': { nome: 'Acolchoada', tipo: 'leve', ca: 11, maxDes: null, furtividade: true },
-    'couro': { nome: 'Couro', tipo: 'leve', ca: 11, maxDes: null },
-    'couro-batido': { nome: 'Couro batido', tipo: 'leve', ca: 12, maxDes: null },
-    'gibao-de-peles': { nome: 'Gibão de peles', tipo: 'media', ca: 12, maxDes: 2 },
-    'camisao-de-malha': { nome: 'Camisão de malha', tipo: 'media', ca: 13, maxDes: 2 },
-    'brunea': { nome: 'Brunea', tipo: 'media', ca: 14, maxDes: 2, furtividade: true },
-    'peitoral': { nome: 'Peitoral', tipo: 'media', ca: 14, maxDes: 2 },
-    'meia-armadura': { nome: 'Meia-armadura', tipo: 'media', ca: 15, maxDes: 2, furtividade: true },
-    'cota-de-aneis': { nome: 'Cota de anéis', tipo: 'pesada', ca: 14, maxDes: 0, furtividade: true },
-    'cota-de-malha': { nome: 'Cota de malha', tipo: 'pesada', ca: 16, maxDes: 0, forca: 13, furtividade: true },
-    'cota-de-talas': { nome: 'Cota de talas', tipo: 'pesada', ca: 17, maxDes: 0, forca: 15, furtividade: true },
-    'placas': { nome: 'Placas', tipo: 'pesada', ca: 18, maxDes: 0, forca: 15, furtividade: true },
+    'acolchoada': { nome: 'Acolchoada', tipo: 'leve', preco: 5, ca: 11, maxDes: null, furtividade: true },
+    'couro': { nome: 'Couro', tipo: 'leve', preco: 10, ca: 11, maxDes: null },
+    'couro-batido': { nome: 'Couro batido', tipo: 'leve', preco: 45, ca: 12, maxDes: null },
+    'gibao-de-peles': { nome: 'Gibão de peles', tipo: 'media', preco: 10, ca: 12, maxDes: 2 },
+    'camisao-de-malha': { nome: 'Camisão de malha', tipo: 'media', preco: 50, ca: 13, maxDes: 2 },
+    'brunea': { nome: 'Brunea', tipo: 'media', preco: 50, ca: 14, maxDes: 2, furtividade: true },
+    'peitoral': { nome: 'Peitoral', tipo: 'media', preco: 400, ca: 14, maxDes: 2 },
+    'meia-armadura': { nome: 'Meia-armadura', tipo: 'media', preco: 750, ca: 15, maxDes: 2, furtividade: true },
+    'cota-de-aneis': { nome: 'Cota de anéis', tipo: 'pesada', preco: 30, ca: 14, maxDes: 0, furtividade: true },
+    'cota-de-malha': { nome: 'Cota de malha', tipo: 'pesada', preco: 75, ca: 16, maxDes: 0, forca: 13, furtividade: true },
+    'cota-de-talas': { nome: 'Cota de talas', tipo: 'pesada', preco: 200, ca: 17, maxDes: 0, forca: 15, furtividade: true },
+    'placas': { nome: 'Placas', tipo: 'pesada', preco: 1500, ca: 18, maxDes: 0, forca: 15, furtividade: true },
 }
+const PRECO_ESCUDO = 10
+
+/** 0.05 po → "5 pc"; 0.2 po → "2 pp"; 15 po → "15 po" */
+function textoPreco(po) {
+    if (po == null) return ''
+    if (po >= 1) return `${po.toLocaleString('pt-BR')} po`
+    if (po >= 0.1) return `${Math.round(po * 10)} pp`
+    return `${Math.round(po * 100)} pc`
+}
+
 const TIPOS_ARMADURA = { leve: 'Armaduras leves', media: 'Armaduras médias', pesada: 'Armaduras pesadas', escudo: 'Escudos' }
 
-// Ficam aqui desde já porque as proficiências e o talento Mestre de Armas
-// precisam da lista; o dano entra em uso na etapa de ataques.
+// Armas do livro (LdJ p. 149). Alcance em metros: [normal, longo] para
+// arremesso e munição. `distancia` = arma de ataque à distância (arcos,
+// bestas, dardo, funda, zarabatana, rede); as de arremesso corpo-a-corpo
+// (adaga, lança...) continuam sendo armas corpo-a-corpo quando arremessadas.
 const ARMAS = {
     // Simples corpo-a-corpo
-    'adaga': { nome: 'Adaga', cat: 'simples', dano: '1d4 perfurante', props: 'acuidade, leve, arremesso (6/18)' },
-    'azagaia': { nome: 'Azagaia', cat: 'simples', dano: '1d6 perfurante', props: 'arremesso (9/36)' },
-    'bordao': { nome: 'Bordão', cat: 'simples', dano: '1d6 concussão', props: 'versátil (1d8)' },
-    'clava': { nome: 'Clava', cat: 'simples', dano: '1d4 concussão', props: 'leve' },
-    'clava-grande': { nome: 'Clava grande', cat: 'simples', dano: '1d8 concussão', props: 'duas mãos' },
-    'foice-curta': { nome: 'Foice curta', cat: 'simples', dano: '1d4 cortante', props: 'leve' },
-    'lanca': { nome: 'Lança', cat: 'simples', dano: '1d6 perfurante', props: 'arremesso (6/18), versátil (1d8)' },
-    'maca': { nome: 'Maça', cat: 'simples', dano: '1d6 concussão', props: '' },
-    'machadinha': { nome: 'Machadinha', cat: 'simples', dano: '1d6 cortante', props: 'leve, arremesso (6/18)' },
-    'martelo-leve': { nome: 'Martelo leve', cat: 'simples', dano: '1d4 concussão', props: 'leve, arremesso (6/18)' },
+    'adaga': { nome: 'Adaga', cat: 'simples', preco: 2, dano: '1d4', tipo: 'perfurante', props: ['acuidade', 'leve', 'arremesso'], alcance: [6, 18], icone: 'lorc/broad-dagger' },
+    'azagaia': { nome: 'Azagaia', cat: 'simples', preco: 0.5, dano: '1d6', tipo: 'perfurante', props: ['arremesso'], alcance: [9, 36], icone: 'lorc/thrown-spear' },
+    'bordao': { nome: 'Bordão', cat: 'simples', preco: 0.2, dano: '1d6', tipo: 'concussão', props: ['versatil'], versatil: '1d8', icone: 'delapouite/wood-stick' },
+    'clava': { nome: 'Clava', cat: 'simples', preco: 0.1, dano: '1d4', tipo: 'concussão', props: ['leve'], icone: 'delapouite/wood-club' },
+    'clava-grande': { nome: 'Clava grande', cat: 'simples', preco: 0.2, dano: '1d8', tipo: 'concussão', props: ['duas-maos'], icone: 'delapouite/wood-club' },
+    'foice-curta': { nome: 'Foice curta', cat: 'simples', preco: 1, dano: '1d4', tipo: 'cortante', props: ['leve'], icone: 'delapouite/sickle' },
+    'lanca': { nome: 'Lança', cat: 'simples', preco: 1, dano: '1d6', tipo: 'perfurante', props: ['arremesso', 'versatil'], alcance: [6, 18], versatil: '1d8', icone: 'lorc/barbed-spear' },
+    'maca': { nome: 'Maça', cat: 'simples', preco: 5, dano: '1d6', tipo: 'concussão', props: [], icone: 'delapouite/flanged-mace' },
+    'machadinha': { nome: 'Machadinha', cat: 'simples', preco: 5, dano: '1d6', tipo: 'cortante', props: ['leve', 'arremesso'], alcance: [6, 18], icone: 'delapouite/hatchet' },
+    'martelo-leve': { nome: 'Martelo leve', cat: 'simples', preco: 2, dano: '1d4', tipo: 'concussão', props: ['leve', 'arremesso'], alcance: [6, 18], icone: 'lorc/claw-hammer' },
     // Simples à distância
-    'arco-curto': { nome: 'Arco curto', cat: 'simples', dano: '1d6 perfurante', props: 'munição (24/96), duas mãos' },
-    'besta-leve': { nome: 'Besta leve', cat: 'simples', dano: '1d8 perfurante', props: 'munição (24/96), recarga, duas mãos' },
-    'dardo': { nome: 'Dardo', cat: 'simples', dano: '1d4 perfurante', props: 'acuidade, arremesso (6/18)' },
-    'funda': { nome: 'Funda', cat: 'simples', dano: '1d4 concussão', props: 'munição (9/36)' },
+    'arco-curto': { nome: 'Arco curto', cat: 'simples', preco: 25, distancia: true, dano: '1d6', tipo: 'perfurante', props: ['municao', 'duas-maos'], alcance: [24, 96], icone: 'lorc/pocket-bow' },
+    'besta-leve': { nome: 'Besta leve', cat: 'simples', preco: 25, distancia: true, dano: '1d8', tipo: 'perfurante', props: ['municao', 'recarga', 'duas-maos'], alcance: [24, 96], icone: 'carl-olsen/crossbow' },
+    'dardo': { nome: 'Dardo', cat: 'simples', preco: 0.05, distancia: true, dano: '1d4', tipo: 'perfurante', props: ['acuidade', 'arremesso'], alcance: [6, 18], icone: 'delapouite/dart' },
+    'funda': { nome: 'Funda', cat: 'simples', preco: 0.1, distancia: true, dano: '1d4', tipo: 'concussão', props: ['municao'], alcance: [9, 36], icone: 'delapouite/sling' },
     // Marciais corpo-a-corpo
-    'alabarda': { nome: 'Alabarda', cat: 'marcial', dano: '1d10 cortante', props: 'pesada, alcance, duas mãos' },
-    'chicote': { nome: 'Chicote', cat: 'marcial', dano: '1d4 cortante', props: 'acuidade, alcance' },
-    'cimitarra': { nome: 'Cimitarra', cat: 'marcial', dano: '1d6 cortante', props: 'acuidade, leve' },
-    'espada-curta': { nome: 'Espada curta', cat: 'marcial', dano: '1d6 perfurante', props: 'acuidade, leve' },
-    'espada-grande': { nome: 'Espada grande', cat: 'marcial', dano: '2d6 cortante', props: 'pesada, duas mãos' },
-    'espada-longa': { nome: 'Espada longa', cat: 'marcial', dano: '1d8 cortante', props: 'versátil (1d10)' },
-    'glaive': { nome: 'Glaive', cat: 'marcial', dano: '1d10 cortante', props: 'pesada, alcance, duas mãos' },
-    'lanca-de-montaria': { nome: 'Lança de montaria', cat: 'marcial', dano: '1d12 perfurante', props: 'alcance, especial' },
-    'pique': { nome: 'Pique', cat: 'marcial', dano: '1d10 perfurante', props: 'pesada, alcance, duas mãos' },
-    'maca-estrela': { nome: 'Maça estrela', cat: 'marcial', dano: '1d8 perfurante', props: '' },
-    'machado-de-batalha': { nome: 'Machado de batalha', cat: 'marcial', dano: '1d8 cortante', props: 'versátil (1d10)' },
-    'machado-grande': { nome: 'Machado grande', cat: 'marcial', dano: '1d12 cortante', props: 'pesada, duas mãos' },
-    'malho': { nome: 'Malho', cat: 'marcial', dano: '2d6 concussão', props: 'pesada, duas mãos' },
-    'mangual': { nome: 'Mangual', cat: 'marcial', dano: '1d8 concussão', props: '' },
-    'martelo-de-guerra': { nome: 'Martelo de guerra', cat: 'marcial', dano: '1d8 concussão', props: 'versátil (1d10)' },
-    'picareta-de-guerra': { nome: 'Picareta de guerra', cat: 'marcial', dano: '1d8 perfurante', props: '' },
-    'rapieira': { nome: 'Rapieira', cat: 'marcial', dano: '1d8 perfurante', props: 'acuidade' },
-    'tridente': { nome: 'Tridente', cat: 'marcial', dano: '1d6 perfurante', props: 'arremesso (6/18), versátil (1d8)' },
+    'alabarda': { nome: 'Alabarda', cat: 'marcial', preco: 20, dano: '1d10', tipo: 'cortante', props: ['pesada', 'alcance', 'duas-maos'], icone: 'lorc/halberd' },
+    'chicote': { nome: 'Chicote', cat: 'marcial', preco: 2, dano: '1d4', tipo: 'cortante', props: ['acuidade', 'alcance'], icone: 'lorc/whip' },
+    'cimitarra': { nome: 'Cimitarra', cat: 'marcial', preco: 25, dano: '1d6', tipo: 'cortante', props: ['acuidade', 'leve'], icone: 'lorc/curvy-knife' },
+    'espada-curta': { nome: 'Espada curta', cat: 'marcial', preco: 10, dano: '1d6', tipo: 'perfurante', props: ['acuidade', 'leve'], icone: 'skoll/gladius' },
+    'espada-grande': { nome: 'Espada grande', cat: 'marcial', preco: 50, dano: '2d6', tipo: 'cortante', props: ['pesada', 'duas-maos'], icone: 'delapouite/two-handed-sword' },
+    'espada-longa': { nome: 'Espada longa', cat: 'marcial', preco: 15, dano: '1d8', tipo: 'cortante', props: ['versatil'], versatil: '1d10', icone: 'lorc/broadsword' },
+    'glaive': { nome: 'Glaive', cat: 'marcial', preco: 20, dano: '1d10', tipo: 'cortante', props: ['pesada', 'alcance', 'duas-maos'], icone: 'delapouite/glaive' },
+    'lanca-de-montaria': { nome: 'Lança de montaria', cat: 'marcial', preco: 10, dano: '1d12', tipo: 'perfurante', props: ['alcance', 'especial'], icone: 'lorc/spears',
+        especial: 'Desvantagem contra alvo a 1,5 m; exige as duas mãos quando você não está montado.' },
+    'pique': { nome: 'Pique', cat: 'marcial', preco: 5, dano: '1d10', tipo: 'perfurante', props: ['pesada', 'alcance', 'duas-maos'], icone: 'delapouite/spear-feather' },
+    'maca-estrela': { nome: 'Maça estrela', cat: 'marcial', preco: 15, dano: '1d8', tipo: 'perfurante', props: [], icone: 'lorc/spiked-mace' },
+    'machado-de-batalha': { nome: 'Machado de batalha', cat: 'marcial', preco: 10, dano: '1d8', tipo: 'cortante', props: ['versatil'], versatil: '1d10', icone: 'lorc/battle-axe' },
+    'machado-grande': { nome: 'Machado grande', cat: 'marcial', preco: 30, dano: '1d12', tipo: 'cortante', props: ['pesada', 'duas-maos'], icone: 'delapouite/war-axe' },
+    'malho': { nome: 'Malho', cat: 'marcial', preco: 10, dano: '2d6', tipo: 'concussão', props: ['pesada', 'duas-maos'], icone: 'lorc/flat-hammer' },
+    'mangual': { nome: 'Mangual', cat: 'marcial', preco: 10, dano: '1d8', tipo: 'concussão', props: [], icone: 'delapouite/flail' },
+    'martelo-de-guerra': { nome: 'Martelo de guerra', cat: 'marcial', preco: 15, dano: '1d8', tipo: 'concussão', props: ['versatil'], versatil: '1d10', icone: 'delapouite/warhammer' },
+    'picareta-de-guerra': { nome: 'Picareta de guerra', cat: 'marcial', preco: 5, dano: '1d8', tipo: 'perfurante', props: [], icone: 'delapouite/war-pick' },
+    'rapieira': { nome: 'Rapieira', cat: 'marcial', preco: 25, dano: '1d8', tipo: 'perfurante', props: ['acuidade'], icone: 'lorc/stiletto' },
+    'tridente': { nome: 'Tridente', cat: 'marcial', preco: 5, dano: '1d6', tipo: 'perfurante', props: ['arremesso', 'versatil'], alcance: [6, 18], versatil: '1d8', icone: 'lorc/trident' },
     // Marciais à distância
-    'arco-longo': { nome: 'Arco longo', cat: 'marcial', dano: '1d8 perfurante', props: 'munição (45/180), pesada, duas mãos' },
-    'besta-de-mao': { nome: 'Besta de mão', cat: 'marcial', dano: '1d6 perfurante', props: 'munição (9/36), leve, recarga' },
-    'besta-pesada': { nome: 'Besta pesada', cat: 'marcial', dano: '1d10 perfurante', props: 'munição (30/120), pesada, recarga, duas mãos' },
-    'rede': { nome: 'Rede', cat: 'marcial', dano: '—', props: 'especial, arremesso (1,5/4,5)' },
-    'zarabatana': { nome: 'Zarabatana', cat: 'marcial', dano: '1 perfurante', props: 'munição (7,5/30), recarga' },
+    'arco-longo': { nome: 'Arco longo', cat: 'marcial', preco: 50, distancia: true, dano: '1d8', tipo: 'perfurante', props: ['municao', 'pesada', 'duas-maos'], alcance: [45, 180], icone: 'delapouite/bow-arrow' },
+    'besta-de-mao': { nome: 'Besta de mão', cat: 'marcial', preco: 75, distancia: true, dano: '1d6', tipo: 'perfurante', props: ['municao', 'leve', 'recarga'], alcance: [9, 36], icone: 'carl-olsen/crossbow' },
+    'besta-pesada': { nome: 'Besta pesada', cat: 'marcial', preco: 50, distancia: true, dano: '1d10', tipo: 'perfurante', props: ['municao', 'pesada', 'recarga', 'duas-maos'], alcance: [30, 120], icone: 'carl-olsen/crossbow' },
+    'rede': { nome: 'Rede', cat: 'marcial', preco: 1, distancia: true, dano: null, tipo: '', props: ['especial', 'arremesso'], alcance: [1.5, 4.5], icone: 'lorc/fishing-net',
+        especial: 'Contém uma criatura Grande ou menor (CD 10 de FOR para escapar ou 5 de dano cortante na rede). Só um ataque por ação.' },
+    'zarabatana': { nome: 'Zarabatana', cat: 'marcial', preco: 10, distancia: true, dano: '1', tipo: 'perfurante', props: ['municao', 'recarga'], alcance: [7.5, 30], icone: 'delapouite/straight-pipe' },
 }
 const CATEGORIAS_ARMA = { simples: 'Armas simples', marcial: 'Armas marciais' }
+
+// O golpe desarmado não é arma, mas ataca como uma: 1 + FOR de concussão
+const GOLPE_DESARMADO = { nome: 'Golpe desarmado', cat: null, dano: '1', tipo: 'concussão', props: [], icone: 'lorc/fist' }
+
+const PROPRIEDADES_ARMA = {
+    'acuidade': 'Acuidade', 'leve': 'Leve', 'pesada': 'Pesada', 'duas-maos': 'Duas mãos', 'versatil': 'Versátil',
+    'arremesso': 'Arremesso', 'municao': 'Munição', 'recarga': 'Recarga', 'alcance': 'Alcance', 'especial': 'Especial',
+}
+
+/** "Acuidade, leve, arremesso (6/18 m)" — as propriedades como o livro escreve. */
+function textoPropriedades(a) {
+    const metros = n => String(n).replace('.', ',')
+    return (a.props || []).map((p, i) => {
+        const nome = i === 0 ? (PROPRIEDADES_ARMA[p] || p) : (PROPRIEDADES_ARMA[p] || p).toLowerCase()
+        if ((p === 'arremesso' || p === 'municao') && a.alcance) return `${nome} (${metros(a.alcance[0])}/${metros(a.alcance[1])} m)`
+        if (p === 'versatil' && a.versatil) return `${nome} (${a.versatil})`
+        return nome
+    }).join(', ')
+}
 
 const ALINHAMENTOS = [
     { key: 'LB', nome: 'Leal e bom' }, { key: 'NB', nome: 'Neutro e bom' }, { key: 'CB', nome: 'Caótico e bom' },
@@ -590,10 +623,64 @@ const ANTECEDENTES = {
 // Talentos e magias não ficam aqui: vêm do Supabase (tabelas dnd_talentos e
 // dnd_magias), com cópia local em src/dados/. Ver dndConteudo.js.
 
+// Equipamento de cada antecedente (LdJ cap. 4). Só o bordão do forasteiro e a
+// malagueta (clava) do marinheiro são armas; o resto vai para os itens.
+const EQUIPAMENTO_ANTECEDENTE = {
+    'acolito': { itens: ['Símbolo sagrado', 'Livro de preces ou conta de orações', '5 varetas de incenso', 'Vestimentas', 'Roupas comuns', 'Algibeira com 15 po'] },
+    'artesao-guilda': { itens: ['Ferramentas de artesão', 'Carta de apresentação da guilda', 'Roupas de viajante', 'Algibeira com 15 po'] },
+    'artista': { itens: ['Instrumento musical', 'Presente de um admirador', 'Traje', 'Algibeira com 15 po'] },
+    'charlatao': { itens: ['Roupas finas', 'Kit de disfarce', 'Ferramentas de trapaça', 'Algibeira com 15 po'] },
+    'criminoso': { itens: ['Pé de cabra', 'Roupas escuras com capuz', 'Algibeira com 15 po'] },
+    'eremita': { itens: ['Estojo de pergaminho com notas', 'Cobertor de inverno', 'Roupas comuns', 'Kit de herbalismo', '5 po'] },
+    'forasteiro': { armas: ['bordao'], itens: ['Armadilha de caça', 'Fetiche de um animal abatido', 'Roupas de viajante', 'Algibeira com 10 po'] },
+    'heroi-povo': { itens: ['Ferramentas de artesão', 'Pá', 'Pote de ferro', 'Roupas comuns', 'Algibeira com 10 po'] },
+    'marinheiro': { armas: ['clava'], itens: ['15 m de corda de seda', 'Amuleto da sorte', 'Trajes comuns', 'Algibeira com 10 po'] },
+    'nobre': { itens: ['Trajes finos', 'Anel de sinete', 'Pergaminho de linhagem', 'Algibeira com 25 po'] },
+    'orfao': { itens: ['Faca pequena', 'Mapa da cidade natal', 'Rato de estimação', 'Lembrança dos pais', 'Roupas comuns', 'Algibeira com 10 po'] },
+    'sabio': { itens: ['Vidro de tinta escura', 'Pena', 'Faca pequena', 'Carta de um colega falecido', 'Roupas comuns', 'Algibeira com 10 po'] },
+    'soldado': { itens: ['Insígnia de patente', 'Troféu de um inimigo caído', 'Dados de osso ou baralho', 'Roupas comuns', 'Algibeira com 10 po'] },
+}
+
+// Condições (LdJ, Apêndice A), com resumo próprio. `efeitos` é o que o app
+// aplica sozinho nas rolagens; o resto fica para a mesa.
+//   ataque / testes: 'vantagem' | 'desvantagem' nas jogadas do próprio personagem
+//   contra: o que os ataques CONTRA ele ganham
+//   falhaRes: resistências que falham sozinhas · semAcoes · parado (deslocamento 0)
+const CONDICOES = {
+    'agarrado': { nome: 'Agarrado', icone: '✊', resumo: 'Deslocamento 0 até se soltar.', efeitos: { parado: true } },
+    'amedrontado': { nome: 'Amedrontado', icone: '😨', resumo: 'Desvantagem em testes e ataques enquanto vê a fonte do medo; não se aproxima dela.', efeitos: { ataque: 'desvantagem', testes: 'desvantagem' } },
+    'atordoado': { nome: 'Atordoado', icone: '💫', resumo: 'Incapacitado, não se move, fala mal; falha em resistências de FOR e DES; ataques contra ele têm vantagem.', efeitos: { semAcoes: true, parado: true, falhaRes: ['for', 'des'], contra: 'vantagem' } },
+    'caido': { nome: 'Caído', icone: '⤵', resumo: 'Só rasteja; desvantagem nos ataques. Ataques a 1,5 m contra ele têm vantagem; de longe, desvantagem.', efeitos: { ataque: 'desvantagem' } },
+    'cego': { nome: 'Cego', icone: '🙈', resumo: 'Falha no que depende de visão; desvantagem nos ataques; ataques contra ele têm vantagem.', efeitos: { ataque: 'desvantagem', contra: 'vantagem' } },
+    'enfeiticado': { nome: 'Enfeitiçado', icone: '💘', resumo: 'Não ataca quem o enfeitiçou; essa criatura tem vantagem em interações sociais com ele.', efeitos: {} },
+    'envenenado': { nome: 'Envenenado', icone: '🤢', resumo: 'Desvantagem em ataques e testes de habilidade.', efeitos: { ataque: 'desvantagem', testes: 'desvantagem' } },
+    'impedido': { nome: 'Impedido', icone: '⛓', resumo: 'Deslocamento 0; desvantagem nos ataques e em resistências de DES; ataques contra ele têm vantagem.', efeitos: { parado: true, ataque: 'desvantagem', desvRes: ['des'], contra: 'vantagem' } },
+    'incapacitado': { nome: 'Incapacitado', icone: '🚫', resumo: 'Não faz ações nem reações.', efeitos: { semAcoes: true } },
+    'inconsciente': { nome: 'Inconsciente', icone: '💤', resumo: 'Incapacitado, caído e sem perceber nada; falha em resistências de FOR e DES; ataques contra ele têm vantagem e, a 1,5 m, são críticos.', efeitos: { semAcoes: true, parado: true, falhaRes: ['for', 'des'], contra: 'vantagem' } },
+    'invisivel': { nome: 'Invisível', icone: '👻', resumo: 'Vantagem nos ataques; ataques contra ele têm desvantagem.', efeitos: { ataque: 'vantagem', contra: 'desvantagem' } },
+    'paralisado': { nome: 'Paralisado', icone: '🧊', resumo: 'Incapacitado e imóvel; falha em resistências de FOR e DES; ataques contra ele têm vantagem e, a 1,5 m, são críticos.', efeitos: { semAcoes: true, parado: true, falhaRes: ['for', 'des'], contra: 'vantagem' } },
+    'petrificado': { nome: 'Petrificado', icone: '🗿', resumo: 'Vira pedra: incapacitado, falha em FOR e DES, resistência a todo dano, imune a veneno e doença.', efeitos: { semAcoes: true, parado: true, falhaRes: ['for', 'des'], contra: 'vantagem', resisteTudo: true } },
+    'surdo': { nome: 'Surdo', icone: '🙉', resumo: 'Não ouve; falha no que depende de audição.', efeitos: {} },
+}
+
+// Exaustão: os efeitos se acumulam a cada nível (LdJ, Apêndice A)
+const EXAUSTAO = [
+    null,
+    'Desvantagem em testes de habilidade',
+    'Deslocamento pela metade',
+    'Desvantagem em ataques e testes de resistência',
+    'PV máximos pela metade',
+    'Deslocamento 0',
+    'Morte',
+]
+
+// Tipos de dano do livro, para o mestre escolher ao aplicar dano
+const TIPOS_DANO = ['ácido', 'concussão', 'cortante', 'elétrico', 'fogo', 'frio', 'força', 'necrótico', 'perfurante', 'psíquico', 'radiante', 'trovejante', 'veneno']
+
 module.exports = {
     ATRIBUTOS, ATRIBUTO_POR_KEY, TODOS_ATRIBUTOS,
     PERICIAS, PERICIA_POR_KEY, TODAS_PERICIAS,
     IDIOMAS, TODOS_IDIOMAS, FERRAMENTAS, TODAS_FERRAMENTAS,
-    ARMADURAS, TIPOS_ARMADURA, ARMAS, CATEGORIAS_ARMA, ALINHAMENTOS,
-    OPCOES, RACAS, ANTECEDENTES,
+    ARMADURAS, TIPOS_ARMADURA, PRECO_ESCUDO, textoPreco, ARMAS, CATEGORIAS_ARMA, GOLPE_DESARMADO, PROPRIEDADES_ARMA, textoPropriedades, ALINHAMENTOS,
+    OPCOES, RACAS, ANTECEDENTES, EQUIPAMENTO_ANTECEDENTE, CONDICOES, EXAUSTAO, TIPOS_DANO,
 }

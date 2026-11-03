@@ -63,25 +63,75 @@ function secreto() {
     try { return require('./dice').isSecretRoll() } catch (e) { return false }
 }
 
-/** Um d20 no modo pedido: { dados, natural }. */
-function rolarD20(m) {
-    const a = dado(20)
-    const b = m === 'normal' ? null : dado(20)
-    const natural = m === 'vantagem' ? Math.max(a, b) : m === 'desvantagem' ? Math.min(a, b) : a
-    return { dados: [{ lados: 20, valor: a }, ...(b == null ? [] : [{ lados: 20, valor: b }])], natural }
+/**
+ * Um d20 no modo pedido: { dados, natural, sorte }. `sortudo` (halfling):
+ * o 1 natural é rolado de novo, uma vez, e vale o novo.
+ */
+function rolarD20(m, sortudo) {
+    const dados = [{ lados: 20, valor: dado(20) }]
+    if (m !== 'normal') dados.push({ lados: 20, valor: dado(20) })
+    const escolher = () => (m === 'vantagem' ? Math.max(...dados.map(d => d.valor)) : m === 'desvantagem' ? Math.min(...dados.map(d => d.valor)) : dados[0].valor)
+    let natural = escolher()
+    let sorte = false
+    if (sortudo && natural === 1) {
+        const i = dados.findIndex(d => d.valor === 1)
+        dados[i] = { lados: 20, valor: dado(20) }
+        natural = escolher()
+        sorte = true
+    }
+    return { dados, natural, sorte }
 }
 
-/** "8d6", "1d4+1", "3d4+3": rola tudo. `multiplicador` dobra os dados no crítico. */
-function rolarExpressao(expressao, bonus = 0, multiplicador = 1) {
+/**
+ * Junta o modo do seletor com o que o livro aplica sozinho (auto: vem de
+ * dndCondicoes.modoAutomatico). Vantagem e desvantagem juntas se anulam.
+ * Devolve { modo, motivo } — o motivo vai no rótulo, para a mesa ver.
+ */
+function resolverModo(escolhido, auto) {
+    const v = [...((auto && auto.vantagem) || [])]
+    const d = [...((auto && auto.desvantagem) || [])]
+    const temV = v.length || escolhido === 'vantagem'
+    const temD = d.length || escolhido === 'desvantagem'
+    if (temV && temD) return { modo: 'normal', motivo: (v.length || d.length) ? 'vantagem e desvantagem se anulam' : '' }
+    if (temV) return { modo: 'vantagem', motivo: v.join(', ') }
+    if (temD) return { modo: 'desvantagem', motivo: d.join(', ') }
+    return { modo: 'normal', motivo: '' }
+}
+
+const comMotivo = (rotulo, r, extras) => {
+    const partes = [r.motivo ? `${r.modo === 'normal' ? '' : r.modo + ': '}${r.motivo}` : '', ...(extras || [])].filter(Boolean)
+    return partes.length ? `${rotulo} · ${partes.join(' · ')}` : rotulo
+}
+
+/**
+ * "8d6", "1d4+1", "3d4+3": rola tudo. `multiplicador` dobra os dados no crítico.
+ * Só no primeiro grupo (o dado da arma):
+ *   extraPrimeiro — dados a mais (Crítico Brutal, Ataques Selvagens)
+ *   rerrolarAte   — rola de novo uma vez o que sair até esse valor (Combate com Armas Grandes)
+ */
+function rolarExpressao(expressao, bonus = 0, multiplicador = 1, { extraPrimeiro = 0, rerrolarAte = 0, rerrolarMenores = 0 } = {}) {
     const grupos = []
     let fixo = bonus
-    String(expressao).replace(/\s/g, '').split('+').forEach(parte => {
+    String(expressao).replace(/\s/g, '').replace(/-/g, '+-').split('+').forEach(parte => {
         const m = parte.match(/^(\d*)d(\d+)$/i)
         if (m) grupos.push({ qtd: (parseInt(m[1] || '1', 10)) * multiplicador, lados: parseInt(m[2], 10) })
         else if (/^-?\d+$/.test(parte)) fixo += parseInt(parte, 10)
     })
+    if (grupos.length && extraPrimeiro) grupos[0].qtd += extraPrimeiro
     const dados = []
-    grupos.forEach(g => { for (let i = 0; i < g.qtd && i < 60; i++) dados.push({ lados: g.lados, valor: dado(g.lados) }) })
+    grupos.forEach((g, gi) => {
+        for (let i = 0; i < g.qtd && i < 60; i++) {
+            let v = dado(g.lados)
+            if (gi === 0 && rerrolarAte && v <= rerrolarAte) v = dado(g.lados)
+            dados.push({ lados: g.lados, valor: v })
+        }
+    })
+    // Magia Potencializada: rola de novo os N dados mais baixos (só os abaixo da média)
+    if (rerrolarMenores) {
+        dados.map((d, i) => ({ d, i })).filter(x => x.d.valor <= x.d.lados / 2)
+            .sort((a, b) => a.d.valor - b.d.valor).slice(0, rerrolarMenores)
+            .forEach(x => { dados[x.i] = { lados: x.d.lados, valor: dado(x.d.lados) } })
+    }
     return {
         dados, bonus: fixo,
         total: Math.max(0, dados.reduce((s, d) => s + d.valor, 0) + fixo),
@@ -100,11 +150,23 @@ function consumirModo(forcarModo) {
  * Teste de d20 (perícia, atributo, resistência, iniciativa, ataque).
  * `forcarModo` vale só para esta rolagem (ex.: iniciativa com vantagem).
  */
-function testeD20({ personagem, rotulo, bonus, tipo = 'teste', forcarModo }) {
-    const m = consumirModo(forcarModo)
-    const { dados, natural } = rolarD20(m)
+function testeD20({ personagem, rotulo, bonus, tipo = 'teste', forcarModo, auto }) {
+    const r = resolverModo(consumirModo(forcarModo), auto)
+    // Falha automática (atordoado, paralisado... em FOR e DES): nem rola
+    if (auto && auto.falha) {
+        const res = { personagem, rotulo: `${rotulo} · ${auto.falha}`, tipo, modo: 'normal', dados: [], natural: 0, bonus: 0, total: 0, critico: false, falha: true, secreto: secreto() }
+        enviar(res)
+        return res
+    }
+    const { dados, natural, sorte } = rolarD20(r.modo, auto && auto.sortudo)
+    const extras = []
+    if (sorte) extras.push('Sortudo: rolou de novo o 1')
+    let usado = natural
+    if (auto && auto.minimo && natural < auto.minimo) { usado = auto.minimo; extras.push(`Talento Confiável: o d20 conta ${auto.minimo}`) }
+    let total = usado + bonus
+    if (auto && auto.piso && total < auto.piso) { total = auto.piso; extras.push(`Força Indomável: ${auto.piso}`) }
     const res = {
-        personagem, rotulo, tipo, modo: m, dados, natural, bonus, total: natural + bonus,
+        personagem, rotulo: comMotivo(rotulo, r, extras), tipo, modo: r.modo, dados, natural, bonus, total,
         critico: natural === 20, falha: natural === 1, secreto: secreto(),
     }
     enviar(res)
@@ -112,8 +174,8 @@ function testeD20({ personagem, rotulo, bonus, tipo = 'teste', forcarModo }) {
 }
 
 /** Dano ou cura avulsos. */
-function rolarDados({ personagem, rotulo, expressao, bonus = 0, multiplicador = 1, tipo = 'dano', tipoDano = '' }) {
-    const r = rolarExpressao(expressao, bonus, multiplicador)
+function rolarDados({ personagem, rotulo, expressao, bonus = 0, multiplicador = 1, tipo = 'dano', tipoDano = '', extraPrimeiro = 0, rerrolarAte = 0, rerrolarMenores = 0 }) {
+    const r = rolarExpressao(expressao, bonus, multiplicador, { extraPrimeiro, rerrolarAte, rerrolarMenores })
     const res = {
         personagem, rotulo, tipo, tipoDano, ...r,
         critico: multiplicador > 1 && tipo === 'dano', secreto: secreto(),
@@ -126,12 +188,40 @@ function rolarDados({ personagem, rotulo, expressao, bonus = 0, multiplicador = 
  * Magia de ataque, como no BG3: rola o ataque e o dano de uma vez. Num 20
  * natural os dados de dano dobram; num 1 natural o dano nem é rolado.
  */
-function magiaComAtaque({ personagem, rotulo, bonusAtaque, expressao, tipoDano = '' }) {
-    const m = consumirModo()
-    const atq = rolarD20(m)
+function magiaComAtaque({ personagem, rotulo, bonusAtaque, expressao, tipoDano = '', auto, rerrolarMenores = 0 }) {
+    const r = resolverModo(consumirModo(), auto)
+    const m = r.modo
+    const atq = rolarD20(m, auto && auto.sortudo)
+    rotulo = comMotivo(rotulo, r, atq.sorte ? ['Sortudo: rolou de novo o 1'] : [])
     const critico = atq.natural === 20
     const falha = atq.natural === 1
-    const dano = falha ? { dados: [], bonus: 0, total: 0, expressao: '' } : rolarExpressao(expressao, 0, critico ? 2 : 1)
+    const dano = falha ? { dados: [], bonus: 0, total: 0, expressao: '' } : rolarExpressao(expressao, 0, critico ? 2 : 1, { rerrolarMenores })
+    const res = {
+        personagem, rotulo, tipo: 'magia', tipoDano, modo: m,
+        ataque: { dados: atq.dados, natural: atq.natural, bonus: bonusAtaque, total: atq.natural + bonusAtaque },
+        ...dano, critico, falha, secreto: secreto(),
+    }
+    enviar(res)
+    return res
+}
+
+/**
+ * Ataque com arma: mesmo caminho da magia de ataque (ataque e dano juntos),
+ * com o que as armas têm a mais — crítico com 19 ou 18 (Campeão), dados
+ * extras no crítico e rolar de novo 1 e 2 no dado da arma.
+ * `forcarModo` vale só para esta rolagem (Ataque Descuidado) e o seletor
+ * volta para Normal do mesmo jeito.
+ */
+function ataqueComArma({ personagem, rotulo, bonusAtaque, expressao, bonusDano = 0, tipoDano = '', critMin = 20, dadosCritExtra = 0, rerrolarAte = 0, forcarModo, auto }) {
+    const r = resolverModo(consumirModo(forcarModo), auto)
+    const m = r.modo
+    const atq = rolarD20(m, auto && auto.sortudo)
+    rotulo = comMotivo(rotulo, r, atq.sorte ? ['Sortudo: rolou de novo o 1'] : [])
+    const critico = atq.natural >= critMin
+    const falha = atq.natural === 1
+    const dano = falha
+        ? { dados: [], bonus: 0, total: 0, expressao: '' }
+        : rolarExpressao(expressao, bonusDano, critico ? 2 : 1, { extraPrimeiro: critico ? dadosCritExtra : 0, rerrolarAte })
     const res = {
         personagem, rotulo, tipo: 'magia', tipoDano, modo: m,
         ataque: { dados: atq.dados, natural: atq.natural, bonus: bonusAtaque, total: atq.natural + bonusAtaque },
@@ -248,7 +338,7 @@ function mostrar(res) {
     if (res.secreto) notas.push('secreta')
     if (res.critico && (res.tipo === 'dano' || res.tipo === 'magia')) notas.push('✦ CRÍTICO')
     else if (res.critico) notas.push('✦ 20 NATURAL')
-    if (res.falha) notas.push('✗ 1 NATURAL')
+    if (res.falha) notas.push(res.dados.length ? '✗ 1 NATURAL' : '✗ FALHA AUTOMÁTICA')
     if (res.tipo === 'cura') notas.push('cura')
     if (notas.length) el.appendChild(mk('div', 'dro-notas', notas.join(' · ')))
 
@@ -265,6 +355,6 @@ function mk(tag, cls, text) {
 }
 
 module.exports = {
-    testeD20, rolarDados, magiaComAtaque, rolarD20, seletorModo, definirModo, mostrar, confirmar, linhaDeChat,
+    testeD20, rolarDados, magiaComAtaque, ataqueComArma, rolarD20, resolverModo, seletorModo, definirModo, mostrar, confirmar, linhaDeChat,
     modoAtual: () => modo,
 }
