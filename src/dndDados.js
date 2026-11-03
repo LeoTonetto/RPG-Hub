@@ -675,9 +675,134 @@ const EXAUSTAO = [
 ]
 
 // Tipos de dano do livro, para o mestre escolher ao aplicar dano
-const TIPOS_DANO = ['ácido', 'concussão', 'cortante', 'elétrico', 'fogo', 'frio', 'força', 'necrótico', 'perfurante', 'psíquico', 'radiante', 'trovejante', 'veneno']
+// Tipos de dano do livro (LdJ p. 198; o de força se chama "energia")
+const TIPOS_DANO = ['ácido', 'concussão', 'cortante', 'elétrico', 'energia', 'fogo', 'frio', 'necrótico', 'perfurante', 'psíquico', 'radiante', 'trovejante', 'veneno']
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── Efeitos em aliados e marcas em criaturas (LdJ, magias e classes) ─────────
+// ══════════════════════════════════════════════════════════════════════════════
+// O efeito fica na ficha de quem recebe (stats.efeitos_recebidos; ver
+// dndEfeitos.js). O motor lê daqui:
+//   guardado  — contextos do d20 em que o dado guardado pode entrar (1 uso)
+//   fixo      — dado que soma sozinho nesses contextos (Bênção)
+//   ca, desloc (multiplica), pv(nível), vantagemRes, imune, armaBonus(nível)
+//   minutos   — duração do livro (até 1 minuto conta em rodadas na batalha)
+//   conc      — acaba com a concentração de quem conjurou
+//   alvos(nível), si (pode ser em si mesmo), magia (id da magia que cria)
+const EFEITOS = {
+    'inspiracao-bardo': { nome: 'Inspiração de Bardo', icone: '🎵', guardado: ['ataque', 'resistencia', 'pericia', 'atributo', 'iniciativa'], minutos: 10, alvos: () => 1, si: false,
+        desc: 'Soma o dado a um teste, ataque ou resistência, depois de ver o d20.' },
+    'orientacao': { nome: 'Orientação', icone: '🧭', guardado: ['pericia', 'atributo', 'iniciativa'], dado: 'd4', minutos: 1, conc: true, magia: 'orientacao', alvos: () => 1, si: true,
+        desc: 'Soma 1d4 a um teste de habilidade, depois de ver o d20.' },
+    'resistencia': { nome: 'Resistência', icone: '🪨', guardado: ['resistencia'], dado: 'd4', minutos: 1, conc: true, magia: 'resistencia', alvos: () => 1, si: true,
+        desc: 'Soma 1d4 a um teste de resistência, depois de ver o d20.' },
+    'bencao': { nome: 'Bênção', icone: '✨', fixo: { contextos: ['ataque', 'resistencia'], expressao: '1d4' }, minutos: 1, conc: true, magia: 'bencao', alvos: n => 3 + Math.max(0, n - 1), si: true,
+        desc: '+1d4 nas jogadas de ataque e nos testes de resistência.' },
+    'escudo-da-fe': { nome: 'Escudo da Fé', icone: '🛡', ca: 2, minutos: 10, conc: true, magia: 'escudo-da-fe', alvos: () => 1, si: true,
+        desc: '+2 na CA.' },
+    'ajuda': { nome: 'Ajuda', icone: '❤', pv: n => 5 * Math.max(1, n - 1), minutos: 480, magia: 'ajuda', alvos: () => 3, si: true,
+        desc: '+5 PV máximos e atuais (mais 5 por nível acima do 2º).' },
+    'heroismo': { nome: 'Heroísmo', icone: '🦁', imune: ['amedrontado'], pvTempNoTurno: true, minutos: 1, conc: true, magia: 'heroismo', alvos: n => n, si: true,
+        desc: 'Imune a amedrontado; no começo de cada turno, PV temporários iguais ao atributo de magia de quem conjurou.' },
+    'velocidade': { nome: 'Velocidade', icone: '⚡', ca: 2, desloc: 2, vantagemRes: ['des'], minutos: 1, conc: true, magia: 'velocidade', alvos: () => 1, si: true,
+        desc: '+2 na CA, deslocamento dobrado, vantagem em resistências de DES e uma ação a mais (só Atacar uma vez, Disparada, Desengajar, Esconder ou Usar objeto). Ao acabar, fica um turno sem agir.' },
+    'arma-magica': { nome: 'Arma Mágica', icone: '🗡', armaBonus: n => (n >= 6 ? 3 : n >= 4 ? 2 : 1), minutos: 60, conc: true, magia: 'arma-magica', alvos: () => 1, si: true, comArma: true,
+        desc: 'A arma vira mágica e soma o bônus no ataque e no dano.' },
+    'auxilio-divino': { nome: 'Auxílio Divino', icone: '☀', danoArma: { dados: '1d4', tipo: 'radiante' }, minutos: 1, conc: true, magia: 'auxilio-divino', alvos: () => 1, soEmSi: true,
+        desc: '+1d4 radiante em cada acerto com arma.' },
+    'bencao-trapaceiro': { nome: 'Bênção do Trapaceiro', icone: '🎭', vantagemPericia: ['furtividade'], minutos: 60, alvos: () => 1, si: false,
+        desc: 'Vantagem em testes de Destreza (Furtividade).' },
+    'cancao-descanso': { nome: 'Canção de Descanso', icone: '🎶', guardado: ['dados-vida'], minutos: 60, alvos: () => 99, si: true,
+        desc: 'No descanso curto, quem gastar Dados de Vida recupera o dado da canção a mais (uma vez).' },
+    'aura-protecao': { nome: 'Aura de Proteção', icone: '🔆', aura: true,
+        desc: 'Soma o Carisma do paladino nos testes de resistência (a até 3 m dele).' },
+    'aura-coragem': { nome: 'Aura de Coragem', icone: '🦁', imune: ['amedrontado'], aura: true,
+        desc: 'Não pode ser amedrontado (a até 3 m do paladino).' },
+}
+
+// Magias de destruição: conjurar deixa o golpe pronto (stats.efeitos.destruicao)
+// e o dano entra no PRÓXIMO acerto, dobrando no crítico. corpo: só corpo-a-corpo
+// (as outras valem com qualquer arma); semDano: o efeito é só o teste.
+const DESTRUICOES = {
+    'destruicao-colerica': { corpo: true, efeito: 'ou fica amedrontado' },
+    'destruicao-lancinante': { corpo: true, efeito: 'pega fogo: 1d6 de fogo no começo de cada turno dele até passar' },
+    'destruicao-trovejante': { corpo: true, efeito: 'ou é empurrado 3 m e fica caído' },
+    'destruicao-cegante': { corpo: true, efeito: 'ou fica cego' },
+    'destruicao-estonteante': { corpo: true, efeito: 'ou fica com desvantagem em ataques e testes e sem reações até o fim do próximo turno dele' },
+    'destruicao-banidora': { corpo: false, efeito: 'se ficar com 50 PV ou menos, é banido' },
+    'marca-da-punicao': { corpo: false, efeito: 'brilha: não fica invisível e ilumina 1,5 m' },
+    'golpe-constritor': { corpo: false, semDano: true, efeito: 'ou fica impedido pelas vinhas: 1d6 perfurante no começo de cada turno dele' },
+}
+
+// Surto de Magia Selvagem (LdJ, feiticeiro): [até no d100, efeito resumido, o que o
+// app faz sozinho]. Resumos com palavras nossas; o livro tem o texto completo.
+const SURTO_SELVAGEM = [
+    [2, 'Por 1 minuto, rola nesta tabela no começo de cada turno seu (ignorando este resultado).'],
+    [4, 'Por 1 minuto, enxerga as criaturas invisíveis que estiverem à vista.'],
+    [6, 'Um modron do mestre surge a 1,5 m e some depois de 1 minuto.'],
+    [8, 'Conjura bola de fogo (3º nível) centrada em você.', { dano: '8d6', tipo: 'fogo', res: 'des' }],
+    [10, 'Conjura mísseis mágicos de 5º nível (7 dardos).', { dano: '7d4+7', tipo: 'energia' }],
+    [12, 'Rola 1d10: a altura muda 3 cm por ponto (ímpar encolhe, par cresce).'],
+    [14, 'Conjura confusão centrada em você.'],
+    [16, 'Por 1 minuto, recupera 5 PV no começo de cada turno seu.'],
+    [18, 'Cresce uma barba de penas, que explode no próximo espirro.'],
+    [20, 'Conjura área escorregadia centrada em você.'],
+    [22, 'A próxima magia com teste de resistência (no próximo minuto) dá desvantagem nesse teste.'],
+    [24, 'A pele fica azul vibrante (remover maldição desfaz).'],
+    [26, 'Um olho na nuca por 1 minuto: vantagem em Percepção que dependa da visão.'],
+    [28, 'Por 1 minuto, magias de 1 ação podem ser conjuradas com a ação bônus.'],
+    [30, 'Teleporta até 18 m para um lugar desocupado à vista.'],
+    [32, 'Vai para o Plano Astral até o fim do próximo turno e então volta.'],
+    [34, 'O dano da próxima magia de dano (no próximo minuto) sai no máximo.'],
+    [36, 'Rola 1d10: a idade muda tantos anos (ímpar rejuvenesce, par envelhece).'],
+    [38, '1d6 flumphs do mestre surgem a até 18 m, com medo de você, e somem em 1 minuto.'],
+    [40, 'Recupera 2d10 PV.', { cura: '2d10' }],
+    [42, 'Vira uma planta num vaso até o próximo turno: incapacitado e vulnerável a todo dano.'],
+    [44, 'Por 1 minuto, teleporta até 6 m com a ação bônus a cada turno.'],
+    [46, 'Conjura levitação em si mesmo.'],
+    [48, 'Um unicórnio do mestre surge a 1,5 m e some depois de 1 minuto.'],
+    [50, 'Por 1 minuto não consegue falar: saem bolhas cor-de-rosa.'],
+    [52, 'Um escudo espectral por 1 minuto: +2 na CA e imune a mísseis mágicos.'],
+    [54, 'Imune a embriaguez por 5d6 dias.'],
+    [56, 'O cabelo cai e volta a crescer em 24 horas.'],
+    [58, 'Por 1 minuto, objetos inflamáveis soltos que você toca pegam fogo.'],
+    [60, 'Recupera o espaço de magia gasto de menor nível.', { espaco: true }],
+    [62, 'Por 1 minuto, só consegue falar gritando.'],
+    [64, 'Conjura névoa obscurecente centrada em você.'],
+    [66, 'Até três criaturas à sua escolha a até 9 m sofrem 4d10 elétrico.', { dano: '4d10', tipo: 'elétrico' }],
+    [68, 'Fica amedrontado pela criatura mais próxima até o fim do próximo turno.'],
+    [70, 'Todas as criaturas a até 9 m ficam invisíveis por 1 minuto (até atacarem ou conjurarem).'],
+    [72, 'Resistência a todo dano por 1 minuto.'],
+    [74, 'Uma criatura aleatória a até 9 m fica envenenada por 1d4 horas.'],
+    [76, 'Brilha (luz plena, 9 m) por 1 minuto; quem termina o turno a 1,5 m fica cego até o fim do turno seguinte.'],
+    [78, 'Conjura metamorfose em si mesmo: se falhar no teste, vira uma ovelha.'],
+    [80, 'Borboletas e pétalas ilusórias flutuam a até 3 m por 1 minuto.'],
+    [82, 'Ganha uma ação a mais, agora.'],
+    [84, 'Cada criatura a até 9 m sofre 1d10 necrótico; você recupera o total causado.', { dano: '1d10', tipo: 'necrótico' }],
+    [86, 'Conjura reflexos.'],
+    [88, 'Conjura voo numa criatura aleatória a até 18 m.'],
+    [90, 'Invisível e sem fazer som por 1 minuto (até atacar ou conjurar).'],
+    [92, 'Se morrer no próximo minuto, volta à vida por reencarnação.'],
+    [94, 'Fica uma categoria de tamanho maior por 1 minuto.'],
+    [96, 'Você e quem está a até 9 m ficam vulneráveis a perfurante por 1 minuto.'],
+    [98, 'Uma música etérea e suave toca à sua volta por 1 minuto.'],
+    [100, 'Recupera todos os pontos de feitiçaria gastos.', { pontos: true }],
+]
+
+// Ficam na ficha de quem lançou (stats.marcas) e aparecem no card da criatura
+const MARCAS = {
+    'perdicao': { nome: 'Perdição', icone: '☠', minutos: 1, conc: true, magia: 'perdicao', alvos: n => 3 + Math.max(0, n - 1),
+        desc: '−1d4 nas jogadas de ataque e nos testes de resistência.' },
+    'marca-do-cacador': { nome: 'Marca do Caçador', icone: '🎯', minutos: 60, conc: true, magia: 'marca-do-cacador', alvos: () => 1, mover: true,
+        desc: '+1d6 no dano de quem marcou; vantagem para percebê-la ou rastreá-la.' },
+    'bruxaria': { nome: 'Bruxaria', icone: '🜏', minutos: 60, conc: true, magia: 'bruxaria', alvos: () => 1, mover: true,
+        desc: '+1d6 necrótico no dano de quem amaldiçoou; desvantagem nos testes de um atributo.' },
+    'voto-inimizade': { nome: 'Voto de Inimizade', icone: '⚔', minutos: 1, alvos: () => 1,
+        desc: 'Quem fez o voto tem vantagem nas jogadas de ataque contra ela.' },
+}
 
 module.exports = {
+    EFEITOS, MARCAS, DESTRUICOES, SURTO_SELVAGEM,
     ATRIBUTOS, ATRIBUTO_POR_KEY, TODOS_ATRIBUTOS,
     PERICIAS, PERICIA_POR_KEY, TODAS_PERICIAS,
     IDIOMAS, TODOS_IDIOMAS, FERRAMENTAS, TODAS_FERRAMENTAS,

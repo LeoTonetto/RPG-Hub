@@ -36,12 +36,20 @@ const CUSTO_ESPACO = { 1: 2, 2: 3, 3: 5, 4: 6, 5: 7 }
 
 // Magias de ataque cujo dano está só no texto do livro
 const DANO_DO_TEXTO = {
-    'orbe-cromatica': { dano: '3d8 à escolha', superior: '1d8' },     // ácido, frio, fogo, elétrico, veneno ou trovejante
-    'arma-espiritual': { dano: '1d8 força' },                         // + atributo; ver expressaoDe
+    // O tipo da Orbe Cromática quem escolhe é o conjurador, entre estes (LdJ p. 266)
+    'orbe-cromatica': { dano: '3d8 ácido', superior: '1d8', tipos: ['ácido', 'frio', 'fogo', 'elétrico', 'veneno', 'trovejante'] },
+    'arma-espiritual': { dano: '1d8 energia' },                       // + atributo; ver expressaoDe
 }
 
 // Magias de cura que somam o atributo de conjuração ao dado
 const CURA_SOMA_ATRIBUTO = new Set(['curar-ferimentos', 'palavra-curativa', 'curar-ferimentos-em-massa', 'palavra-curativa-em-massa', 'oracao-curativa'])
+
+// A última magia que cada personagem conjurou (Colheita Sinistra)
+const ultimaMagia = {}
+
+function chat(message, playerName = '✦ Magia') {
+    if (state.socket) state.socket.emit('chat_message', { playerName, message, type: 'text' })
+}
 
 function isDnd(char) {
     return !!char && char.system === 'dnd'
@@ -225,18 +233,13 @@ function blocoPV(stats, f, canEdit) {
         qtd.addEventListener('keydown', e => e.stopPropagation())
         const valorQtd = () => Math.max(1, parseInt(qtd.value, 10) || 1)
 
-        // O tipo do dano decide resistência (fúria, raça) e imunidade
-        const tipo = document.createElement('select')
-        tipo.className = 'dc-select ds-pv-tipo'
-        tipo.setAttribute('aria-label', 'Tipo de dano')
-        tipo.title = 'Tipo de dano (para resistências)'
-        tipo.appendChild(new Option('tipo…', ''))
-        D.TIPOS_DANO.forEach(t => tipo.appendChild(new Option(t, t)))
+        // Ajuste à mão: sem tipo de dano. O tipo vem da arma, da magia ou do
+        // ataque da criatura (no "Aplicar dano" da batalha, com a resistência)
         const dano = mk('button', 'ds-pv-btn dano', 'Dano')
         dano.addEventListener('click', () => {
             const char = state.statPopupChar
             if (!char) return
-            estadoUI().danoNoPersonagem(char, valorQtd(), { tipo: tipo.value })
+            estadoUI().danoNoPersonagem(char, valorQtd())
             reabrirFicha()
         })
         const cura = mk('button', 'ds-pv-btn cura', 'Cura')
@@ -254,8 +257,24 @@ function blocoPV(stats, f, canEdit) {
         ctl.appendChild(qtd)
         ctl.appendChild(cura)
         ctl.appendChild(tempBtn)
+        // Dano de queda (mestre): 1d6 de concussão a cada 3 m, até 20d6, e cai (LdJ p. 183)
+        if (state.isRoomMaster) {
+            const queda = mk('button', 'ds-pv-btn', '🪂')
+            queda.title = 'Queda: o número é a altura em metros (1d6 de concussão a cada 3 m, até 20d6; cai no chão)'
+            queda.setAttribute('aria-label', 'Dano de queda')
+            queda.addEventListener('click', () => {
+                const char = state.statPopupChar
+                const n = Math.min(20, Math.floor(valorQtd() / 3))
+                if (!char || !n) return
+                const r = rolagem.rolarDados({ personagem: char.name, rotulo: `Queda de ${valorQtd()} m`, expressao: `${n}d6`, tipo: 'dano', tipoDano: 'concussão' })
+                estadoUI().danoNoPersonagem(char, r.total, { tipo: 'concussão' })
+                const st = (estadoUI().charPorId(char.id) || char).stats || {}
+                if (r.total > 0 && !(st.condicoes || []).includes('caido')) gravar(char.id, { condicoes: [...(st.condicoes || []), 'caido'] })
+                reabrirFicha()
+            })
+            ctl.appendChild(queda)
+        }
         wrap.appendChild(ctl)
-        wrap.appendChild(tipo)
     }
     return wrap
 }
@@ -306,6 +325,9 @@ function abrirPainelPericias(stats) {
     })
 
     secao('Testes de resistência')
+    // Vantagens contra veneno, magia, encantamento, medo: o mestre diz a origem no pedido de teste
+    const contra = CD.vantagensContra(stats, f)
+    if (contra.length) body.appendChild(mk('div', 'ds-legenda', 'Vantagem ' + contra.map(v => `contra ${({ veneno: 'veneno', magia: 'magia', encantamento: 'ser enfeitiçado', medo: 'ser amedrontado' })[v.origem]} (${v.nome})`).join(' · ')))
     D.ATRIBUTOS.forEach(a => {
         const r = f.resistencias[a.key]
         linhaRolavel(`Resistência de ${a.nome}`, a.abrev, r.bonus, r.prof ? '●' : '○', r.prof ? 'prof' : '', { tipo: 'resistencia', atributo: a.key })
@@ -383,6 +405,16 @@ function abrirPainelRecursos(stats, canEdit) {
                 abrirPainelRecursos(statsAtuais(), canEdit)
             }, r.pontos))
         }
+        // O que se usa com este recurso (gasta a ação ou a ação bônus certa)
+        const char = state.statPopupChar
+        if (canEdit && char) {
+            const habs = require('./dndHabilidades').doRecurso(char, r.id)
+            if (habs.length) {
+                const usar = mk('div', 'ds-recurso-usar')
+                habs.forEach(h => usar.appendChild(require('./dndHabilidades').botaoDe(char, h, () => { reabrirFicha(); abrirPainelRecursos(statsAtuais(), canEdit) })))
+                linha.appendChild(usar)
+            }
+        }
         body.appendChild(linha)
     })
 
@@ -400,14 +432,22 @@ function abrirPainelRecursos(stats, canEdit) {
     // Gastar no descanso curto: rola o dado + CON e cura (Resistente: no mínimo 2 × CON)
     if (canEdit) {
         const gastar = mk('button', 'ds-magia-btn', `🎲 Gastar 1 Dado de Vida (1d${f.dadoVida} ${dnd.sinal(f.mods.con)})`)
-        gastar.disabled = dvUsados >= f.nivel || (stats.hp ?? f.pvMax) >= f.pvMax || CD.morto(stats)
-        gastar.title = gastar.disabled ? 'Sem Dados de Vida, ou já com os PV cheios' : 'Num descanso curto'
+        const naBatalha = require('./dndCombate').emBatalha() && !state.isRoomMaster
+        gastar.disabled = dvUsados >= f.nivel || (stats.hp ?? f.pvMax) >= f.pvMax || CD.morto(stats) || naBatalha
+        gastar.title = naBatalha ? 'Dados de Vida só no descanso curto, fora da batalha' : gastar.disabled ? 'Sem Dados de Vida, ou já com os PV cheios' : 'Num descanso curto'
         gastar.addEventListener('click', () => {
             const char = state.statPopupChar
             if (!char) return
             const r = rolagem.rolarDados({ personagem: char.name, rotulo: 'Dado de Vida', expressao: `1d${f.dadoVida}`, bonus: f.mods.con, tipo: 'cura' })
             let cura = Math.max(0, r.total)
             if (f.talentos.includes('resistente')) cura = Math.max(cura, 2 * Math.max(1, f.mods.con))
+            // Canção de Descanso (bardo): o dado da canção a mais, uma vez
+            const cancao = require('./dndEfeitos').ativos(stats).find(e => e.tipo === 'cancao-descanso' && e.dado)
+            if (cancao) {
+                const rc = rolagem.rolarDados({ personagem: char.name, rotulo: `Canção de Descanso (${cancao.fonteNome})`, expressao: '1' + cancao.dado, tipo: 'cura' })
+                cura += rc.total
+                require('./dndEfeitos').remover(char.id, { uid: cancao.uid })
+            }
             commit('dados_vida_usados', dvUsados + 1)
             estadoUI().curaNoPersonagem(char, cura)
             reabrirFicha()
@@ -523,14 +563,17 @@ function secaoFeiticaria(stats, f) {
     criar.setAttribute('aria-label', 'Nível do espaço a criar')
     const maxNivel = Math.min(5, f.conjuracao.espacos.length)
     for (let n = 1; n <= maxNivel; n++) criar.appendChild(new Option(`${n}º nível (${CUSTO_ESPACO[n]} pontos)`, String(n)))
+    const char = state.statPopupChar
+    const travaBonus = char ? require('./dndCombate').podeGastar(char, 'bonus') : ''
     const bCriar = mk('button', 'ds-magia-btn', 'Criar espaço')
-    bCriar.title = 'Ação bônus. O espaço criado some no descanso longo.'
+    bCriar.disabled = !!travaBonus
+    bCriar.title = travaBonus || 'Ação bônus. O espaço criado some no descanso longo.'
     bCriar.addEventListener('click', () => {
         const n = parseInt(criar.value, 10)
         if (CUSTO_ESPACO[n] > pontos) return
         commit('recursos_usados', { ...(stats.recursos_usados || {}), feiticaria: usados + CUSTO_ESPACO[n] })
         commit('espacos_extras', { ...(stats.espacos_extras || {}), [n]: ((stats.espacos_extras || {})[n] || 0) + 1 })
-        if (state.statPopupChar) require('./dndCombate').gastarBonusDe(state.statPopupChar)
+        if (state.statPopupChar) require('./dndCombate').gastarCusto(state.statPopupChar, 'bonus')
         abrirPainelMagia(statsAtuais(), true)
     })
     linha.appendChild(criar)
@@ -545,12 +588,13 @@ function secaoFeiticaria(stats, f) {
         conv.setAttribute('aria-label', 'Espaço a converter')
         livres.forEach(e => conv.appendChild(new Option(`Espaço de ${e.nivel}º → ${e.nivel} ponto(s)`, e.id)))
         const bConv = mk('button', 'ds-magia-btn', 'Virar pontos')
-        bConv.title = 'Ação bônus: gasta o espaço e ganha pontos iguais ao nível dele'
+        bConv.disabled = !!travaBonus
+        bConv.title = travaBonus || 'Ação bônus: gasta o espaço e ganha pontos iguais ao nível dele'
         bConv.addEventListener('click', () => {
             const e = livres.find(x => x.id === conv.value)
             commit('espacos_usados', { ...(stats.espacos_usados || {}), [e.id]: ((stats.espacos_usados || {})[e.id] || 0) + 1 })
             commit('recursos_usados', { ...(stats.recursos_usados || {}), feiticaria: Math.max(0, usados - e.nivel) })
-            if (state.statPopupChar) require('./dndCombate').gastarBonusDe(state.statPopupChar)
+            if (state.statPopupChar) require('./dndCombate').gastarCusto(state.statPopupChar, 'bonus')
             abrirPainelMagia(statsAtuais(), true)
         })
         l2.appendChild(conv)
@@ -560,16 +604,19 @@ function secaoFeiticaria(stats, f) {
     return w
 }
 
-/** Mago: Recuperação Arcana, uma vez por dia depois de um descanso curto. */
+/**
+ * Recuperação Arcana (mago) e Recuperação Natural (druida da Terra): uma vez
+ * por dia, depois de um descanso curto.
+ */
 function secaoRecuperacaoArcana(stats, f) {
-    const rec = f.recursos.find(r => r.id === 'recuperacao-arcana')
-    if (!rec || (stats.recursos_usados || {})['recuperacao-arcana']) return null
+    const rec = f.recursos.find(r => r.id === 'recuperacao-arcana' || r.id === 'recuperacao-natural')
+    if (!rec || (stats.recursos_usados || {})[rec.id]) return null
     const usados = stats.espacos_usados || {}
     const gastos = f.conjuracao.espacos.map((q, i) => ({ nivel: i + 1, usados: Math.min(q, usados[i + 1] || 0) })).filter(e => e.usados > 0 && e.nivel <= 5)
     if (!gastos.length) return null
     const limite = Math.ceil(f.nivel / 2)
     const w = mk('div', 'ds-feiticaria')
-    w.appendChild(mk('div', 'ds-grupo', `Recuperação Arcana · até ${limite} nível(is) de espaço`))
+    w.appendChild(mk('div', 'ds-grupo', `${rec.nome} · até ${limite} nível(is) de espaço`))
     const campos = gastos.map(e => {
         const linha = mk('label', 'ds-recupera')
         linha.appendChild(mk('span', null, `${e.nivel}º nível`))
@@ -596,9 +643,9 @@ function secaoRecuperacaoArcana(stats, f) {
         const novos = { ...usados }
         escolha.forEach(x => { novos[x.nivel] = Math.max(0, (novos[x.nivel] || 0) - x.qtd) })
         commit('espacos_usados', novos)
-        commit('recursos_usados', { ...(stats.recursos_usados || {}), 'recuperacao-arcana': 1 })
+        commit('recursos_usados', { ...(stats.recursos_usados || {}), [rec.id]: 1 })
         const char = state.statPopupChar
-        if (char && state.socket) state.socket.emit('chat_message', { playerName: '✦ Magia', message: `${char.name} usa Recuperação Arcana (${soma} nível(is) de espaço).`, type: 'text' })
+        if (char && state.socket) state.socket.emit('chat_message', { playerName: '✦ Magia', message: `${char.name} usa ${rec.nome} (${soma} nível(is) de espaço).`, type: 'text' })
         abrirPainelMagia(statsAtuais(), true)
     })
     w.appendChild(b)
@@ -664,23 +711,76 @@ function acoesDaMagia(char, stats, f, m, canEdit, { aoMudar } = {}) {
         if (!acima || !m.superior) return dados
         return `${dados}+${m.superior.replace(/^(\d+)d/, (_, q) => `${q * acima}d`)}`
     }
-    const tipoDano = m.dano ? m.dano.split(' ').slice(1).join(' ') : ''
+    // O tipo do dano vem da magia; quando o livro deixa escolher (Orbe
+    // Cromática), a escolha fica limitada aos tipos que a magia permite
+    let seletorTipo = null
+    if (m.tipos) {
+        seletorTipo = document.createElement('select')
+        seletorTipo.className = 'dc-select ds-magia-espaco'
+        seletorTipo.setAttribute('aria-label', 'Tipo de dano da magia')
+        m.tipos.forEach(t => seletorTipo.appendChild(new Option(`Dano de ${t}`, t)))
+        linha.appendChild(seletorTipo)
+    }
+    const tipoDe = () => (seletorTipo ? seletorTipo.value : m.dano ? m.dano.split(' ').slice(1).join(' ') : '')
+    const tipoDano = tipoDe()
+    // Afinidade Elemental (feiticeiro dracônico, 6º): soma CAR ao dano do tipo do ancestral
+    const ancestral = stats.classe === 'feiticeiro' && stats.subclasse === 'draconica' && f.nivel >= 6
+        && D.OPCOES['ancestrais-draconicos'].find(o => o.id === ((stats.escolhas || {})['nv1:ancestral'] || [])[0])
+    const bonusAfinidade = () => (ancestral && tipoDe() === ancestral.dano ? f.mods.car : 0)
+    // Conjuração Poderosa (clérigo da Luz e do Conhecimento, 8º): +SAB no dano dos truques de clérigo
+    const poderosa = stats.classe === 'clerigo' && ['luz', 'conhecimento'].includes(stats.subclasse) && f.nivel >= 8
+        && m.nivel === 0 && m.atributo === 'sab' && m.dano ? f.mods.sab : 0
+    // Evocação Potencializada (mago evocador, 10º): +INT numa rolagem de dano de magia de evocação
+    const potencializada = stats.classe === 'mago' && stats.subclasse === 'evocacao' && f.nivel >= 10
+        && /evoca/.test(m.escola || '') && m.dano ? f.mods.int : 0
+    // Truque Potente (mago evocador, 6º): truque com resistência causa metade se o alvo passar
+    const truquePotente = stats.classe === 'mago' && stats.subclasse === 'evocacao' && f.nivel >= 6 && m.nivel === 0 && m.resistencia && m.dano
+    /** O que soma no dano: o primeiro raio leva Afinidade e Evocação Potencializada; todos levam Conjuração Poderosa. */
+    const extraDano = primeiro => {
+        const partes = []
+        if (primeiro && bonusAfinidade()) partes.push(['Afinidade Elemental', bonusAfinidade()])
+        if (primeiro && potencializada) partes.push(['Evocação Potencializada', potencializada])
+        if (poderosa) partes.push(['Conjuração Poderosa', poderosa])
+        return { soma: partes.reduce((s, p) => s + p[1], 0), rotulo: partes.map(p => ` + ${p[0]}`).join('') }
+    }
+    // Cura: Discípulo da Vida (+2 + nível), Cura Suprema (os dados no máximo)
+    const vida = stats.classe === 'clerigo' && stats.subclasse === 'vida'
+    const curaExtra = () => (vida && m.nivel >= 1 ? 2 + nivelEscolhido() : 0)
+    const maximo = expr => String(expr).replace(/(\d*)d(\d+)/g, (_, q, l) => String((parseInt(q || '1', 10)) * parseInt(l, 10)))
     const autoAtaque = () => CD.modoAutomatico(stats, f, { tipo: 'ataque', atributo: m.atributo })
     // Magia com teste de resistência: o rótulo já diz a CD para a mesa
     const rotuloEfeito = m.resistencia ? `${m.nome} (CD ${m.cd} ${D.ATRIBUTO_POR_KEY[m.resistencia].abrev})` : m.nome
     const rolarEfeito = (critico, opc = {}) => {
-        if (m.dano) rolagem.rolarDados({ personagem: nome, rotulo: rotuloEfeito, expressao: expressaoDe(m.dano), multiplicador: critico ? 2 : 1, tipo: 'dano', tipoDano, rerrolarMenores: opc.potencializada || 0 })
-        else if (m.cura) rolagem.rolarDados({ personagem: nome, rotulo: m.nome, expressao: expressaoDe(m.cura), bonus: CURA_SOMA_ATRIBUTO.has(m.id) ? f.mods[m.atributo] : 0, tipo: 'cura' })
+        if (m.dano) {
+            const ex = extraDano(true)
+            rolagem.rolarDados({ personagem: nome, rotulo: rotuloEfeito + ex.rotulo + (truquePotente ? ' · metade se passar (Truque Potente)' : ''), expressao: expressaoDe(m.dano), bonus: ex.soma, multiplicador: critico ? 2 : 1, tipo: 'dano', tipoDano: tipoDe(), rerrolarMenores: opc.potencializada || 0 })
+        } else if (m.cura) {
+            const extra = curaExtra()
+            const suprema = vida && f.nivel >= 17
+            const expr = suprema ? maximo(expressaoDe(m.cura)) : expressaoDe(m.cura)
+            rolagem.rolarDados({ personagem: nome, rotulo: m.nome + (extra ? ' + Discípulo da Vida' : '') + (suprema ? ' (Cura Suprema: dados no máximo)' : ''), expressao: expr,
+                bonus: (CURA_SOMA_ATRIBUTO.has(m.id) ? f.mods[m.atributo] : 0) + extra, tipo: 'cura' })
+            // Curandeiro Abençoado (6º): curando outra criatura, quem conjurou também recupera 2 + nível
+            if (vida && f.nivel >= 6 && m.nivel >= 1 && char) {
+                const quanto = 2 + nivelEscolhido()
+                cb.perguntar({ titulo: 'Curandeiro Abençoado', texto: `Curou outra criatura além de você? Você recupera ${quanto} PV.`,
+                    opcoes: [{ rotulo: `Recuperar ${quanto} PV`, principal: true, acao: () => { estadoUI().curaNoPersonagem(estadoUI().charPorId(char.id) || char, quanto); chat(`${nome} recupera ${quanto} PV (Curandeiro Abençoado).`) } }] })
+            }
+        }
     }
     // Conjurar uma magia de ataque rola ataque e dano juntos, como no BG3
     const conjurarComAtaque = (opc = {}) => {
         const vezes = raios * (opc.duplicada ? 2 : 1)
         for (let i = 1; i <= vezes; i++) {
             const rot = vezes > 1 ? `${m.nome} (${rajada ? 'raio' : 'alvo'} ${i}/${vezes})` : m.nome
-            if (m.dano) rolagem.magiaComAtaque({ personagem: nome, rotulo: rot, bonusAtaque: m.ataqueBonus, expressao: expressaoDe(m.dano), tipoDano, auto: autoAtaque(), rerrolarMenores: opc.potencializada || 0 })
+            // Afinidade Elemental e Evocação Potencializada valem para uma rolagem de dano só
+            const ex = extraDano(i === 1)
+            const expr = expressaoDe(m.dano)
+            if (m.dano) rolagem.magiaComAtaque({ personagem: nome, rotulo: rot + ex.rotulo, bonusAtaque: m.ataqueBonus, expressao: ex.soma ? `${expr}+${ex.soma}` : expr, tipoDano: tipoDe(), auto: autoAtaque(), rerrolarMenores: opc.potencializada || 0 })
             else rolagem.testeD20({ personagem: nome, rotulo: `${rot} (ataque)`, bonus: m.ataqueBonus, tipo: 'ataque', auto: autoAtaque() })
         }
     }
+    void tipoDano
 
     // Metamágica do feiticeiro
     const metas = stats.classe === 'feiticeiro' ? dnd.escolhidos(stats, 'metamagia') : []
@@ -689,21 +789,34 @@ function acoesDaMagia(char, stats, f, m, canEdit, { aoMudar } = {}) {
     const marcadas = new Set()
     const custoMeta = id => (id === 'duplicada' ? Math.max(1, m.nivel) : CUSTO_METAMAGIA[id] || 1)
 
+    let avisoConj = null
+    let atualizarConj = () => {}
     if (canEdit) {
-        let bloqueio = ''
-        if (f.semConjurar) bloqueio = 'Na Forma Selvagem não dá para conjurar'
-        else if (f.semProfArmadura) bloqueio = 'Vestindo armadura sem proficiência, não dá para conjurar'
-        else if (CD.semAcoes(stats)) bloqueio = 'Incapacitado: sem ações'
-        else if (usaEspaco && !opcoes.length) bloqueio = 'Sem espaço de magia livre'
-        else if (!usoLivre) bloqueio = 'Já usada; volta no descanso longo'
-        else if (char) bloqueio = cb.regraMagiaBonus(char, m)
+        let base = ''
+        if (f.semConjurar) base = 'Na Forma Selvagem não dá para conjurar'
+        else if (f.semProfArmadura) base = 'Vestindo armadura sem proficiência, não dá para conjurar'
+        else if (CD.semAcoes(stats)) base = 'Incapacitado: sem ações'
+        else if (usaEspaco && !opcoes.length) base = 'Sem espaço de magia livre'
+        else if (!usoLivre) base = 'Já usada; volta no descanso longo'
 
         const conjurar = mk('button', 'ds-magia-btn principal', 'Conjurar')
-        conjurar.disabled = !!bloqueio
-        conjurar.title = bloqueio || 'Avisa a mesa, gasta o espaço e rola o efeito'
+        // Na batalha: a ação, a ação bônus ou a reação que a magia pede tem que
+        // estar livre. A Magia Acelerada troca a ação pela ação bônus.
+        atualizarConj = () => {
+            const acel = marcadas.has('acelerada')
+            const custoTxt = { acao: 'gasta a ação', bonus: 'gasta a ação bônus', reacao: 'gasta a reação' }[cb.custoDaMagia(m, acel)]
+            const bloqueio = base || (char ? cb.podeGastar(char, cb.custoDaMagia(m, acel)) || cb.regraMagiaBonus(char, m, acel) : '')
+            conjurar.disabled = !!bloqueio
+            conjurar.title = bloqueio || `Avisa a mesa, gasta o espaço e rola o efeito (na batalha, ${custoTxt})`
+        }
+        atualizarConj()
+        avisoConj = mk('div', 'da-alerta')
         conjurar.addEventListener('click', () => {
             const custo = [...marcadas].reduce((s, id) => s + custoMeta(id), 0)
             if (custo > pontos) return
+            // A Magia Acelerada muda o custo: confere de novo
+            const trava = char ? cb.podeGastar(char, cb.custoDaMagia(m, marcadas.has('acelerada'))) : ''
+            if (trava) { avisoConj.textContent = trava; return }
             let onde = ''
             if (usaEspaco && sel) {
                 const o = opcoes.find(x => x.id === sel.value)
@@ -717,11 +830,48 @@ function acoesDaMagia(char, stats, f, m, canEdit, { aoMudar } = {}) {
             // Em batalha, gasta a ação, a ação bônus ou a reação conforme o tempo da magia
             if (char) cb.aoConjurar(char, m, { acelerada: marcadas.has('acelerada') })
             if (char && m.concentracao) estadoUI().concentrar(char, m)
+            // Bênção, Escudo da Fé, Perdição...: escolhe os alvos (dndEfeitos)
+            if (char) require('./dndEfeitos').aoConjurar(char, m, usaEspaco && sel ? nivelEscolhido() : m.nivel)
             // Bordão Místico muda a clava ou o bordão no painel de armas
             if (m.id === 'bordao-mistico') salvar('efeitos', { ...(atual().efeitos || {}), 'bordao-mistico': true })
+            // Armadura de Agathys: 5 PV temporários por nível; quem acerta corpo-a-corpo
+            // enquanto eles duram sofre o mesmo tanto de frio (dndCombate.aplicarDano)
+            if (m.id === 'armadura-de-agathys') {
+                const nv = nivelEscolhido()
+                salvar('hp_temp', Math.max(atual().hp_temp || 0, 5 * nv))
+                salvar('efeitos', { ...(atual().efeitos || {}), agathys: nv })
+            }
             const opc = { duplicada: marcadas.has('duplicada'), potencializada: marcadas.has('potencializada') ? Math.max(1, f.mods.car) : 0 }
-            if (m.ataque) conjurarComAtaque(opc)
+            // Para a Colheita Sinistra: a última magia conjurada
+            if (char) ultimaMagia[char.id] = { nivel: usaEspaco && sel ? nivelEscolhido() : m.nivel, escola: m.escola || '', nome: m.nome }
+            const destruicao = D.DESTRUICOES[m.id]
+            if (destruicao) {
+                const dados = destruicao.semDano ? null : expressaoDe(m.dano)
+                const cd = m.resistencia ? `${m.cd} ${D.ATRIBUTO_POR_KEY[m.resistencia].abrev}` : null
+                salvar('efeitos', { ...(atual().efeitos || {}), destruicao: {
+                    id: m.id, nome: m.nome, dados, tipo: dados ? tipoDe() : '', cd, corpo: destruicao.corpo,
+                    desc: `${dados ? `+${dados} ${tipoDe()}. ` : ''}${cd ? `O alvo faz ${cd} ` : ''}${destruicao.efeito}.`,
+                } })
+                chat(`${nome} prepara ${m.nome}: o próximo acerto ${destruicao.corpo ? 'corpo-a-corpo ' : 'com arma '}${dados ? `causa +${dados} ${tipoDe()}` : 'prende o alvo'}.`)
+            } else if (Object.values(D.EFEITOS).some(e => e.magia === m.id && e.danoArma)) {
+                // Auxílio Divino: o dano entra em cada acerto com arma (dndEfeitos), não agora
+            } else if (m.ataque) conjurarComAtaque(opc)
             else rolarEfeito(false, opc)
+            // Proteção Arcana (mago abjurador, 2º): abjuração de 1º+ cria a proteção ou a recarrega
+            if (char && stats.classe === 'mago' && stats.subclasse === 'abjuracao' && f.nivel >= 2 && m.nivel >= 1 && /abjura/.test(m.escola || '')) {
+                const max = 2 * f.nivel + f.mods.int
+                if (!atual().protecao_criada) {
+                    salvar('protecao_arcana', { pv: max, max })
+                    salvar('protecao_criada', true)
+                    chat(`🔷 ${nome} ergue a Proteção Arcana (${max} PV).`)
+                } else {
+                    const novo = Math.min(max, ((atual().protecao_arcana || {}).pv || 0) + 2 * (usaEspaco && sel ? nivelEscolhido() : m.nivel))
+                    salvar('protecao_arcana', { pv: novo, max })
+                    chat(`🔷 A Proteção Arcana de ${nome} volta a ${novo}/${max}.`)
+                }
+            }
+            // Surto de Magia Selvagem (a mesa decidiu: sempre rola o d20)
+            if (char) require('./dndHabilidades').aposConjurarSelvagem(char, m)
             refazer()
         })
         linha.appendChild(conjurar)
@@ -729,7 +879,9 @@ function acoesDaMagia(char, stats, f, m, canEdit, { aoMudar } = {}) {
         // Ritual: sem gastar espaço, 10 minutos a mais (bardo, clérigo, druida, mago)
         if (m.ritual && f.conjuracao && f.conjuracao.ritual && !f.semConjurar) {
             const ritual = mk('button', 'ds-magia-btn', '📜 Ritual')
-            ritual.title = 'Sem gastar espaço; leva 10 minutos a mais'
+            const emBatalha = cb.emBatalha() && !state.isRoomMaster
+            ritual.disabled = emBatalha
+            ritual.title = emBatalha ? 'Ritual leva 10 minutos a mais: não cabe numa batalha' : 'Sem gastar espaço; leva 10 minutos a mais'
             ritual.addEventListener('click', () => {
                 if (state.socket) state.socket.emit('chat_message', { playerName: '✦ Magia', message: `${nome} conjura ${m.nome} como ritual (10 minutos a mais, sem gastar espaço).`, type: 'text' })
                 if (char && m.concentracao) estadoUI().concentrar(char, m)
@@ -756,6 +908,7 @@ function acoesDaMagia(char, stats, f, m, canEdit, { aoMudar } = {}) {
         }
     }
     w.appendChild(linha)
+    if (canEdit && avisoConj) w.appendChild(avisoConj)
 
     // Metamágica: marca antes de conjurar
     if (canEdit && metas.length && m.nivel >= 0) {
@@ -769,7 +922,10 @@ function acoesDaMagia(char, stats, f, m, canEdit, { aoMudar } = {}) {
             const c = document.createElement('input')
             c.type = 'checkbox'
             c.disabled = custo > pontos
-            c.addEventListener('change', () => { if (c.checked) marcadas.add(id); else marcadas.delete(id) })
+            c.addEventListener('change', () => {
+                if (c.checked) marcadas.add(id); else marcadas.delete(id)
+                if (id === 'acelerada') atualizarConj()
+            })
             lbl.appendChild(c)
             lbl.appendChild(mk('span', null, `${op.nome} (${custo})`))
             lbl.title = op.desc || ''
@@ -800,7 +956,11 @@ function abrirPainelEquipamento(stats, canEdit) {
     body.appendChild(mk('span', 'input-label', 'Armadura vestida'))
     const sel = document.createElement('select')
     sel.className = 'dc-select'
-    sel.disabled = !canEdit || !!f.forma
+    // Na batalha não dá para trocar de armadura: vestir leva minutos (LdJ p. 146)
+    const cbt = require('./dndCombate')
+    const travaArmadura = cbt.emBatalha() && !state.isRoomMaster ? 'Vestir ou tirar armadura leva minutos: não dá na batalha' : ''
+    sel.disabled = !canEdit || !!f.forma || !!travaArmadura
+    if (travaArmadura) sel.title = travaArmadura
     sel.appendChild(new Option('Sem armadura', ''))
     armaduras.forEach(a => {
         const def = D.ARMADURAS[a.base]
@@ -817,8 +977,14 @@ function abrirPainelEquipamento(stats, canEdit) {
         const cb = document.createElement('input')
         cb.type = 'checkbox'
         cb.checked = !!escudo
-        cb.disabled = !canEdit || !!f.forma
-        cb.addEventListener('change', () => salvarEquipamento(stats, { ...(stats.equipamento || {}), escudo: cb.checked ? escudos[0].id : null }))
+        // Pôr ou tirar o escudo gasta a ação
+        const travaEscudo = char ? cbt.podeGastar(char, 'acao') : ''
+        cb.disabled = !canEdit || !!f.forma || !!travaEscudo
+        lbl.title = travaEscudo || 'Pôr ou tirar o escudo gasta a ação na batalha'
+        cb.addEventListener('change', () => {
+            if (char) cbt.gastarCusto(char, 'acao')
+            salvarEquipamento(stats, { ...(stats.equipamento || {}), escudo: cb.checked ? escudos[0].id : null })
+        })
         lbl.appendChild(cb)
         lbl.appendChild(mk('span', null, `${nomeDe(escudos[0])} (+${2 + (escudos[0].bonus || 0)} CA)` + (f.proficiencias.armaduras.includes('escudo') ? '' : ' · sem proficiência')))
         body.appendChild(lbl)
@@ -963,6 +1129,8 @@ function abrirPainelProficiencias(stats) {
 // ── Descanso ──────────────────────────────────────────────────────────────────
 
 function descansar(tipo) {
+    // O que dura até o descanso (Bênção, Inspiração, Ajuda...) acaba antes de tudo
+    if (state.statPopupChar) require('./dndEfeitos').aoDescansar(state.statPopupChar, tipo)
     const stats = statsAtuais()
     if (!stats) return
     const f = dnd.calcular(stats)
@@ -990,6 +1158,13 @@ function descansar(tipo) {
         // Um nível de exaustão a menos; os espaços criados com feitiçaria somem
         if (stats.exaustao) commit('exaustao', stats.exaustao - 1)
         if (stats.espacos_extras) commit('espacos_extras', {})
+        if (stats.protecao_arcana || stats.protecao_criada) { commit('protecao_arcana', null); commit('protecao_criada', false) }
+        // Prodígio (mago adivinho): os d20 do dia (3 no 14º)
+        if (stats.classe === 'mago' && stats.subclasse === 'adivinhacao' && f.nivel >= 2) {
+            const valores = Array.from({ length: f.nivel >= 14 ? 3 : 2 }, () => 1 + Math.floor(Math.random() * 20))
+            commit('prodigio', valores)
+            chat(`🔮 Prodígio de ${(state.statPopupChar || {}).name}: ${valores.join(' e ')}.`)
+        }
     }
     if (state.socket) {
         const char = state.statPopupChar
@@ -1048,6 +1223,8 @@ function gravar(charId, campos) {
     })
     // O palco da batalha mostra PV, condições e economia de todo o grupo
     try { require('./dndCena').aoMudarFicha(charId) } catch (e) { /* palco fechado */ }
+    // Mudou de concentração: o que ela segurava (Bênção, Perdição...) acaba
+    if ('concentracao' in campos) setTimeout(() => require('./dndEfeitos').limparMeus(), 0)
     const stats = (meu && meu.stats) || (entry && entry.character.stats)
     if (stats && state.supabase) {
         state.supabase.from('characters').update({ stats }).eq('id', charId)
@@ -1100,6 +1277,15 @@ function atualizarPaineis(canEdit) {
     if (visivel('dndCondicoes') && state.statPopupChar) estadoUI().abrirPainelCondicoes(state.statPopupChar, canEdit)
     if (visivel('dndPericias')) abrirPainelPericias(stats)
     if (visivel('dndCaract')) abrirPainelCaracteristicas(stats)
+}
+
+/** Refaz os painéis abertos da ficha (a economia do turno mudou). */
+function atualizarPaineisAbertos() {
+    const char = state.statPopupChar
+    if (!char || !isDnd(char)) return
+    const entry = state.allCharsCache.find(e => e.character.id === char.id)
+    const ownerName = entry ? entry.playerName : state.playerName
+    atualizarPaineis(state.isRoomMaster || ownerName === state.playerName)
 }
 
 /** Chamado por socket.js quando outro cliente altera esta ficha. */
@@ -1235,5 +1421,5 @@ function copia(v) { return v && typeof v === 'object' ? JSON.parse(JSON.stringif
 
 module.exports = {
     buildSheet, fecharPaineis, onRemoteStatUpdate, isDnd, reabrirFicha, gravar, persistirSeForMeu, segurarCliques, painel,
-    acoesDaMagia, abrirPainelPericias,
+    acoesDaMagia, abrirPainelPericias, atualizarPaineisAbertos, ultimaMagiaDe: id => ultimaMagia[id] || null,
 }

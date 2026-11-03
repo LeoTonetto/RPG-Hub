@@ -178,9 +178,12 @@ function blocoEstado(char, stats, f, canEdit) {
         fs.appendChild(barra)
         if (canEdit) {
             const b = mk('button', 'ds-link', 'voltar à forma normal')
+            b.title = 'Gasta a ação bônus'
             b.addEventListener('click', () => {
-                sheet().gravar(char.id, { forma: null })
-                chat(`${char.name} volta à forma normal.`)
+                const H = require('./dndHabilidades')
+                const h = H.lista(char).find(x => x.id === 'forma-voltar')
+                const m = h ? H.usar(char, h) : ''
+                if (m) require('./dndCombate').aviso(m)
                 sheet().reabrirFicha()
             })
             fs.appendChild(b)
@@ -257,6 +260,54 @@ function blocoEstado(char, stats, f, canEdit) {
             b.addEventListener('click', () => testeConcentracao(char))
             chips.appendChild(b)
         }
+    }
+    // Proteção Arcana (abjurador)
+    if (stats.protecao_arcana && stats.protecao_arcana.max) {
+        const pa = stats.protecao_arcana
+        const chip = mk('span', 'de-chip efeito', `🔷 Proteção Arcana ${pa.pv}/${pa.max}`)
+        chip.title = 'Sofre o dano antes de você. Abjuração de 1º nível ou mais recarrega 2 por nível da magia.'
+        chips.appendChild(chip)
+    }
+    // Prodígio (adivinho): cada d20 guardado, para usar antes de uma jogada
+    ;(stats.prodigio || []).forEach((v, i) => {
+        const b = mk('button', 'de-chip de-chip-add', `🔮 ${v}`)
+        b.title = 'Prodígio: troca uma jogada de ataque, teste ou resistência por este valor (antes de rolar)'
+        b.disabled = !canEdit
+        b.addEventListener('click', () => require('./dndCombate').perguntar({
+            titulo: `Prodígio: ${v}`, texto: 'Trocar uma jogada de ataque, teste ou resistência por este valor, antes de rolar.',
+            opcoes: [
+                { rotulo: 'No meu próximo d20', principal: true, acao: () => { require('./dndEfeitos').usarProdigio(char, i, true); sheet().reabrirFicha() } },
+                { rotulo: 'Na jogada de outra criatura', acao: () => { require('./dndEfeitos').usarProdigio(char, i, false); sheet().reabrirFicha() } },
+            ],
+        }))
+        chips.appendChild(b)
+    })
+    // Intervenção Divina atendida: só o mestre libera (7 dias de jogo)
+    if (stats.intervencao_bloqueada) {
+        const chip = mk('span', 'de-chip alerta', '🙏 Intervenção atendida')
+        chip.title = 'Só pode pedir de novo depois de 7 dias de jogo'
+        if (state.isRoomMaster) {
+            const x = mk('button', 'de-chip-x', 'liberar')
+            x.title = 'Passaram os 7 dias: pode pedir de novo'
+            x.addEventListener('click', () => {
+                const usados = { ...(stats.recursos_usados || {}) }
+                delete usados.intervencao
+                sheet().gravar(char.id, { intervencao_bloqueada: false, recursos_usados: usados })
+                sheet().reabrirFicha()
+            })
+            chip.appendChild(x)
+        }
+        chips.appendChild(chip)
+    }
+    // Efeitos que outros puseram (Bênção, Inspiração...), com o ✕ para tirar
+    require('./dndEfeitos').chipsDaFicha(char, stats).forEach(c => chips.appendChild(c))
+    // Paladino (6º): quem está na aura
+    if (canEdit && stats.classe === 'paladino' && f.nivel >= 6) {
+        const n = (stats.aura_aliados || []).length
+        const aura = mk('button', 'de-chip de-chip-add', `🔆 Aura · ${n}`)
+        aura.title = 'Quem está perto (Aura de Proteção)'
+        aura.addEventListener('click', () => require('./dndEfeitos').escolherAura(char).then(() => sheet().reabrirFicha()))
+        chips.appendChild(aura)
     }
     if (canEdit) {
         const add = mk('button', 'de-chip de-chip-add', ativas.length || stats.exaustao ? '✎' : '+ Condição')

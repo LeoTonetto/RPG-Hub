@@ -340,7 +340,22 @@ function setupSocketHandlers(io) {
             // PV da criatura, se o mestre quiser (os jogadores veem só a barra)
             pv: Number.isFinite(+e?.pv) && e?.pv !== null && e?.pv !== '' ? Math.max(0, Math.round(+e.pv)) : null,
             pvMax: Number.isFinite(+e?.pvMax) && +e?.pvMax > 0 ? Math.round(+e.pvMax) : null,
+            // Surpreso: perde o primeiro turno (LdJ p. 189); nocauteada: a 0 PV, inconsciente
+            surpreso: !!e?.surpreso,
+            nocaute: !!e?.nocaute,
         })
+        // Quem foi surpreendido não age no primeiro turno e só reage depois dele
+        const pularSurpresos = c => {
+            for (let i = 0; i < c.ordem.length; i++) {
+                const e = c.ordem[c.turno]
+                if (!e || !e.surpreso) return
+                e.surpreso = false
+                avisarBatalha(`${e.nome} está surpreso e perde o turno.`)
+                c.turno = (c.turno + 1) % c.ordem.length
+                if (c.turno === 0) c.rodada++
+                c.economia[c.ordem[c.turno].id] = economiaNova()
+            }
+        }
 
         socket.on('combate_iniciar', ({ ordem } = {}) => {
             if (!ehMestreAgora() || !Array.isArray(ordem) || !ordem.length) return
@@ -349,9 +364,11 @@ function setupSocketHandlers(io) {
                 rodada: 1, turno: 0, ordem: lista,
                 economia: Object.fromEntries(lista.map(e => [e.id, economiaNova()])),
             }
+            const c = roomCombate[roomCode]
+            avisarBatalha(`Batalha iniciada! Ordem: ${lista.map(e => `${e.nome} ${e.iniciativa}${e.surpreso ? ' (surpreso)' : ''}`).join(' · ')}`)
+            pularSurpresos(c)
             emitirCombate()
-            avisarBatalha(`Batalha iniciada! Ordem: ${lista.map(e => `${e.nome} ${e.iniciativa}`).join(' · ')}`)
-            avisarBatalha(`Rodada 1 — turno de ${lista[0].nome}`)
+            avisarBatalha(`Rodada ${c.rodada} — turno de ${c.ordem[c.turno].nome}`)
             console.log(`[Batalha] Iniciada na sala ${roomCode} com ${lista.length} participante(s)`)
         })
 
@@ -368,13 +385,16 @@ function setupSocketHandlers(io) {
         })
 
         // Mestre mexe nos PV de uma criatura (dano, cura ou o máximo)
-        socket.on('combate_pv', ({ id, pv, pvMax } = {}) => {
+        socket.on('combate_pv', ({ id, pv, pvMax, nocaute } = {}) => {
             const c = roomCombate[roomCode]
             if (!c || !ehMestreAgora()) return
             const ent = c.ordem.find(e => e.id === id && e.tipo === 'criatura')
             if (!ent) return
             if (Number.isFinite(+pvMax) && +pvMax > 0) ent.pvMax = Math.round(+pvMax)
             if (Number.isFinite(+pv)) ent.pv = Math.max(0, Math.round(+pv))
+            // Nocauteada fica inconsciente a 0 PV; voltar a ter PV tira a marca
+            if (typeof nocaute === 'boolean') ent.nocaute = nocaute
+            if (ent.pv > 0) ent.nocaute = false
             emitirCombate()
         })
 
@@ -386,6 +406,7 @@ function setupSocketHandlers(io) {
             if (c.turno === 0) c.rodada++
             // A reação volta no começo do próprio turno, junto com a ação
             c.economia[c.ordem[c.turno].id] = economiaNova()
+            pularSurpresos(c)
             emitirCombate()
             avisarBatalha(`Rodada ${c.rodada} — turno de ${c.ordem[c.turno].nome}`)
         })
@@ -426,12 +447,14 @@ function setupSocketHandlers(io) {
                 corpo: !!a.corpo,
                 dano: Math.max(0, Math.round(+a.dano) || 0),
                 tipoDano: a.tipoDano ? String(a.tipoDano).slice(0, 20) : '',
+                // Cobertura do alvo: meia +2, três quartos +5 na CA (LdJ p. 196)
+                cobertura: [2, 5].includes(+a.cobertura) ? +a.cobertura : 0,
             }
             io.to(roomCode).emit('combate_anuncio', anuncio)
             const alvo = roomCombate[roomCode].ordem.find(e => e.id === anuncio.alvoId)
             const texto = {
                 magia: `${anuncio.criatura} começa a conjurar ${anuncio.magia || 'uma magia'}${anuncio.nivel ? ` (${anuncio.nivel}º nível)` : ''}.`,
-                ataque: `${anuncio.criatura} ataca ${alvo ? alvo.nome : '?'} (${anuncio.total} no ataque${anuncio.corpo ? ', corpo-a-corpo' : ''}).`,
+                ataque: `${anuncio.criatura} ataca ${alvo ? alvo.nome : '?'} (${anuncio.total} no ataque${anuncio.corpo ? ', corpo-a-corpo' : ''}${anuncio.cobertura ? `, alvo com cobertura +${anuncio.cobertura}` : ''}).`,
                 oportunidade: `${anuncio.criatura} sai do alcance de ${alvo ? alvo.nome : '?'}.`,
                 dano: `${alvo ? alvo.nome : '?'} sofre ${anuncio.dano} de dano${anuncio.tipoDano ? ` ${anuncio.tipoDano}` : ''} de ${anuncio.criatura}.`,
             }[anuncio.tipo]
@@ -475,6 +498,42 @@ function setupSocketHandlers(io) {
         })
 
         // Resposta de um jogador a um anúncio: gasta a reação dele
+        // Teste pedido pelo mestre: o pedido vai a todos (cada app vê se é com
+        // ele) e as respostas voltam para o mestre, que confere a CD
+        socket.on('dnd_pedir_teste', (p = {}) => {
+            if (!ehMestreAgora()) return
+            const pedido = {
+                id: String(p.id ?? '').slice(0, 12), tipo: ['pericia', 'atributo', 'resistencia'].includes(p.tipo) ? p.tipo : 'atributo',
+                chave: String(p.chave ?? '').slice(0, 30), origem: ['veneno', 'magia', 'encantamento', 'medo'].includes(p.origem) ? p.origem : '',
+                alvos: Array.isArray(p.alvos) ? p.alvos.slice(0, 20).map(x => String(x).slice(0, 64)) : [],
+                grupo: !!p.grupo, rotulo: String(p.rotulo ?? '').slice(0, 60),
+            }
+            io.to(roomCode).emit('dnd_pedir_teste', pedido)
+            avisarBatalha(`O mestre pede: ${pedido.rotulo}${pedido.grupo ? ' (em grupo)' : ''}.`)
+        })
+        socket.on('dnd_resposta_teste', (r = {}) => {
+            const mestre = roomMasters[roomCode]
+            if (!mestre) return
+            io.to(mestre).emit('dnd_resposta_teste', {
+                pedidoId: String(r.pedidoId ?? '').slice(0, 12), charId: String(r.charId ?? '').slice(0, 64),
+                nome: String(r.nome ?? '?').slice(0, 40), total: Math.round(+r.total) || 0, falha: !!r.falha,
+            })
+        })
+
+        // Efeito em aliado (Bênção, Inspiração de Bardo...): o servidor só deixa
+        // o dono gravar a ficha, então o pedido vai para o app do dono do alvo
+        socket.on('dnd_efeito', (p = {}) => {
+            const salas = roomChars[roomCode]
+            if (!salas || !['add', 'remove'].includes(p.acao)) return
+            const charId = String(p.charId ?? '').slice(0, 64)
+            const efeito = p.efeito && typeof p.efeito === 'object' && JSON.stringify(p.efeito).length < 1500 ? p.efeito : null
+            const pedido = { acao: p.acao, charId, efeito, uid: p.uid ? String(p.uid).slice(0, 20) : null,
+                tipo: p.tipo ? String(p.tipo).slice(0, 40) : null, fonte: p.fonte ? String(p.fonte).slice(0, 64) : null }
+            for (const sid in salas) {
+                if (salas[sid].characters.some(c => c.id === charId)) { io.to(sid).emit('dnd_efeito', pedido); return }
+            }
+        })
+
         socket.on('combate_reacao', (r = {}) => {
             const c = roomCombate[roomCode]
             if (!c || !c.economia[r.entradaId]) return
@@ -487,7 +546,7 @@ function setupSocketHandlers(io) {
                 nome: ent.nome,
                 reacao: String(r.reacao ?? '').slice(0, 30),
                 texto: String(r.texto ?? '').slice(0, 160),
-                efeito: ['erra', 'metade', 'reduz', 'anula', 'falha', 'nada'].includes(r.efeito) ? r.efeito : 'nada',
+                efeito: ['erra', 'metade', 'reduz', 'anula', 'falha', 'nada', 'desvantagem', 'diminui'].includes(r.efeito) ? r.efeito : 'nada',
                 reducao: Math.max(0, Math.round(+r.reducao) || 0),
             }
             io.to(roomCode).emit('combate_reacao', resposta)

@@ -214,6 +214,7 @@ const CLASSES = {
             },
             'grande-antigo': {
                 nome: 'O Grande Antigo', resumo: 'Pacto com uma entidade incompreensível.',
+                recursos: (nv) => (nv >= 6 ? [{ id: 'protecao-entropica', nome: 'Proteção Entrópica', max: 1, recarga: 'curto' }] : []),
                 niveis: {
                     1: [c('Despertar a Mente', 'Fala telepaticamente com criaturas a 9 m.')],
                     6: [c('Proteção Entrópica', 'Reação: impõe desvantagem a um ataque; se errar, você tem vantagem no próximo contra ele.')],
@@ -251,9 +252,11 @@ const CLASSES = {
             5: [c('Destruir Mortos-Vivos', 'Mortos-vivos expulsos de ND 1/2 ou menor são destruídos (ND 1 no 8º, 2 no 11º, 3 no 14º, 4 no 17º).')],
             10: [c('Intervenção Divina', 'Pede ajuda à divindade: funciona se rolar no d100 até o seu nível. Sempre funciona no 20º.')],
         },
-        recursos: (nv) => nv >= 2 ? [
-            { id: 'canalizar', nome: 'Canalizar Divindade', max: porNivel([[2, 1], [6, 2], [18, 3]], nv), recarga: 'curto' },
-        ] : [],
+        recursos: (nv) => [
+            ...(nv >= 2 ? [{ id: 'canalizar', nome: 'Canalizar Divindade', max: porNivel([[2, 1], [6, 2], [18, 3]], nv), recarga: 'curto' }] : []),
+            // Deu certo: só volta quando o mestre liberar (7 dias de jogo); falhou: no descanso longo
+            ...(nv >= 10 ? [{ id: 'intervencao', nome: 'Intervenção Divina', max: 1, recarga: 'longo' }] : []),
+        ],
         subclasses: {
             'conhecimento': {
                 nome: 'Domínio do Conhecimento', resumo: 'Deuses do saber e da compreensão.',
@@ -387,6 +390,7 @@ const CLASSES = {
         subclasses: {
             'terra': {
                 nome: 'Círculo da Terra', resumo: 'Místicos ligados a um tipo de terreno.', truquesExtras: 1,
+                recursos: (nv) => (nv >= 2 ? [{ id: 'recuperacao-natural', nome: 'Recuperação Natural', max: 1, recarga: 'longo', info: `até ${Math.ceil(nv / 2)} níveis de espaço` }] : []),
                 niveis: {
                     2: [c('Truque Adicional', 'Um truque de druida a mais.'),
                         c('Recuperação Natural', 'No descanso curto, recupera espaços de magia somando até metade do nível. 1 vez por descanso longo.'),

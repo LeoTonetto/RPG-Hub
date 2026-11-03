@@ -137,6 +137,9 @@ function connectToRoom(url, roomCode) {
     state.socket.on('room_characters', allChars => renderCharacterBar(allChars))
 
     // ── Stats em tempo real ──────────────────────────────────────────────────
+    state.socket.on('dnd_efeito', p => require('./dndEfeitos').aoReceber(p))
+    state.socket.on('dnd_pedir_teste', p => require('./dndTestes').aoPedido(p))
+    state.socket.on('dnd_resposta_teste', r => require('./dndTestes').aoResposta(r))
     state.socket.on('stat_update', ({ charId, field, value, ownerName }) => {
         const entry = state.allCharsCache.find(e => e.character.id === charId)
         const stats = entry?.character?.stats || {}
@@ -158,6 +161,8 @@ function connectToRoom(url, roomCode) {
             // Teste de concentração pedido por quem aplicou o dano
             require('./dndEstadoUI').aoMudarCampo(charId, field, value)
             require('./dndCena').aoMudarFicha(charId)
+            // Quem conjurou mudou de concentração: os efeitos dela nos meus personagens acabam
+            if (field === 'concentracao') require('./dndEfeitos').limparMeus()
         }
 
         if (state.statPopupCharId === charId && (field === 'expressao' || field === 'expressoes')) {

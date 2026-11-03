@@ -1411,7 +1411,8 @@
     white-space: nowrap;
 }
 
-.cb-btn:hover { border-color: var(--gold); color: var(--gold-light); }
+.cb-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold-light); }
+.cb-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .cb-btn.principal { background: rgba(var(--gold-rgb), 0.18); border-color: var(--gold); color: var(--gold-light); }
 .cb-btn.perigo:hover { border-color: rgba(192, 57, 43, 0.8); color: #f0928a; }
 
@@ -1487,7 +1488,10 @@
 .cb-setup-nome { color: var(--parchment); }
 .cb-setup-pj b { color: var(--gold-light); font-weight: 600; font-variant-numeric: tabular-nums; }
 
-.cb-setup-cr { display: grid; grid-template-columns: 1fr 74px 26px 26px; gap: 6px; align-items: center; }
+.cb-setup-cr { display: grid; grid-template-columns: 1fr 64px 26px 64px auto 26px; gap: 6px; align-items: center; }
+/* Surpreso: perde o primeiro turno */
+.cb-surpresa { font-size: 11px; color: rgba(var(--parchment-rgb), 0.7); }
+.cb-setup-lista > .cb-surpresa { margin: -4px 0 2px 28px; }
 .cb-setup-cr .room-input { padding: 7px 10px; font-size: 14px; }
 .cb-mais { align-self: flex-start; text-decoration: none; }
 
@@ -1497,7 +1501,7 @@
 .cb-num { width: 120px; }
 
 /* ── Resultado para o mestre ── */
-#combateResultado {
+#combateResultado, #dndTesteResultado {
     position: fixed;
     top: 120px;
     right: 16px;
@@ -1513,7 +1517,9 @@
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.75);
 }
 
-#combateResultado .subpanel-close { position: absolute; top: 6px; right: 8px; }
+#combateResultado .subpanel-close, #dndTesteResultado .subpanel-close { position: absolute; top: 6px; right: 8px; }
+/* A caixa dos testes pedidos fica abaixo da do ataque */
+#dndTesteResultado { top: auto; bottom: 120px; }
 .cb-res-titulo { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.08em; color: var(--gold-light); padding-right: 18px; }
 .cb-res-linha { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.04em; }
 .cb-res-linha.acerto { color: #e0574a; }
@@ -1698,7 +1704,6 @@
    ══ ESTADO EM JOGO: 0 PV, CONDIÇÕES, CONCENTRAÇÃO, FORMA SELVAGEM ══
    ══════════════════════════════════════════════════════════════════════════════ */
 
-.ds-pv-tipo { width: 100%; margin-top: 4px; padding: 3px 6px; font-size: 12px; }
 
 .de-estado { display: flex; flex-direction: column; gap: 6px; }
 .de-estado:empty { display: none; }
@@ -1735,6 +1740,17 @@
 .de-chip-add:hover { border-color: var(--gold-light); color: var(--parchment); }
 .de-chip-x { background: none; border: none; padding: 0 0 0 2px; color: inherit; font-size: 11px; cursor: pointer; opacity: 0.7; }
 .de-chip-x:hover { opacity: 1; }
+/* Efeito que outro pôs (Bênção, Inspiração...) */
+.de-chip.efeito { border-color: rgba(var(--gold-light-rgb), 0.45); color: var(--parchment); }
+
+/* Escolher alvos de um efeito ou marca */
+.de-alvos { width: min(420px, calc(100vw - 32px)); }
+.de-alvos-texto { font-size: 13px; line-height: 1.45; color: rgba(var(--parchment-rgb), 0.75); text-align: center; }
+.de-alvos-lista { display: flex; flex-direction: column; gap: 6px; }
+.de-alvo { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid rgba(var(--gold-rgb), 0.18); border-radius: 4px; }
+.de-alvo span { flex: 1; }
+.de-alvo .dc-select { width: auto; max-width: 180px; padding: 3px 6px; font-size: 12px; }
+.de-alvo:has(input:disabled) { opacity: 0.45; }
 
 .de-cond-lista { display: flex; flex-direction: column; gap: 3px; }
 .de-cond {
@@ -1778,11 +1794,50 @@
 .char-card-dnd-estado { display: flex; flex-wrap: wrap; gap: 2px; font-size: 11px; line-height: 1; margin-top: 2px; }
 .char-card-dnd-estado:empty { display: none; }
 
+/* ── Aliados: cardzinhos ao lado do card do dono (sala e palco) ──
+   Duas linhas da altura do card; mais aliados abrem novas colunas. */
+.aliados-mini {
+    display: grid;
+    grid-template-rows: repeat(var(--linhas, 1), 51px);
+    grid-auto-flow: column;
+    grid-auto-columns: 116px;
+    gap: 6px;
+    align-content: center;
+    flex-shrink: 0;
+    margin-left: -3px;   /* encosta no card do dono */
+}
+.aliado-mini {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 5px 7px;
+    background: linear-gradient(160deg, rgba(var(--fundo-rgb), 0.96), rgba(var(--fundo-escuro-rgb), 0.98));
+    border: 1px dashed rgba(var(--gold-rgb), 0.45);
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.aliado-mini.clicavel { cursor: pointer; }
+.aliado-mini.clicavel:hover { border-color: rgba(var(--gold-rgb), 0.75); }
+.aliado-mini.atual { border-style: solid; border-color: var(--gold-light); box-shadow: 0 0 14px rgba(var(--gold-light-rgb), 0.5), 0 4px 16px rgba(0, 0, 0, 0.6); }
+.aliado-mini.caido { opacity: 0.55; filter: grayscale(0.8); }
+.aliado-mini-icone { width: 24px; height: 24px; color: var(--gold); }
+.aliado-mini-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.aliado-mini-info b { font-family: 'Cinzel', serif; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; color: var(--parchment); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aliado-mini-info span { font-size: 10px; line-height: 1; color: rgba(var(--parchment-rgb), 0.65); font-variant-numeric: tabular-nums; }
+.aliado-mini-barra { height: 4px; background: rgba(0, 0, 0, 0.55); border-radius: 2px; overflow: hidden; }
+.aliado-mini-barra > div { height: 100%; background: linear-gradient(90deg, #8b1e2b, #d4434f); transition: width 0.35s ease; }
+
 /* ══ BATALHA: ações de combate, marcas do alvo, pergunta ══ */
 .cb-acoes-combate { display: flex; flex-direction: column; gap: 4px; width: min(520px, calc(100vw - 48px)); }
 .cb-acoes-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .cb-acoes-linha .cb-btn { padding: 4px 8px; font-size: 10px; }
-.cb-acoes-rot { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-dim); width: 46px; }
+.cb-acoes-rot { flex-basis: 100%; font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold-dim); }
+/* Alvo e pontos de uma habilidade (Cura pelas Mãos, Inspiração de Bardo...) */
+.cb-campos { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.cb-campos .dc-select { width: auto; max-width: 170px; padding: 3px 6px; font-size: 12px; }
+.ds-recurso-usar { display: flex; flex-wrap: wrap; gap: 4px; }
 .cb-marcas { font-size: 11px; line-height: 1; text-align: center; }
 .cb-dicas { font-size: 13px; color: var(--gold-light); }
 .cb-dicas:empty { display: none; }
@@ -1922,6 +1977,10 @@ body.em-batalha #characterBar { display: none !important; }
 .cn-cr.atual { border-color: var(--gold-light); box-shadow: 0 0 18px rgba(var(--gold-light-rgb), 0.45), 0 6px 20px rgba(0, 0, 0, 0.6); transform: translateY(-3px); }
 .cn-cr.caida { opacity: 0.45; filter: grayscale(0.8); }
 .cn-cr-topo { display: flex; align-items: center; gap: 7px; }
+/* Marcas de quem lançou: Perdição, Marca do Caçador, Bruxaria, Voto de Inimizade */
+.cn-cr-marcas { display: flex; gap: 4px; font-size: 13px; line-height: 1; cursor: help; }
+/* Surpresa, caída ou nocauteada */
+.cn-cr-estado { font-size: 11px; letter-spacing: 0.04em; color: rgba(var(--parchment-rgb), 0.75); }
 .cn-cr-icone { width: 22px; height: 22px; flex: none; color: var(--gold); }
 .cn-cr-nome { flex: 1; min-width: 0; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.06em; color: var(--parchment); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cn-ini { font-family: 'Cinzel', serif; font-size: 10px; padding: 1px 5px; border-radius: 8px; background: rgba(var(--gold-rgb), 0.2); color: var(--gold-light); }
@@ -1969,6 +2028,9 @@ body.em-batalha #characterBar { display: none !important; }
 .cn-pj.caido .cn-foto { filter: grayscale(0.8) brightness(0.6); }
 .cn-pj.morto { opacity: 0.5; filter: grayscale(1); }
 .cn-pj.aliado { width: 170px; border-style: dashed; }
+/* O personagem e os aliados dele, juntos na fila do grupo */
+.cn-pj-grupo { display: flex; align-items: flex-end; gap: 6px; }
+.cn-pj-grupo .aliados-mini { margin-left: 0; grid-template-rows: repeat(var(--linhas, 1), 46px); align-content: end; }
 .cn-foto { flex: none; width: 46px; height: 46px; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(var(--gold-rgb), 0.25); }
 .cn-foto img { width: 100%; height: 100%; object-fit: cover; }
 .cn-foto .dm-icone { width: 30px; height: 30px; color: var(--gold); }
@@ -2065,6 +2127,8 @@ body.em-batalha #characterBar { display: none !important; }
 .cn-cmd.magia { background: linear-gradient(180deg, #4b7fc0, #24467a); }
 .cn-cmd.item { background: linear-gradient(180deg, #4f9c5a, #276234); }
 .cn-cmd.acoes { background: linear-gradient(180deg, #d6a637, #8a6516); }
+/* A ação bônus: faixa inteira embaixo dos 4 comandos */
+.cn-cmd.bonus { min-height: 44px; font-size: 14px; background: linear-gradient(180deg, #9b5fc6, #57297c); }
 
 .cn-sub-cab { display: flex; align-items: center; gap: 10px; }
 .cn-sub-cab b { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.1em; color: var(--gold-light); text-transform: uppercase; }
@@ -2114,5 +2178,5 @@ body.em-batalha #characterBar { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
     #cenaBatalha, .cn-menu { animation: none; }
-    .cn-pj, .cn-cr, .cn-cmd { transition: none; }
+    .cn-pj, .cn-cr, .cn-cmd, .aliado-mini, .aliado-mini-barra > div { transition: none; }
 }

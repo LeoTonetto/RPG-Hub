@@ -734,9 +734,15 @@ function calcular(stats) {
     const talentos = talentosEscolhidos(stats)
     const temTalento = id => talentos.some(t => t.id === id)
 
+    // Efeitos que outros puseram nele (Bênção, Escudo da Fé, Ajuda, auras...): dndEfeitos.js
+    const recebidos = (stats.efeitos_recebidos || []).filter(e => D.EFEITOS[e.tipo])
+    const doTipo = id => recebidos.filter(e => e.tipo === id)
+
     // ── Testes de resistência ─────────────────────────────────────────────────
-    // Aura de Proteção do paladino vale para o próprio paladino também
-    const aura = classe && classe.auraProtecao && nivel >= classe.auraProtecao ? Math.max(1, mods.car) : 0
+    // Aura de Proteção do paladino vale para o próprio paladino também; a de
+    // outro paladino não soma com a dele: vale a maior
+    const auraPropria = classe && classe.auraProtecao && nivel >= classe.auraProtecao ? Math.max(1, mods.car) : 0
+    const aura = Math.max(auraPropria, ...doTipo('aura-protecao').map(e => e.valor || 0))
     const resistencias = {}
     D.TODOS_ATRIBUTOS.forEach(k => {
         const profi = p.resistencias.has(k)
@@ -799,6 +805,10 @@ function calcular(stats) {
     // Ambidestro: +1 com uma arma corpo-a-corpo em cada mão (o jogador marca nas armas)
     if (temTalento('ambidestro') && (stats.efeitos || {})['duas-armas']) { ca += 1; caDetalhe += ' + Ambidestro 1' }
     if (forma) { ca = forma.ca; caDetalhe = `${forma.nome} (Forma Selvagem)` }
+    // Escudo da Fé, Velocidade: a mesma magia duas vezes não soma
+    ;['escudo-da-fe', 'velocidade'].forEach(id => {
+        if (doTipo(id).length && D.EFEITOS[id].ca) { ca += D.EFEITOS[id].ca; caDetalhe += ` + ${D.EFEITOS[id].nome} ${D.EFEITOS[id].ca}` }
+    })
     const semProfArmadura = (armadura && !p.armaduras.has(armadura.tipo)) || (escudo && !p.armaduras.has('escudo'))
 
     // ── Deslocamento ──────────────────────────────────────────────────────────
@@ -808,6 +818,7 @@ function calcular(stats) {
     if (stats.classe === 'monge' && !armadura && !escudo) deslocamento += porNivel([[1, 0], ...MOVIMENTO_MONGE], nivel)
     if (armadura && armadura.forca && atributos.for < armadura.forca && !(raca && raca.pesadaSemPenalidade)) deslocamento -= 3
     if (forma) deslocamento = CR.deslocamentoBase(forma.deslocamento)
+    if (doTipo('velocidade').length) deslocamento *= D.EFEITOS.velocidade.desloc
     const exaustao = Math.max(0, Math.min(6, stats.exaustao || 0))
     if (exaustao >= 2) deslocamento = deslocamento / 2
     const parado = exaustao >= 5 || (stats.condicoes || []).some(c => D.CONDICOES[c] && D.CONDICOES[c].efeitos.parado)
@@ -823,6 +834,9 @@ function calcular(stats) {
         + (temTalento('robusto') ? 2 : 0)
     pvMax += pvPorNivel * nivel
     if (exaustao >= 4) pvMax = Math.max(1, Math.floor(pvMax / 2))
+    // Ajuda: a maior delas (a mesma magia não soma)
+    const ajuda = Math.max(0, ...doTipo('ajuda').map(e => D.EFEITOS.ajuda.pv(e.nivel || 2)))
+    pvMax += ajuda
 
     // ── Sentidos e resistências a dano ────────────────────────────────────────
     const visao = Math.max(
@@ -891,6 +905,7 @@ function calcular(stats) {
         semConjurar: !!forma && !(stats.classe === 'druida' && nivel >= 18),
         talentos: talentos.map(t => t.id),
         visaoEscuro: visao, resistenciasDano: [...resistenciasDano],
+        efeitosRecebidos: recebidos, pvAjuda: ajuda,
         proficiencias: {
             armaduras: [...p.armaduras], categoriasArma: [...p.categoriasArma], armas: [...p.armas],
             ferramentas: [...p.ferramentas], idiomas: [...p.idiomas],
@@ -968,7 +983,9 @@ function escudoEmpunhado(stats) {
 const DESARMADO = 'desarmado'
 const DADO_ARTES_MARCIAIS = [[1, 4], [5, 6], [11, 8], [17, 10]]
 // Golpe Divino do clérigo (8º nível): o tipo do dano depende do domínio
-const GOLPE_DIVINO = { guerra: null, natureza: 'frio, fogo ou elétrico', tempestade: 'trovejante', enganacao: 'veneno', vida: 'radiante' }
+const GOLPE_DIVINO = { guerra: null, natureza: null, tempestade: 'trovejante', enganacao: 'veneno', vida: 'radiante' }
+// Quando o livro dá a escolha, o tipo vem dessa lista (e só dela)
+const GOLPE_DIVINO_TIPOS = { natureza: ['frio', 'fogo', 'elétrico'] }
 // Manobras que somam o dado de superioridade ao dano de um acerto, e as que
 // ainda pedem um teste de resistência do alvo
 const MANOBRAS_DE_DANO = ['ameacador', 'encontrao', 'finta', 'manobra', 'desarmante', 'estendido', 'provocante', 'derrubar', 'distrativo']
@@ -1073,6 +1090,10 @@ function ataqueComArma(stats, item, op = {}, f = calcular(stats)) {
     if (def.distancia && f.estilos.includes('arquearia')) { bonus += 2; notas.push('Arquearia +2') }
     if (efeitos['arma-sagrada'] && !desarmado) { bonus += Math.max(1, f.mods.car); notas.push(`Arma Sagrada ${sinal(Math.max(1, f.mods.car))}`) }
     if (op.poderoso) bonus -= 5
+    // Arma Mágica: a arma tocada soma o bônus no ataque e no dano
+    const armaMagica = (f.efeitosRecebidos || []).filter(e => e.tipo === 'arma-magica' && e.armaId === item.id)
+        .reduce((m, e) => Math.max(m, D.EFEITOS['arma-magica'].armaBonus(e.nivel || 2)), 0)
+    if (armaMagica) { bonus += armaMagica; notas.push(`Arma Mágica +${armaMagica}`) }
 
     // Dano fixo
     let bonusDano = item.bonus || 0
@@ -1086,6 +1107,8 @@ function ataqueComArma(stats, item, op = {}, f = calcular(stats)) {
     }
     if (op.poderoso) { bonusDano += 10; notas.push('−5/+10') }
     if (op.favorito && stats.classe === 'patrulheiro') { const b = nivel >= 6 ? 4 : 2; bonusDano += b; notas.push(`Inimigo favorito +${b}`) }
+    if (op.investida) { bonusDano += 5; notas.push('Investida Poderosa +5') }
+    bonusDano += armaMagica
 
     // Dano extra em todo acerto
     const extras = []
@@ -1095,6 +1118,8 @@ function ataqueComArma(stats, item, op = {}, f = calcular(stats)) {
     if (item.pacto && nivel >= 12 && escolhidos(stats, 'invocacoes').includes('sorvedor-vida')) {
         extras.push({ dados: String(Math.max(1, f.mods.car)), tipo: 'necrótico', rotulo: 'Sorvedor de Vida' })
     }
+    // Auxílio Divino (magia em si mesmo): +1d4 radiante em cada acerto com arma
+    if ((f.efeitosRecebidos || []).some(e => e.tipo === 'auxilio-divino')) extras.push({ ...D.EFEITOS['auxilio-divino'].danoArma, rotulo: 'Auxílio Divino' })
 
     // Crítico
     let critMin = 20
@@ -1136,6 +1161,11 @@ function textoDoDano(a) {
 
 /** Quantos ataques a ação de Ataque dá. */
 function ataquesPorAcao(stats, f = calcular(stats)) {
+    // Na Forma Selvagem valem os ataques da besta: Ataques Múltiplos ("dois ataques")
+    if (f.forma) {
+        const txt = (f.forma.ataquesMultiplos || '').toLowerCase()
+        return !txt ? 1 : /\btr[eê]s\b/.test(txt) ? 3 : 2
+    }
     const nv = f.nivel
     const cl = stats.classe
     if (cl === 'guerreiro') return nv >= 20 ? 4 : nv >= 11 ? 3 : nv >= 5 ? 2 : 1
@@ -1202,6 +1232,10 @@ function ataquesBonus(stats, f = calcular(stats)) {
     if (cl === 'bardo' && stats.subclasse === 'bravura' && nv >= 14) {
         lista.push({ id: 'magia-batalha', nome: 'Magia de Batalha', armas: armas.map(a => a.id), desc: 'Depois de conjurar uma magia com a ação.' })
     }
+    if (talentos.includes('investida-poderosa')) {
+        lista.push({ id: 'investida', nome: 'Investida Poderosa', armas: corpo.map(a => a.id).concat(DESARMADO), op: { investida: true },
+            desc: 'Depois de usar Disparada e andar 3 m em linha reta: ataque corpo-a-corpo com +5 de dano.' })
+    }
     return lista
 }
 
@@ -1227,8 +1261,8 @@ function extrasDoAcerto(stats, ataque, f = calcular(stats)) {
             desc: '2d8 radiante com espaço de 1º, +1d8 por nível acima (máx. 5d8); +1d8 contra morto-vivo ou corruptor.' })
     }
     if (cl === 'clerigo' && nv >= 8 && sub in GOLPE_DIVINO) {
-        lista.push({ id: 'golpe-divino', nome: 'Golpe Divino', dados: nv >= 14 ? '2d8' : '1d8', tipo: GOLPE_DIVINO[sub] || ataque.tipo, uso: 'turno',
-            desc: 'Uma vez por turno, num acerto com arma.' })
+        lista.push({ id: 'golpe-divino', nome: 'Golpe Divino', dados: nv >= 14 ? '2d8' : '1d8', tipo: GOLPE_DIVINO[sub] || (GOLPE_DIVINO_TIPOS[sub] ? GOLPE_DIVINO_TIPOS[sub][0] : ataque.tipo),
+            tipos: GOLPE_DIVINO_TIPOS[sub] || null, uso: 'turno', desc: 'Uma vez por turno, num acerto com arma.' })
     }
     if (conhece('marca-do-cacador')) {
         lista.push({ id: 'marca', nome: 'Marca do Caçador', dados: '1d6', tipo: ataque.tipo, uso: 'acerto', desc: 'Se o alvo está marcado.' })
@@ -1253,7 +1287,7 @@ function extrasDoAcerto(stats, ataque, f = calcular(stats)) {
             if (MANOBRAS_DE_DANO.includes(o.id)) {
                 const teste = MANOBRAS_COM_TESTE[o.id]
                 lista.push({ id: 'manobra:' + o.id, nome: o.nome, dados: '1' + dado, tipo: ataque.tipo, uso: 'acerto', recurso: sup.id,
-                    cd: teste ? `${cd} ${teste}` : null, desc: o.desc })
+                    cd: teste ? `${cd} ${teste}` : null, desc: o.desc, custo: o.id === 'finta' ? 'bonus' : null })
             }
             else if (o.id === 'trespassante') lista.push({ id: 'manobra:' + o.id, nome: o.nome, dados: '1' + dado, tipo: ataque.tipo, uso: 'acerto', recurso: sup.id, outroAlvo: true, desc: o.desc })
             else if (o.id === 'precisao') lista.push({ id: 'manobra:' + o.id, nome: o.nome, dados: '1' + dado, uso: 'acerto', recurso: sup.id, noAtaque: true, desc: o.desc })
@@ -1262,6 +1296,19 @@ function extrasDoAcerto(stats, ataque, f = calcular(stats)) {
     if (cl === 'monge' && nv >= 5 && ataque.corpo) {
         lista.push({ id: 'atordoante', nome: 'Ataque Atordoante', recurso: 'chi', uso: 'acerto', cd: `${8 + f.prof + f.mods.sab} CON`,
             desc: `1 chi: o alvo faz CON (CD ${8 + f.prof + f.mods.sab}) ou fica atordoado até o fim do seu próximo turno.` })
+    }
+    // Técnica da Mão Aberta (3º): num acerto da Rajada de Golpes, um destes
+    if (cl === 'monge' && sub === 'mao-aberta' && nv >= 3 && ataque.rajada) {
+        const cd = 8 + f.prof + f.mods.sab
+        lista.push({ id: 'mao-derrubar', grupo: 'mao-aberta', nome: 'Mão Aberta: derrubar', uso: 'acerto', cd: `${cd} DES`, desc: `O alvo faz DES (CD ${cd}) ou fica caído.` })
+        lista.push({ id: 'mao-empurrar', grupo: 'mao-aberta', nome: 'Mão Aberta: empurrar', uso: 'acerto', cd: `${cd} FOR`, desc: `O alvo faz FOR (CD ${cd}) ou é empurrado até 4,5 m.` })
+        lista.push({ id: 'mao-reacoes', grupo: 'mao-aberta', nome: 'Mão Aberta: sem reações', uso: 'acerto', desc: 'O alvo não pode usar reações até o fim do seu próximo turno.' })
+    }
+    // Magia de destruição conjurada: entra no próximo acerto (enquanto durar a concentração)
+    const golpe = (stats.efeitos || {}).destruicao
+    if (golpe && (stats.concentracao || {}).id === golpe.id && (!golpe.corpo || ataque.corpo)) {
+        lista.push({ id: 'golpe:' + golpe.id, nome: golpe.nome, dados: golpe.dados || null, tipo: golpe.tipo || '', uso: 'acerto', cd: golpe.cd || null,
+            consome: 'destruicao', desc: golpe.desc })
     }
     return lista
 }

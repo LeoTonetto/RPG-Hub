@@ -54,42 +54,44 @@ function secaoFormaSelvagem(char, stats, f, canEdit) {
     const nd = lim.nd < 1 ? `1/${Math.round(1 / lim.nd)}` : String(lim.nd)
     w.appendChild(mk('div', 'ds-legenda', `Até ND ${nd}${lim.natacao ? '' : ', sem natação'}${lim.voo ? '' : ', sem voo'}. Dura ${Math.max(1, Math.floor(f.nivel / 2))} h. ${stats.subclasse === 'lua' ? 'Ação bônus (Círculo da Lua).' : 'Gasta a ação.'}`))
 
+    // Transformar, voltar e curar são habilidades (dndHabilidades): o custo e
+    // as travas do turno são os mesmos aqui e no palco da batalha
+    const H = require('./dndHabilidades')
+    const hab = id => H.lista(char).find(h => h.id === id)
+    const trava = h => (h ? H.motivo(char, h, 1) : 'Indisponível')
+    const usarHab = (h, valores) => {
+        const m = H.usar(char, h, valores)
+        if (m) combate().aviso(m)
+        sheet().reabrirFicha()
+        abrirPainel(state.statPopupChar.stats, canEdit)
+    }
+
     if (f.forma) {
         w.appendChild(fichaCriatura(f.forma, { pv: f.forma.pv, pvMax: f.forma.pvMax }))
         if (canEdit) {
             const linha = mk('div', 'ds-magia-botoes')
+            const hVoltar = hab('forma-voltar')
             const voltar = mk('button', 'ds-magia-btn', 'Voltar à forma normal')
-            voltar.title = 'Ação bônus'
-            voltar.addEventListener('click', () => {
-                sheet().gravar(char.id, { forma: null })
-                combate().gastarBonusDe(char)
-                chat(`${char.name} volta à forma normal.`)
-                sheet().reabrirFicha()
-                abrirPainel(state.statPopupChar.stats, canEdit)
-            })
+            const tv = trava(hVoltar)
+            voltar.disabled = !!tv
+            voltar.title = tv || 'Gasta a ação bônus'
+            voltar.addEventListener('click', () => usarHab(hVoltar))
             linha.appendChild(voltar)
             // Forma Selvagem de Combate (Lua): espaço de magia vira cura de 1d8 por nível
-            if (stats.subclasse === 'lua') {
-                const livres = dnd.espacosLivres(stats, f, 1)
-                if (livres.length) {
-                    const sel = document.createElement('select')
-                    sel.className = 'dc-select'
-                    sel.setAttribute('aria-label', 'Espaço de magia')
-                    livres.forEach(e => sel.appendChild(new Option(`${e.nivel}º · ${e.nivel}d8`, e.id)))
-                    const curar = mk('button', 'ds-magia-btn', 'Curar com espaço')
-                    curar.title = 'Ação bônus: gasta o espaço e cura 1d8 por nível dele'
-                    curar.addEventListener('click', () => {
-                        const e = livres.find(x => x.id === sel.value)
-                        combate().gastarEspaco(char, e)
-                        combate().gastarBonusDe(char)
-                        const r = require('./dndRolagem').rolarDados({ personagem: char.name, rotulo: 'Forma Selvagem de Combate', expressao: `${e.nivel}d8`, tipo: 'cura' })
-                        require('./dndEstadoUI').curaNoPersonagem(state.statPopupChar, r.total)
-                        sheet().reabrirFicha()
-                        abrirPainel(state.statPopupChar.stats, canEdit)
-                    })
-                    linha.appendChild(sel)
-                    linha.appendChild(curar)
-                }
+            const hCurar = hab('forma-curar')
+            const livres = dnd.espacosLivres(stats, f, 1)
+            if (hCurar && livres.length) {
+                const sel = document.createElement('select')
+                sel.className = 'dc-select'
+                sel.setAttribute('aria-label', 'Espaço de magia')
+                livres.forEach(e => sel.appendChild(new Option(`${e.nivel}º · ${e.nivel}d8`, e.id)))
+                const curar = mk('button', 'ds-magia-btn', 'Curar com espaço')
+                const tc = trava(hCurar)
+                curar.disabled = !!tc
+                curar.title = tc || 'Gasta a ação bônus e o espaço; cura 1d8 por nível dele'
+                curar.addEventListener('click', () => usarHab(hCurar, { espaco: livres.find(x => x.id === sel.value) }))
+                linha.appendChild(sel)
+                linha.appendChild(curar)
             }
             w.appendChild(linha)
         }
@@ -98,35 +100,18 @@ function secaoFormaSelvagem(char, stats, f, canEdit) {
 
     if (!canEdit) return w
     const formas = CR.formasPermitidas(f.nivel, stats.subclasse)
-    const usos = f.recursos.find(r => r.id === 'forma-selvagem')
-    const livre = usos && (usos.max == null || ((stats.recursos_usados || {})['forma-selvagem'] || 0) < usos.max)
+    const hForma = hab('forma-selvagem')
     const linha = mk('div', 'ds-magia-botoes')
     const sel = document.createElement('select')
     sel.className = 'dc-select'
     sel.setAttribute('aria-label', 'Besta')
     formas.forEach(c => sel.appendChild(new Option(`${c.nome} · ND ${c.nd} · CA ${c.ca} · ${c.pv} PV`, c.id)))
     const ir = mk('button', 'ds-magia-btn principal', 'Transformar')
-    ir.disabled = !livre || !formas.length
-    ir.title = !livre ? 'Sem usos de Forma Selvagem' : 'Gasta um uso de Forma Selvagem'
-    ir.addEventListener('click', () => {
-        const c = CR.criatura(sel.value)
-        if (!c) return
-        const usados = { ...(stats.recursos_usados || {}) }
-        usados['forma-selvagem'] = (usados['forma-selvagem'] || 0) + 1
-        // Transformar encerra a concentração? Não: o druida mantém, mas não conjura
-        sheet().gravar(char.id, { forma: { id: c.id, pv: c.pv }, recursos_usados: usados })
-        const ent = combate().entradaDoChar(char.id)
-        if (ent && combate().turnoDoChar(char.id)) {
-            if (stats.subclasse === 'lua') combate().gastarBonusDe(char)
-            else {
-                const ec = combate().economia(ent.id)
-                if (ec && ec.acoesUsadas < ec.acoes) combate().gastar(ent.id, 'acoesUsadas', ec.acoesUsadas + 1)
-            }
-        }
-        chat(`${char.name} assume a forma de ${c.nome.toLowerCase()} (${c.pv} PV).`)
-        sheet().reabrirFicha()
-        abrirPainel(state.statPopupChar.stats, canEdit)
-    })
+    const tf = trava(hForma)
+    ir.disabled = !formas.length || !!tf
+    ir.title = tf || `Gasta um uso de Forma Selvagem e ${stats.subclasse === 'lua' ? 'a ação bônus' : 'a ação'}`
+    // O druida mantém a concentração na forma, mas não conjura
+    ir.addEventListener('click', () => usarHab(hForma, { besta: sel.value }))
     linha.appendChild(sel)
     linha.appendChild(ir)
     w.appendChild(linha)
@@ -272,6 +257,47 @@ function ataquesDoAliado(char, aliadoId) {
     return (ficha ? ficha.ataques : []).map(at => ({ rotulo: `⚔ ${at.nome} ${dnd.sinal(at.bonus)}`, acao: () => require('./dndArmas').ataqueDeCriatura(char, ficha.nome, at, { tipo: 'livre' }) }))
 }
 
+// ── Cardzinho ao lado do card do personagem ───────────────────────────────────
+
+/**
+ * Os aliados do personagem em cardzinhos (ícone, nome e PV), para ficar ao
+ * lado do card dele na sala e no palco da batalha. Duas linhas; mais aliados
+ * abrem novas colunas. Devolve null se ele não tem aliados.
+ *   opts.atualId: id do aliado que está no turno (destaque no palco)
+ *   opts.aoClicar(el): abre a ficha (só dono e mestre)
+ */
+function cardsDosAliados(char, { atualId, aoClicar } = {}) {
+    const st = char.stats || {}
+    const f = dnd.calcular(st)
+    const w = mk('div', 'aliados-mini')
+    w.dataset.donoId = char.id
+    ;(st.companheiros || []).forEach(al => {
+        const ficha = CR.fichaDoAliado(al, f)
+        if (!ficha) return
+        const pv = Math.max(0, Math.min(al.pv ?? ficha.pv, ficha.pvMax))
+        const c = mk('div', 'aliado-mini' + (pv <= 0 ? ' caido' : '') + (atualId === al.id ? ' atual' : ''))
+        c.title = `${ficha.nome} · ${CR.TIPOS_DE_ALIADO[al.tipo] || 'Criatura'} de ${char.name} · CA ${ficha.ca} · ${pv}/${ficha.pvMax} PV`
+        c.appendChild(magiasUI.icone(CR.icone(al.criatura), 'aliado-mini-icone'))
+        const info = mk('div', 'aliado-mini-info')
+        info.appendChild(mk('b', null, ficha.nome))
+        const barra = mk('div', 'aliado-mini-barra')
+        const fill = mk('div')
+        fill.style.width = `${Math.round((pv / ficha.pvMax) * 100)}%`
+        barra.appendChild(fill)
+        info.appendChild(barra)
+        info.appendChild(mk('span', null, `${pv}/${ficha.pvMax}`))
+        c.appendChild(info)
+        if (aoClicar) {
+            c.classList.add('clicavel')
+            c.addEventListener('click', ev => { ev.stopPropagation(); aoClicar(c) })
+        }
+        w.appendChild(c)
+    })
+    if (!w.childNodes.length) return null
+    w.style.setProperty('--linhas', String(Math.min(2, w.childNodes.length)))
+    return w
+}
+
 function mk(tag, cls, text) {
     const e = document.createElement(tag)
     if (cls) e.className = cls
@@ -279,4 +305,4 @@ function mk(tag, cls, text) {
     return e
 }
 
-module.exports = { temCriaturas, abrirPainel, ataquesDoAliado, fichaCriatura }
+module.exports = { temCriaturas, abrirPainel, ataquesDoAliado, fichaCriatura, cardsDosAliados }

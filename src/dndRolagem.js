@@ -98,6 +98,37 @@ function resolverModo(escolhido, auto) {
     return { modo: 'normal', motivo: '' }
 }
 
+/**
+ * Dados que somam sozinhos no d20 (auto.dadosExtras: a Bênção). Devolve
+ * { soma, textos } para o total e para o rótulo ("Bênção +3").
+ */
+function rolarExtras(auto) {
+    const textos = []
+    let soma = 0
+    ;((auto && auto.dadosExtras) || []).forEach(x => {
+        const r = rolarExpressao(x.expressao)
+        soma += r.total
+        textos.push(`${x.nome} ${sinal(r.total)}`)
+    })
+    return { soma, textos }
+}
+
+/** Prodígio: o d20 desta rolagem é o valor guardado pelo adivinho (se houver). */
+function prodigio(personagem, atq) {
+    let v = null
+    try { v = require('./dndEfeitos').tirarD20Guardado(personagem) } catch (e) { /* sem efeitos */ }
+    if (!v) return ''
+    atq.dados = [{ lados: 20, valor: v }]
+    atq.natural = v
+    return `Prodígio: o d20 é ${v}`
+}
+
+/** Depois do d20: o dono vê se quer somar um dado guardado (Inspiração...). */
+function depoisDoD20(res) {
+    if (res.secreto || (res.falha && !res.dados.length)) return
+    try { require('./dndEfeitos').aoRolar(res) } catch (e) { console.warn('[D&D] Efeitos:', e) }
+}
+
 const comMotivo = (rotulo, r, extras) => {
     const partes = [r.motivo ? `${r.modo === 'normal' ? '' : r.modo + ': '}${r.motivo}` : '', ...(extras || [])].filter(Boolean)
     return partes.length ? `${rotulo} · ${partes.join(' · ')}` : rotulo
@@ -158,18 +189,25 @@ function testeD20({ personagem, rotulo, bonus, tipo = 'teste', forcarModo, auto 
         enviar(res)
         return res
     }
-    const { dados, natural, sorte } = rolarD20(r.modo, auto && auto.sortudo)
+    const d20 = rolarD20(r.modo, auto && auto.sortudo)
+    const textoProdigio = prodigio(personagem, d20)
+    const { dados, natural, sorte } = d20
     const extras = []
+    if (textoProdigio) extras.push(textoProdigio)
     if (sorte) extras.push('Sortudo: rolou de novo o 1')
     let usado = natural
     if (auto && auto.minimo && natural < auto.minimo) { usado = auto.minimo; extras.push(`Talento Confiável: o d20 conta ${auto.minimo}`) }
+    const somados = rolarExtras(auto)
+    extras.push(...somados.textos)
+    bonus += somados.soma
     let total = usado + bonus
     if (auto && auto.piso && total < auto.piso) { total = auto.piso; extras.push(`Força Indomável: ${auto.piso}`) }
     const res = {
         personagem, rotulo: comMotivo(rotulo, r, extras), tipo, modo: r.modo, dados, natural, bonus, total,
-        critico: natural === 20, falha: natural === 1, secreto: secreto(),
+        critico: natural === 20, falha: natural === 1, secreto: secreto(), contexto: (auto && auto.contexto) || tipo,
     }
     enviar(res)
+    depoisDoD20(res)
     return res
 }
 
@@ -192,16 +230,20 @@ function magiaComAtaque({ personagem, rotulo, bonusAtaque, expressao, tipoDano =
     const r = resolverModo(consumirModo(), auto)
     const m = r.modo
     const atq = rolarD20(m, auto && auto.sortudo)
-    rotulo = comMotivo(rotulo, r, atq.sorte ? ['Sortudo: rolou de novo o 1'] : [])
+    const textoProdigio = prodigio(personagem, atq)
+    const somados = rolarExtras(auto)
+    bonusAtaque += somados.soma
+    rotulo = comMotivo(rotulo, r, [textoProdigio, ...(atq.sorte ? ['Sortudo: rolou de novo o 1'] : []), ...somados.textos].filter(Boolean))
     const critico = atq.natural === 20
     const falha = atq.natural === 1
     const dano = falha ? { dados: [], bonus: 0, total: 0, expressao: '' } : rolarExpressao(expressao, 0, critico ? 2 : 1, { rerrolarMenores })
     const res = {
         personagem, rotulo, tipo: 'magia', tipoDano, modo: m,
         ataque: { dados: atq.dados, natural: atq.natural, bonus: bonusAtaque, total: atq.natural + bonusAtaque },
-        ...dano, critico, falha, secreto: secreto(),
+        ...dano, critico, falha, secreto: secreto(), contexto: 'ataque',
     }
     enviar(res)
+    depoisDoD20(res)
     return res
 }
 
@@ -216,7 +258,10 @@ function ataqueComArma({ personagem, rotulo, bonusAtaque, expressao, bonusDano =
     const r = resolverModo(consumirModo(forcarModo), auto)
     const m = r.modo
     const atq = rolarD20(m, auto && auto.sortudo)
-    rotulo = comMotivo(rotulo, r, atq.sorte ? ['Sortudo: rolou de novo o 1'] : [])
+    const textoProdigio = prodigio(personagem, atq)
+    const somados = rolarExtras(auto)
+    bonusAtaque += somados.soma
+    rotulo = comMotivo(rotulo, r, [textoProdigio, ...(atq.sorte ? ['Sortudo: rolou de novo o 1'] : []), ...somados.textos].filter(Boolean))
     const critico = atq.natural >= critMin
     const falha = atq.natural === 1
     const dano = falha
@@ -225,9 +270,10 @@ function ataqueComArma({ personagem, rotulo, bonusAtaque, expressao, bonusDano =
     const res = {
         personagem, rotulo, tipo: 'magia', tipoDano, modo: m,
         ataque: { dados: atq.dados, natural: atq.natural, bonus: bonusAtaque, total: atq.natural + bonusAtaque },
-        ...dano, critico, falha, secreto: secreto(),
+        ...dano, critico, falha, secreto: secreto(), contexto: 'ataque', arma: true,
     }
     enviar(res)
+    depoisDoD20(res)
     return res
 }
 

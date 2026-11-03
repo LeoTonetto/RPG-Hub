@@ -68,6 +68,12 @@ function ataquesRestantes(char) {
     return t && noMeuTurno(char) && t.chave === combate().chaveDoTurno() ? t.restantes : 0
 }
 
+/** Mostra o motivo da trava num aviso; devolve o motivo ('' se pode). */
+function avisar(motivo) {
+    if (motivo) combate().aviso(motivo)
+    return motivo
+}
+
 function chat(message, playerName = '⚔ Ataque') {
     if (state.socket) state.socket.emit('chat_message', { playerName, message, type: 'text' })
 }
@@ -83,6 +89,19 @@ function opcoesDe(char, item) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 /**
+ * Pode atacar agora? '' ou o motivo. Os ataques que sobram da ação de Ataque
+ * (Ataque Extra) não pedem ação nova; o primeiro pede a ação livre.
+ *   tipo: 'acao' | 'bonus' | 'reacao' | 'livre'
+ */
+function motivoAtaque(char, tipo = 'acao') {
+    if (tipo === 'livre' || tipo === 'reacao') return ''
+    const st = char.stats || {}
+    if (!state.isRoomMaster && (CD.semAcoes(st) || CD.caido(st))) return 'Incapacitado ou a 0 PV'
+    if (tipo === 'acao' && noMeuTurno(char) && turnoDe(char).restantes > 0) return ''
+    return combate().podeGastar(char, tipo)
+}
+
+/**
  * Ataque da besta (Forma Selvagem) ou de um aliado: bônus e dano da ficha
  * da criatura. `dono` é quem rola (o personagem).
  */
@@ -95,6 +114,7 @@ function ataqueDeCriatura(dono, nomeCriatura, at, { tipo = 'acao', rotuloExtra =
         tipo: at.tipoDano, extras: [], critMin: 20, dadosCritExtra: 0, rerrolarAte: 0, corpo: at.tipo === 'corpo', atributo: at.tipo === 'corpo' ? 'for' : 'des',
         semDano: false, acuidade: false, armaDistancia: at.tipo === 'distancia', item: null, def: null,
     }
+    if (avisar(motivoAtaque(dono, tipo))) return null
     if (tipo === 'acao') contarAtaqueDaAcao(dono, stats, f, { base: 'criatura' })
     const res = rolarAtaque(dono, stats, f, a, turnoDe(dono), rotuloExtra + (at.extra ? ` [${at.extra}]` : ''))
     if (combate().emBatalha()) combate().atualizarTurno()
@@ -110,6 +130,8 @@ function atacar(char, item, { tipo = 'acao', op = {}, rotuloExtra = '' } = {}) {
     const f = dnd.calcular(stats)
     const a = dnd.ataqueComArma(stats, item, { ...opcoesDe(char, item), ...op }, f)
     if (!a) return null
+    // Na batalha: a ação (ou a ação bônus) tem que estar livre
+    if (avisar(motivoAtaque(char, tipo))) return null
     const t = turnoDe(char)
     const cb = combate()
     const ent = cb.entradaDoChar(char.id)
@@ -184,6 +206,7 @@ function atacarBonus(char, b, item) {
     const stats = char.stats || {}
     const cb = combate()
     const f = dnd.calcular(stats)
+    if (avisar(motivoAtaque(char, 'bonus'))) return
     if (b.recurso) {
         if (!cb.recursoLivre(char, f, b.recurso)) return
         cb.gastarRecurso(char, b.recurso)
@@ -193,6 +216,13 @@ function atacarBonus(char, b, item) {
     }
     if (b.golpes > 1) turnoDe(char).rajada = b.golpes - 1
     atacar(char, item, { tipo: 'bonus', op: b.op || {}, rotuloExtra: ` (${b.nome})` })
+    // Técnica da Mão Aberta vale nos acertos da Rajada
+    if (b.id === 'rajada') marcarRajada(char)
+}
+
+function marcarRajada(char) {
+    if (ultimo && ultimo.charId === char.id) ultimo.ataque = { ...ultimo.ataque, rajada: true }
+    redesenhar(char)
 }
 
 /** Um extra depois do acerto: rola o dado a mais e gasta o que tiver que gastar. */
@@ -201,6 +231,10 @@ function usarExtra(char, ex, { espaco, mortoVivo } = {}) {
     const stats = char.stats || {}
     const f = dnd.calcular(stats)
     const cb = combate()
+    if (ex.custo) {
+        if (cb.travado(char, ex.custo)) return
+        cb.gastarCusto(char, ex.custo)
+    }
     if (ex.recurso) {
         if (!cb.recursoLivre(char, f, ex.recurso)) return
         cb.gastarRecurso(char, ex.recurso)
@@ -227,7 +261,14 @@ function usarExtra(char, ex, { espaco, mortoVivo } = {}) {
         chat(`${nome} usa ${ex.nome}. ${ex.desc}`)
     }
     ultimo.usados.add(ex.id)
+    if (ex.grupo) ultimo.usados.add(ex.grupo)   // um só do grupo por acerto (Mão Aberta)
     if (ex.uso === 'turno' && noMeuTurno(char)) turnoDe(char).usados.add(ex.id)
+    // A magia de destruição se gasta no acerto
+    if (ex.consome) {
+        const ef = { ...(stats.efeitos || {}) }
+        delete ef[ex.consome]
+        sheet().gravar(char.id, { efeitos: ef })
+    }
     redesenhar(char)
 }
 
@@ -247,19 +288,30 @@ function efeitosDisponiveis(stats, f) {
         lista.push({ id: 'arma-sagrada', nome: 'Arma Sagrada', recurso: 'canalizar', custo: 'acao',
             desc: `Canalizar Divindade: soma ${dnd.sinal(Math.max(1, f.mods.car))} aos ataques com arma por 1 minuto.` })
     }
-    if (f.talentos.includes('ambidestro')) {
+    if (f.talentos.includes('ambidestro') && !f.forma) {
         lista.push({ id: 'duas-armas', nome: 'Duas armas em mãos', desc: 'Ambidestro: +1 na CA com uma arma corpo-a-corpo em cada mão.' })
     }
-    if (f.magias.some(m => m.id === 'bordao-mistico')) {
+    // Bordão Místico é magia: na Forma Selvagem não se conjura
+    if (f.magias.some(m => m.id === 'bordao-mistico') && !f.semConjurar) {
         lista.push({ id: 'bordao-mistico', nome: 'Bordão Místico', custo: 'bonus',
             desc: 'Clava ou bordão usam o atributo de magia e causam d8 por 1 minuto.' })
     }
     return lista
 }
 
+/** Pode ligar este efeito agora? '' ou o motivo. Desligar é sempre livre. */
+function motivoEfeito(char, ef) {
+    const cb = combate()
+    if (ef.bloqueio) return ef.bloqueio
+    if (ef.turno) return cb.emBatalha() && !state.isRoomMaster && !cb.turnoDoChar(char.id) ? 'Só no seu turno' : ''
+    return cb.podeGastar(char, ef.custo || 'livre')
+}
+
 function alternarEfeito(char, ef) {
     const stats = char.stats || {}
     const cb = combate()
+    const ligado = ef.turno ? turnoDe(char).descuidado : !!(stats.efeitos || {})[ef.id]
+    if (!ligado && avisar(motivoEfeito(char, ef))) return
     if (ef.turno) {
         const t = turnoDe(char)
         t.descuidado = !t.descuidado
@@ -277,12 +329,7 @@ function alternarEfeito(char, ef) {
         const f = dnd.calcular(stats)
         if (ef.recurso && !cb.recursoLivre(char, f, ef.recurso)) return
         if (ef.recurso) cb.gastarRecurso(char, ef.recurso)
-        const ent = cb.entradaDoChar(char.id)
-        const ec = ent ? cb.economia(ent.id) : null
-        if (ec && noMeuTurno(char)) {
-            if (ef.custo === 'bonus') cb.gastar(ent.id, 'bonusUsada', true)
-            else if (ef.custo === 'acao' && ec.acoesUsadas < ec.acoes) cb.gastar(ent.id, 'acoesUsadas', ec.acoesUsadas + 1)
-        }
+        cb.gastarCusto(char, ef.custo)
         efeitos[ef.id] = true
         sheet().gravar(char.id, { efeitos })
         if (ef.id !== 'duas-armas') chat(ef.id === 'furia' ? `🔥 ${char.name} entra em fúria!` : `${char.name}: ${ef.nome}.`)
@@ -383,9 +430,10 @@ function abrirPainel(stats, canEdit) {
             b.type = 'button'
             b.setAttribute('aria-pressed', String(ligado))
             const semUso = !ligado && ef.recurso && !combate().recursoLivre(char, f, ef.recurso)
-            if (!ligado && CD.semAcoes(stats) && ef.custo) ef.bloqueio = 'Incapacitado'
-            b.disabled = !canEdit || (!ligado && (!!ef.bloqueio || semUso))
-            b.title = ef.bloqueio || (semUso ? 'Sem usos restantes' : ef.desc)
+            const trava = !ligado ? motivoEfeito(char, ef) : ''
+            const custo = { bonus: ' (ação bônus)', acao: ' (ação)' }[ef.custo] || ''
+            b.disabled = !canEdit || (!ligado && (!!trava || semUso))
+            b.title = trava || (semUso ? 'Sem usos restantes' : ef.desc + custo)
             b.addEventListener('click', () => alternarEfeito(char, ef))
             linha.appendChild(b)
         })
@@ -491,8 +539,9 @@ function detalhe(char, stats, f, item, canEdit, mestre) {
     if (canEdit) {
         const linha = mk('div', 'ds-magia-botoes')
         const atq = mk('button', 'ds-magia-btn principal', '⚔ Atacar')
-        atq.disabled = CD.semAcoes(stats) || CD.caido(stats)
-        atq.title = atq.disabled ? 'Incapacitado ou a 0 PV' : 'Rola o ataque e o dano juntos' + (noMeuTurno(char) ? '; gasta a Ação no primeiro ataque' : '')
+        const trava = motivoAtaque(char, 'acao')
+        atq.disabled = !!trava
+        atq.title = trava || 'Rola o ataque e o dano juntos' + (noMeuTurno(char) ? '; gasta a Ação no primeiro ataque' : '')
         atq.addEventListener('click', () => atacar(char, item, { tipo: 'acao' }))
         linha.appendChild(atq)
         const so = mk('button', 'ds-magia-btn', `🎲 Ataque ${dnd.sinal(a.bonus)}`)
@@ -546,7 +595,7 @@ function mudarArma(char, id, campos) {
 }
 
 /** Ataques da ação bônus que a ficha permite, com a arma em foco quando ela serve. */
-function secaoBonus(char, stats, f, foco) {
+function secaoBonus(char, stats, f, foco, titulo = 'Ação bônus') {
     const lista = dnd.ataquesBonus(stats, f)
     const t = turnoDe(char)
     if (!lista.length && !t.rajada) return null
@@ -555,7 +604,7 @@ function secaoBonus(char, stats, f, foco) {
     const ec = ent ? cb.economia(ent.id) : null
     const emTurno = !!ec && noMeuTurno(char)
     const w = mk('div', 'da-secao')
-    w.appendChild(mk('div', 'ds-grupo', 'Ação bônus'))
+    w.appendChild(mk('div', 'ds-grupo', titulo))
     const armas = dnd.armasDoPersonagem(stats)
 
     // Rajada de Golpes: o segundo golpe já foi pago
@@ -564,6 +613,7 @@ function secaoBonus(char, stats, f, foco) {
         b.addEventListener('click', () => {
             t.rajada--
             atacar(char, armas[armas.length - 1], { tipo: 'livre', rotuloExtra: ' (Rajada de Golpes)' })
+            marcarRajada(char)
         })
         w.appendChild(b)
     }
@@ -574,7 +624,7 @@ function secaoBonus(char, stats, f, foco) {
         const b = mk('button', 'ds-magia-btn da-bonus', `⚔ ${bn.nome}` + (bn.armas.length > 1 || item.base !== dnd.DESARMADO ? ` · ${nomeArma}` : ''))
         let motivo = ''
         if (bn.recurso && !cb.recursoLivre(char, f, bn.recurso)) motivo = 'Sem usos restantes'
-        else if (emTurno && ec.bonusUsada) motivo = 'A ação bônus já foi usada neste turno'
+        else if (combate().podeGastar(char, 'bonus')) motivo = combate().podeGastar(char, 'bonus')
         else if (emTurno && bn.apos === 'ataque' && !t.atacou) motivo = 'Primeiro use a ação de Ataque'
         b.disabled = !!motivo
         b.title = motivo || bn.desc
@@ -606,9 +656,10 @@ function secaoUltimo(char, stats, f) {
         let sel = null
         let mortoVivo = null
         let motivo = ''
-        if (u.usados.has(ex.id)) motivo = 'Já usado neste ataque'
+        if (u.usados.has(ex.id) || (ex.grupo && u.usados.has(ex.grupo))) motivo = 'Já usado neste ataque'
         else if (ex.uso === 'turno' && emTurno && t.usados.has(ex.id)) motivo = 'Uma vez por turno'
         else if (ex.recurso && !cb.recursoLivre(char, f, ex.recurso)) motivo = 'Sem usos restantes'
+        else if (ex.custo && cb.podeGastar(char, ex.custo)) motivo = cb.podeGastar(char, ex.custo)
         if (ex.espaco) {
             const livres = cb.espacosLivres(stats, f, 1)
             if (!livres.length && !motivo) motivo = 'Sem espaço de magia'
@@ -619,15 +670,24 @@ function secaoUltimo(char, stats, f) {
                 livres.forEach(e => sel.appendChild(new Option(e.id === 'pacto' ? `Pacto ${e.nivel}º` : `${e.nivel}º · ${Math.min(5, 1 + e.nivel)}d8`, e.id)))
             }
         }
-        const rotulo = ex.nome + (ex.dados && !ex.espaco ? ` +${ex.dados}${ex.noAtaque ? ' no ataque' : ''}` : '')
+        const rotulo = ex.nome + (ex.dados && !ex.espaco ? ` +${ex.dados}${ex.noAtaque ? ' no ataque' : ''}` : '') + (ex.custo === 'bonus' ? ' (ação bônus)' : '')
+        // Quando o livro deixa escolher o tipo (Golpe Divino da Natureza), só entre os dele
+        let selTipo = null
+        if (ex.tipos) {
+            selTipo = document.createElement('select')
+            selTipo.className = 'dc-select'
+            selTipo.setAttribute('aria-label', 'Tipo do dano')
+            ex.tipos.forEach(t => selTipo.appendChild(new Option(t, t)))
+        }
         const b = mk('button', 'ds-magia-btn', rotulo)
         b.disabled = !!motivo
         b.title = motivo || ex.desc || ''
         b.addEventListener('click', () => {
             const espaco = sel ? cb.espacosLivres(stats, f, 1).find(e => e.id === sel.value) : null
-            usarExtra(char, ex, { espaco, mortoVivo: mortoVivo && mortoVivo.checked })
+            usarExtra(char, selTipo ? { ...ex, tipo: selTipo.value } : ex, { espaco, mortoVivo: mortoVivo && mortoVivo.checked })
         })
         row.appendChild(b)
+        if (selTipo) row.appendChild(selTipo)
         if (sel) row.appendChild(sel)
         if (ex.espaco && sel) {
             const lbl = mk('label', 'dc-check')
@@ -1007,6 +1067,6 @@ function mk(tag, cls, text) {
 module.exports = {
     abrirPainel, atacar, ataqueDeCriatura, usarAtaqueDaAcao, pacoteUI, previaDoPacote, aoFimDaBatalha, ataquesRestantes,
     // usados pelo palco da batalha (dndCena.js)
-    secaoBonus, secaoUltimo, efeitosDisponiveis, alternarEfeito, turnoDe,
+    secaoBonus, secaoUltimo, efeitosDisponiveis, alternarEfeito, turnoDe, motivoAtaque, motivoEfeito,
     temUltimo: charId => !!ultimo && ultimo.charId === charId,
 }

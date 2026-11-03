@@ -25,8 +25,24 @@ const TIPOS_DE_ALIADO = {
     familiar: 'Familiar', companheiro: 'Companheiro animal', montaria: 'Montaria', 'morto-vivo': 'Morto-vivo', outro: 'Criatura',
 }
 
+// Ícone de cada criatura (game-icons.net, em assets/icones)
+const ICONES = {
+    'aguia-gigante': 'delapouite/eagle-head', 'aranha-gigante': 'carl-olsen/spider-alt',
+    'cavalo-de-guerra': 'lorc/horse-head', 'cavalo-de-montaria': 'lorc/horse-head',
+    'cobra-constritora': 'delapouite/snake-spiral', 'coruja': 'lorc/owl', 'corvo': 'lorc/raven',
+    'crocodilo': 'lorc/croc-jaws', 'diabrete': 'lorc/imp', 'esqueleto': 'skoll/skeleton',
+    'falcao': 'lorc/hawk-emblem', 'gato': 'lorc/cat', 'javali': 'caro-asercion/boar', 'leao': 'lorc/lion',
+    'lobo': 'lorc/wolf-head', 'lobo-atroz': 'lorc/wolf-howl', 'mastim': 'lorc/hound', 'morcego': 'delapouite/bat',
+    'mula': 'skoll/donkey', 'pantera': 'delapouite/tiger-head', 'pseudodragao': 'lorc/dragon-head',
+    'quasit': 'lorc/imp-laugh', 'rato': 'delapouite/rat', 'sapo': 'lorc/frog', 'serpente-venenosa': 'lorc/snake-bite',
+    'sprite': 'lorc/fairy', 'tigre': 'delapouite/tiger', 'tubarao-dos-arrecifes': 'lorc/shark-jaws',
+    'urso-marrom': 'delapouite/bear-head', 'urso-negro': 'delapouite/bear-head', 'zumbi': 'delapouite/shambling-zombie',
+    'doninha-gigante': 'delapouite/ermine', 'gorila': 'delapouite/gorilla', 'texugo-gigante': 'caro-asercion/badger',
+}
+
 function criatura(id) { return POR_ID[id] || null }
 function todas() { return LISTA }
+function icone(id) { return ICONES[id] || 'lorc/paw' }
 
 const mod = v => Math.floor((v - 10) / 2)
 
@@ -111,7 +127,7 @@ function fichaDoAliado(aliado, f) {
 }
 
 module.exports = {
-    criatura, todas, mod, deslocamentoBase, separarDano,
+    criatura, todas, icone, mod, deslocamentoBase, separarDano,
     limitesDaForma, formasPermitidas, aliadosPossiveis, fichaDoAliado,
     TIPOS_DE_ALIADO, FAMILIARES, FAMILIARES_DO_PACTO, COMPANHEIROS, MONTARIAS, MORTOS_VIVOS,
 }

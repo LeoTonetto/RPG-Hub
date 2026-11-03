@@ -75,6 +75,11 @@ function renderCharacterBar(allChars) {
     if (!allChars || allChars.length === 0) { bar.style.display = 'none'; return }
     allChars.forEach(({ playerName: owner, character }) => {
         bar.appendChild(buildCharCard(character, owner))
+        // D&D: familiar, companheiro, montaria e mortos-vivos num cardzinho ao lado
+        if (character.system === 'dnd') {
+            const aliados = cardsDosAliados(character, owner)
+            if (aliados) bar.appendChild(aliados)
+        }
     })
     bar.style.display = 'flex'
     updateActiveIndicator()
@@ -343,13 +348,38 @@ function updateCardStat(charId, field, value) {
 
     // Indicador de morte
     if (card.dataset.system === 'dnd') {
-        if (['hp', 'morte', 'condicoes', 'exaustao', 'concentracao', 'forma'].includes(field)) {
+        if (['hp', 'morte', 'condicoes', 'exaustao', 'concentracao', 'forma', 'efeitos_recebidos', 'protecao_arcana'].includes(field)) {
             const meu = state.playerCharacters.find(c => c.id === charId)
             aplicarEstadoDnd(card, (meu && meu.stats) || stats)
+        }
+        // Chamou, dispensou ou o aliado levou dano: refaz o cardzinho ao lado
+        if (field === 'companheiros' && entry) {
+            const velho = bar.querySelector(`.aliados-mini[data-dono-id="${charId}"]`)
+            const novo = cardsDosAliados(entry.character, entry.playerName)
+            if (velho && novo) velho.replaceWith(novo)
+            else if (velho) velho.remove()
+            else if (novo) card.after(novo)
         }
     } else if (field === 'hp') {
         card.classList.toggle('char-dead', value <= 0)
     }
+}
+
+/**
+ * D&D: os aliados do personagem em cardzinhos ao lado do card dele. Clicar
+ * abre a ficha no painel Criaturas (dono e mestre, como no card).
+ */
+function cardsDosAliados(char, ownerName) {
+    const pode = state.isRoomMaster || ownerName === state.playerName
+    return require('./dndCompanheiros').cardsDosAliados(char, {
+        aoClicar: pode ? () => {
+            const fresh = state.allCharsCache.find(en => en.character.id === char.id)
+            const alvo = fresh ? fresh.character : char
+            const card = document.querySelector(`#characterBar .char-card[data-char-id="${char.id}"]`)
+            require('./statPopup').openStatPopup(alvo, ownerName, card)
+            require('./dndCompanheiros').abrirPainel((state.statPopupChar || alvo).stats || {}, true)
+        } : null,
+    })
 }
 
 /** D&D: ícones de condição, exaustão, concentração e forma no card. */
@@ -362,6 +392,9 @@ function linhaEstadoDnd(stats) {
     ;(stats.condicoes || []).forEach(c => { if (D.CONDICOES[c]) itens.push([D.CONDICOES[c].icone, D.CONDICOES[c].nome]) })
     if (stats.exaustao) itens.push(['😩', `Exaustão ${stats.exaustao}`])
     if (stats.concentracao) itens.push(['◉', `Concentrando: ${stats.concentracao.nome}`])
+    if (stats.protecao_arcana && stats.protecao_arcana.pv > 0) itens.push(['🔷', `Proteção Arcana ${stats.protecao_arcana.pv}/${stats.protecao_arcana.max}`])
+    // Bênção, Escudo da Fé, Inspiração de Bardo... (dndEfeitos)
+    require('./dndEfeitos').icones(stats).forEach(e => itens.push([e.icone, e.titulo]))
     itens.forEach(([icone, titulo]) => {
         const span = document.createElement('span')
         span.textContent = icone

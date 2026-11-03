@@ -30,6 +30,24 @@ const IMPLICA = {
 }
 const FISICOS = ['concussão', 'cortante', 'perfurante']
 
+// Vantagem em resistência contra uma origem (o mestre diz no pedido de teste)
+const VANTAGEM_CONTRA = {
+    veneno: [{ nome: 'Resiliência Anã', vale: s => s.raca === 'anao' }, { nome: 'Resiliência dos Robustos', vale: s => s.raca === 'halfling' && s.subraca === 'robusto' }],
+    encantamento: [{ nome: 'Ancestral Feérico', vale: s => s.raca === 'elfo' || s.raca === 'meio-elfo' }],
+    medo: [{ nome: 'Bravura', vale: s => s.raca === 'halfling' }],
+    magia: [{ nome: 'Esperteza Gnômica', vale: (s, attr) => s.raca === 'gnomo' && ['int', 'sab', 'car'].includes(attr) },
+        { nome: 'Resistência à Magia', vale: (s, attr, f) => s.classe === 'mago' && s.subclasse === 'abjuracao' && f.nivel >= 14 }],
+}
+
+/** As vantagens raciais (e de classe) em resistência que este personagem tem: [{ origem, nome }]. */
+function vantagensContra(stats, f) {
+    const out = []
+    Object.entries(VANTAGEM_CONTRA).forEach(([origem, lista]) => lista.forEach(v => {
+        if (v.vale(stats, 'int', f) || v.vale(stats, 'for', f)) out.push({ origem, nome: v.nome })
+    }))
+    return out
+}
+
 /** As condições em vigor, já com as que vêm junto (inconsciente → caído...). */
 function condicoesAtivas(stats) {
     const lista = new Set((stats.condicoes || []).filter(c => D.CONDICOES[c]))
@@ -59,16 +77,27 @@ function semCondicao(stats, id) {
  *   ctx.tipo: 'ataque' | 'pericia' | 'atributo' | 'resistencia' | 'iniciativa' | 'morte'
  *   ctx.atributo: 'for'...'car' (do teste, ou o do ataque)
  *   ctx.pericia: chave da perícia
- * Devolve { vantagem: [motivos], desvantagem: [motivos], falha, minimo, piso, sortudo }.
+ * Devolve { vantagem: [motivos], desvantagem: [motivos], falha, minimo, piso, sortudo,
+ *           dadosExtras: [{ nome, expressao }] (Bênção), contexto: ctx.tipo }.
  */
 function modoAutomatico(stats, f, ctx) {
-    const r = { vantagem: [], desvantagem: [], falha: '', minimo: 0, piso: 0, sortudo: false }
+    const r = { vantagem: [], desvantagem: [], falha: '', minimo: 0, piso: 0, sortudo: false, dadosExtras: [], contexto: ctx.tipo }
     const tipo = ctx.tipo
     const attr = ctx.atributo
     const ehTeste = tipo === 'pericia' || tipo === 'atributo' || tipo === 'iniciativa'
     const efeitos = stats.efeitos || {}
 
-    condicoesAtivas(stats).forEach(c => {
+    // Efeitos recebidos: imunidade a condição (Heroísmo, Aura de Coragem),
+    // vantagem (Velocidade) e dados que somam sozinhos (Bênção)
+    const recebidos = (stats.efeitos_recebidos || []).map(e => ({ e, def: D.EFEITOS[e.tipo] })).filter(x => x.def)
+    const imune = new Set(recebidos.flatMap(x => x.def.imune || []))
+    recebidos.forEach(({ def }) => {
+        if (tipo === 'resistencia' && (def.vantagemRes || []).includes(attr)) r.vantagem.push(def.nome.toLowerCase())
+        if (tipo === 'pericia' && (def.vantagemPericia || []).includes(ctx.pericia)) r.vantagem.push(def.nome.toLowerCase())
+        if (def.fixo && def.fixo.contextos.includes(tipo) && !r.dadosExtras.some(d => d.nome === def.nome)) r.dadosExtras.push({ nome: def.nome, expressao: def.fixo.expressao })
+    })
+
+    condicoesAtivas(stats).filter(c => !imune.has(c)).forEach(c => {
         const e = D.CONDICOES[c].efeitos
         const nome = D.CONDICOES[c].nome.toLowerCase()
         if (tipo === 'ataque' && e.ataque) r[e.ataque].push(nome)
@@ -87,6 +116,10 @@ function modoAutomatico(stats, f, ctx) {
     if (tipo === 'pericia' && ctx.pericia === 'furtividade' && f.armadura && f.armadura.furtividade) {
         const maestria = f.armadura.tipo === 'media' && f.talentos.includes('maestria-armadura-media')
         if (!maestria) r.desvantagem.push(`${f.armadura.nome.toLowerCase()} na Furtividade`)
+    }
+    // Vantagem racial contra a origem do teste (anão contra veneno, elfo contra encantamento...)
+    if (tipo === 'resistencia' && ctx.origem) {
+        ;(VANTAGEM_CONTRA[ctx.origem] || []).filter(v => v.vale(stats, attr, f)).forEach(v => r.vantagem.push(v.nome.toLowerCase()))
     }
     // Fúria: vantagem em testes e resistências de Força
     if (efeitos.furia && attr === 'for' && (ehTeste || tipo === 'resistencia')) r.vantagem.push('fúria')
@@ -117,7 +150,9 @@ function defesasContraDano(stats, f) {
 }
 
 /**
- * Aplica `qtd` de dano. op: { tipo, critico, magico }.
+ * Aplica `qtd` de dano. op: { tipo, critico, magico } quando o tipo vem da
+ * fonte; ou, no dano de criatura que o mestre aplica, { imune, resistente,
+ * fisicoNaoMagico } marcados por ele.
  * Devolve { campos, eventos: [texto], dano (depois da resistência),
  *           concentracao: CD do teste ou 0, implacavel: CD da Fúria Implacável ou 0 }.
  */
@@ -127,10 +162,11 @@ function aplicarDano(stats, f, qtd, op = {}) {
     let dano = Math.max(0, Math.floor(qtd) || 0)
     const tipo = op.tipo || ''
     const { resiste, imune, tudo } = defesasContraDano(stats, f)
-    if (tipo && imune.has(tipo)) { eventos.push(`imune a ${tipo}`); dano = 0 }
-    else if ((tipo && resiste.has(tipo)) || tudo) { dano = Math.floor(dano / 2); eventos.push(tipo ? `resistência a ${tipo}` : 'resistência') }
+    if ((tipo && imune.has(tipo)) || op.imune) { eventos.push(tipo ? `imune a ${tipo}` : 'imune'); dano = 0 }
+    else if ((tipo && resiste.has(tipo)) || op.resistente || tudo) { dano = Math.floor(dano / 2); eventos.push(tipo ? `resistência a ${tipo}` : 'resistência') }
     // Maestria em Armadura Pesada: −3 no dano físico não mágico, de armadura pesada
-    if (dano && FISICOS.includes(tipo) && !op.magico && f.armadura && f.armadura.tipo === 'pesada' && f.talentos.includes('maestria-armadura-pesada')) {
+    const fisicoNaoMagico = op.fisicoNaoMagico || (FISICOS.includes(tipo) && !op.magico)
+    if (dano && fisicoNaoMagico && f.armadura && f.armadura.tipo === 'pesada' && f.talentos.includes('maestria-armadura-pesada')) {
         dano = Math.max(0, dano - 3)
         eventos.push('Maestria em Armadura Pesada −3')
     }
@@ -155,6 +191,15 @@ function aplicarDano(stats, f, qtd, op = {}) {
         return res
     }
 
+    // Proteção Arcana (mago abjurador): a proteção sofre o dano primeiro
+    const protecao = stats.protecao_arcana
+    if (dano && protecao && protecao.pv > 0) {
+        const absorvido = Math.min(protecao.pv, dano)
+        dano -= absorvido
+        campos.protecao_arcana = { ...protecao, pv: protecao.pv - absorvido }
+        eventos.push(`Proteção Arcana absorve ${absorvido}`)
+    }
+
     // Forma Selvagem: os PV da besta vão primeiro; o que passar vai para o druida
     if (stats.forma) {
         const pvForma = stats.forma.pv || 0
@@ -169,6 +214,10 @@ function aplicarDano(stats, f, qtd, op = {}) {
         temp -= absorvido
         dano -= absorvido
         campos.hp_temp = temp
+        if (!temp && (stats.efeitos || {}).agathys) {
+            campos.efeitos = { ...stats.efeitos }
+            delete campos.efeitos.agathys
+        }
     }
 
     let caiu = false
@@ -278,6 +327,6 @@ function concentrarEm(stats, magia) {
 
 module.exports = {
     condicoesAtivas, temCondicao, semAcoes, semCondicao,
-    modoAutomatico, defesasContraDano, aplicarDano, resultadoImplacavel, curar,
+    modoAutomatico, vantagensContra, defesasContraDano, aplicarDano, resultadoImplacavel, curar,
     caido, morto, testeContraMorte, estabilizar, concentrarEm,
 }
