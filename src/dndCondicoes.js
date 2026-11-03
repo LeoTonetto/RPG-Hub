@@ -141,12 +141,13 @@ function modoAutomatico(stats, f, ctx) {
 /** Resistências e imunidades a tipo de dano neste momento. */
 function defesasContraDano(stats, f) {
     const resiste = new Set(f.resistenciasDano || [])
-    const imune = new Set()
+    const imune = new Set(f.imunidadesDano || [])
+    const vulneravel = new Set(f.vulnerabilidadesDano || [])
     const efeitos = stats.efeitos || {}
     if (efeitos.furia && stats.classe === 'barbaro' && !(f.armadura && f.armadura.tipo === 'pesada')) FISICOS.forEach(t => resiste.add(t))
     if (stats.classe === 'monge' && f.nivel >= 10) imune.add('veneno')     // Pureza Corporal
     const tudo = temCondicao(stats, 'petrificado')
-    return { resiste, imune, tudo }
+    return { resiste, imune, vulneravel, tudo }
 }
 
 /**
@@ -161,7 +162,9 @@ function aplicarDano(stats, f, qtd, op = {}) {
     const eventos = []
     let dano = Math.max(0, Math.floor(qtd) || 0)
     const tipo = op.tipo || ''
-    const { resiste, imune, tudo } = defesasContraDano(stats, f)
+    const { resiste, imune, vulneravel, tudo } = defesasContraDano(stats, f)
+    // Vulnerável: dano dobrado (o tipo vem da fonte, ou o mestre marca)
+    if ((tipo && vulneravel.has(tipo)) || op.vulneravel) { dano *= 2; eventos.push(tipo ? `vulnerável a ${tipo}` : 'vulnerável') }
     if ((tipo && imune.has(tipo)) || op.imune) { eventos.push(tipo ? `imune a ${tipo}` : 'imune'); dano = 0 }
     else if ((tipo && resiste.has(tipo)) || op.resistente || tudo) { dano = Math.floor(dano / 2); eventos.push(tipo ? `resistência a ${tipo}` : 'resistência') }
     // Maestria em Armadura Pesada: −3 no dano físico não mágico, de armadura pesada

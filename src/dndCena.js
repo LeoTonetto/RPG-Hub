@@ -420,6 +420,8 @@ function menuAtacar(corpo, char, st, f) {
         })
         corpo.appendChild(linha)
     }
+    const assassinar = A.secaoAssassinar(char)
+    if (assassinar) corpo.appendChild(assassinar)
 
     const lista = mk('div', 'cn-lista')
     if (f.forma) {

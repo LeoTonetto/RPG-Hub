@@ -184,6 +184,12 @@ function rolarAtaque(char, stats, f, a, t, rotuloExtra) {
     // Condições, exaustão, armadura sem proficiência e Sortudo; Descuidado dá vantagem
     const auto = CD.modoAutomatico(stats, f, { tipo: 'ataque', atributo: a.atributo })
     if (t.descuidado && a.corpo && a.atributo === 'for') auto.vantagem.push('descuidado')
+    // Assassinar: o alvo marcado ainda não agiu (vantagem); se está surpreso, o acerto é crítico
+    const alvo = alvoAssassinar(char)
+    if (alvo) auto.vantagem.push(`Assassinar (${alvo.nome})`)
+    // Atacante Bestial (talento): uma vez por turno, o dano da arma corpo-a-corpo rola duas vezes
+    const bestial = f.talentos.includes('atacante-bestial') && a.corpo && !a.semDano && !(noMeuTurno(char) && t.usados.has('bestial'))
+    if (bestial && noMeuTurno(char)) t.usados.add('bestial')
 
     const tiposExtras = a.extras.map(e => e.tipo).filter(Boolean)
     const rotulo = `${a.nome}${rotuloExtra}${tiposExtras.length ? ` (+${tiposExtras.join(', ')})` : ''}`
@@ -192,6 +198,7 @@ function rolarAtaque(char, stats, f, a, t, rotuloExtra) {
         : rolagem.ataqueComArma({
             personagem: char.name, rotulo, bonusAtaque: a.bonus, expressao: a.expressao, bonusDano: a.bonusDano,
             tipoDano: a.tipo, critMin: a.critMin, dadosCritExtra: a.dadosCritExtra, rerrolarAte: a.rerrolarAte, auto,
+            melhorDoPrimeiro: bestial, criticoForcado: !!(alvo && alvo.surpreso),
         })
     ultimo = {
         charId: char.id, ataque: a, critico: !!res.critico && !res.falha, falha: !!res.falha,
@@ -200,6 +207,46 @@ function rolarAtaque(char, stats, f, a, t, rotuloExtra) {
     redesenhar(char)
     if (cb.emBatalha()) cb.atualizarTurno()
     return res
+}
+
+// ── Assassinar (ladino Assassino, 3º) ─────────────────────────────────────────
+// Vantagem contra quem ainda não teve turno na batalha; acerto em criatura
+// surpresa é crítico. O ladino marca o alvo (decidido com o mestre em 2026-11-03).
+
+const alvosAssassinar = {}   // charId → { id da entrada, chave do turno }
+
+/** Criaturas que ainda não tiveram turno (1ª rodada, depois da vez atual) ou estão surpresas. */
+function elegiveisAssassinar(char) {
+    const st = char.stats || {}
+    if (st.classe !== 'ladino' || st.subclasse !== 'assassino' || dnd.calcular(st).nivel < 3 || !combate().emBatalha()) return []
+    const c = state.combate
+    return c.ordem.map((e, i) => ({ e, i }))
+        .filter(({ e, i }) => e.tipo === 'criatura' && !e.charId && (e.surpreso || (c.rodada === 1 && i > c.turno)))
+        .map(({ e }) => ({ id: e.id, nome: e.nome, surpreso: !!e.surpreso }))
+}
+
+function alvoAssassinar(char) {
+    const sel = alvosAssassinar[char.id]
+    if (!sel || sel.chave !== combate().chaveDoTurno()) return null
+    return elegiveisAssassinar(char).find(x => x.id === sel.id) || null
+}
+
+/** Seletor do alvo (palco e painel de armas); null se não há ninguém para assassinar. */
+function secaoAssassinar(char) {
+    const lista = elegiveisAssassinar(char)
+    if (!lista.length) return null
+    const w = mk('label', 'da-assassinar')
+    w.appendChild(mk('span', 'ds-grupo', 'Assassinar: em quem você bate?'))
+    const sel = document.createElement('select')
+    sel.className = 'dc-select'
+    sel.setAttribute('aria-label', 'Alvo do ataque (Assassinar)')
+    sel.appendChild(new Option('Outro alvo', ''))
+    lista.forEach(x => sel.appendChild(new Option(`${x.nome} · ${x.surpreso ? 'surpresa: vantagem e crítico' : 'ainda não agiu: vantagem'}`, x.id)))
+    const atual = alvoAssassinar(char)
+    sel.value = atual ? atual.id : ''
+    sel.addEventListener('change', () => { alvosAssassinar[char.id] = { id: sel.value, chave: combate().chaveDoTurno() } })
+    w.appendChild(sel)
+    return w
 }
 
 function atacarBonus(char, b, item) {
@@ -461,6 +508,7 @@ function abrirPainel(stats, canEdit) {
     body.appendChild(lista)
     if (armas.length === 1) body.appendChild(mk('div', 'ds-legenda', 'Sem armas na ficha. Quem dá armas é o mestre.'))
 
+    if (canEdit) { const ass = secaoAssassinar(char); if (ass) body.appendChild(ass) }
     body.appendChild(detalhe(char, stats, f, foco, canEdit, mestre))
     if (canEdit) {
         const bonus = secaoBonus(char, stats, f, foco)
@@ -1067,6 +1115,6 @@ function mk(tag, cls, text) {
 module.exports = {
     abrirPainel, atacar, ataqueDeCriatura, usarAtaqueDaAcao, pacoteUI, previaDoPacote, aoFimDaBatalha, ataquesRestantes,
     // usados pelo palco da batalha (dndCena.js)
-    secaoBonus, secaoUltimo, efeitosDisponiveis, alternarEfeito, turnoDe, motivoAtaque, motivoEfeito,
+    secaoBonus, secaoUltimo, efeitosDisponiveis, alternarEfeito, turnoDe, motivoAtaque, motivoEfeito, secaoAssassinar,
     temUltimo: charId => !!ultimo && ultimo.charId === charId,
 }

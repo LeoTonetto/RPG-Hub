@@ -920,6 +920,7 @@ function desenharResultado() {
             const crit = marca('crítico', 'Num personagem a 0 PV, conta duas falhas')
             const imune = def.imune.size ? marca(`imune a ${[...def.imune].join(', ')}`, 'O dano é de um tipo a que o alvo é imune: zera') : null
             const resiste = def.resiste.size && !def.tudo ? marca(`resiste a ${[...def.resiste].join(', ')}`, 'O dano é de um tipo a que o alvo resiste: metade') : null
+            const vulneravel = def.vulneravel.size ? marca(`vulnerável a ${[...def.vulneravel].join(', ')}`, 'O dano é de um tipo a que o alvo é vulnerável: dobro') : null
             const fisico = fa.armadura && fa.armadura.tipo === 'pesada' && fa.talentos.includes('maestria-armadura-pesada')
                 ? marca('golpe físico não mágico', 'Maestria em Armadura Pesada: −3 em concussão, cortante ou perfurante de arma não mágica') : null
             const aplicar = botao('Aplicar dano', 'Resistência, PV temporários, Forma Selvagem e 0 PV, como manda o livro', () => {
@@ -928,7 +929,7 @@ function desenharResultado() {
                 dano = Math.max(0, dano - reducao)
                 aplicarDano(alvo, char, dano, a.criatura, {
                     corpo: !!a.corpo, critico: crit.c.checked, imune: !!(imune && imune.c.checked),
-                    resistente: !!(resiste && resiste.c.checked), fisicoNaoMagico: !!(fisico && fisico.c.checked),
+                    resistente: !!(resiste && resiste.c.checked), fisicoNaoMagico: !!(fisico && fisico.c.checked), vulneravel: !!(vulneravel && vulneravel.c.checked),
                 })
                 anuncioAtual = null
                 desenharResultado()
@@ -937,7 +938,7 @@ function desenharResultado() {
             linha.appendChild(aplicar)
             el.appendChild(linha)
             const extras = mk('div', 'cb-dano')
-            ;[crit, imune, resiste, fisico].filter(Boolean).forEach(m => extras.appendChild(m.l))
+            ;[crit, imune, resiste, vulneravel, fisico].filter(Boolean).forEach(m => extras.appendChild(m.l))
             el.appendChild(extras)
             const notas = []
             if (metade) notas.push('metade (Esquiva Sobrenatural)')

@@ -4,7 +4,9 @@
 // As fichas vêm do Apêndice D do Livro do Jogador (src/dados/dndCriaturas.json,
 // gerado do livro: números e ataques; os traços só pelo nome e a página). Três
 // companheiros do Conclave da Besta que o livro cita mas não traz (doninha
-// gigante, gorila, texugo gigante) usam a ficha do SRD 5.1.
+// gigante, gorila, texugo gigante) usam a ficha do SRD 5.1, como os quatro
+// elementais da Forma Selvagem de Elemental (druida da Lua, 10º), que o livro
+// só cita (decidido com o mestre em 2026-11-03).
 //
 // Decidido com o mestre (2026-11-03): a Forma Selvagem transforma de verdade
 // (a ficha usa PV, CA, atributos físicos e ataques da besta) e familiar,
@@ -20,6 +22,7 @@ const FAMILIARES_DO_PACTO = ['diabrete', 'pseudodragao', 'quasit', 'sprite']
 const COMPANHEIROS = ['doninha-gigante', 'javali', 'gorila', 'lobo', 'mula', 'pantera', 'texugo-gigante', 'urso-negro']
 const MONTARIAS = ['cavalo-de-guerra', 'cavalo-de-montaria', 'mastim']
 const MORTOS_VIVOS = ['esqueleto', 'zumbi']
+const ELEMENTAIS = ['elemental-do-ar', 'elemental-da-terra', 'elemental-do-fogo', 'elemental-da-agua']
 
 const TIPOS_DE_ALIADO = {
     familiar: 'Familiar', companheiro: 'Companheiro animal', montaria: 'Montaria', 'morto-vivo': 'Morto-vivo', outro: 'Criatura',
@@ -38,6 +41,14 @@ const ICONES = {
     'sprite': 'lorc/fairy', 'tigre': 'delapouite/tiger', 'tubarao-dos-arrecifes': 'lorc/shark-jaws',
     'urso-marrom': 'delapouite/bear-head', 'urso-negro': 'delapouite/bear-head', 'zumbi': 'delapouite/shambling-zombie',
     'doninha-gigante': 'delapouite/ermine', 'gorila': 'delapouite/gorilla', 'texugo-gigante': 'caro-asercion/badger',
+    'elemental-do-ar': 'lorc/magic-swirl', 'elemental-da-terra': 'delapouite/stone-wall', 'elemental-do-fogo': 'lorc/fire-wave', 'elemental-da-agua': 'sbed/water-drop',
+}
+
+/** Tipos de dano citados no texto da ficha ("veneno; exaustão..." → só antes do ";" se soParte1). */
+function tiposDoTexto(txt, soParte1) {
+    const t = String(txt || '').toLowerCase()
+    const parte = soParte1 ? t.split(';')[0] : t
+    return require('./dndDados').TIPOS_DANO.filter(tipo => parte.includes(tipo))
 }
 
 function criatura(id) { return POR_ID[id] || null }
@@ -129,5 +140,5 @@ function fichaDoAliado(aliado, f) {
 module.exports = {
     criatura, todas, icone, mod, deslocamentoBase, separarDano,
     limitesDaForma, formasPermitidas, aliadosPossiveis, fichaDoAliado,
-    TIPOS_DE_ALIADO, FAMILIARES, FAMILIARES_DO_PACTO, COMPANHEIROS, MONTARIAS, MORTOS_VIVOS,
+    TIPOS_DE_ALIADO, FAMILIARES, FAMILIARES_DO_PACTO, COMPANHEIROS, MONTARIAS, MORTOS_VIVOS, ELEMENTAIS, tiposDoTexto,
 }

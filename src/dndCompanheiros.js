@@ -115,6 +115,23 @@ function secaoFormaSelvagem(char, stats, f, canEdit) {
     linha.appendChild(sel)
     linha.appendChild(ir)
     w.appendChild(linha)
+    // Forma de Elemental (Lua, 10º): dois usos
+    const hElem = hab('forma-elemental')
+    if (hElem) {
+        const l2 = mk('div', 'ds-magia-botoes')
+        const sel2 = document.createElement('select')
+        sel2.className = 'dc-select'
+        sel2.setAttribute('aria-label', 'Elemental')
+        hElem.bestas.forEach(c => sel2.appendChild(new Option(`${c.nome} · CA ${c.ca} · ${c.pv} PV`, c.id)))
+        const ir2 = mk('button', 'ds-magia-btn', 'Virar elemental')
+        const te = trava(hElem)
+        ir2.disabled = !!te
+        ir2.title = te || 'Gasta dois usos de Forma Selvagem'
+        ir2.addEventListener('click', () => usarHab(hElem, { besta: sel2.value }))
+        l2.appendChild(sel2)
+        l2.appendChild(ir2)
+        w.appendChild(l2)
+    }
     return w
 }
 
@@ -231,7 +248,10 @@ function fichaCriatura(c, { pv, pvMax }, acoes) {
     const at = ['for', 'des', 'con', 'int', 'sab', 'car'].map(k => `${k.toUpperCase()} ${c.atributos[k]} (${dnd.sinal(CR.mod(c.atributos[k]))})`).join(' · ')
     w.appendChild(mk('div', 'ds-legenda', at))
     if (c.sentidos || c.pericias) w.appendChild(mk('div', 'ds-legenda', [c.pericias, c.sentidos].filter(Boolean).join(' · ')))
-    if (c.tracos && c.tracos.length) w.appendChild(mk('div', 'ds-legenda', `Traços: ${c.tracos.join(', ')}${c.pag ? ` (LdJ p. ${c.pag})` : ''}`))
+    if (c.tracos && c.tracos.length) w.appendChild(mk('div', 'ds-legenda', `Traços: ${c.tracos.join(', ')}${c.pag ? ` (LdJ p. ${c.pag})` : c.fonte === 'SRD' ? ' (SRD 5.1)' : ''}`))
+    const defesas = [c.resistencias && `Resistência: ${c.resistencias}`, c.imunidades && `Imunidade: ${c.imunidades}`, c.vulnerabilidades && `Vulnerável: ${c.vulnerabilidades}`].filter(Boolean)
+    if (defesas.length) w.appendChild(mk('div', 'ds-legenda', defesas.join(' · ')))
+    if (c.recarga) w.appendChild(mk('div', 'ds-legenda', c.recarga))
     ;(c.ataques || []).forEach(a => {
         const linha = mk('div', 'da-forma-ataque')
         linha.appendChild(mk('b', null, a.nome))

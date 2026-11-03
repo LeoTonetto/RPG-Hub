@@ -140,7 +140,7 @@ const comMotivo = (rotulo, r, extras) => {
  *   extraPrimeiro — dados a mais (Crítico Brutal, Ataques Selvagens)
  *   rerrolarAte   — rola de novo uma vez o que sair até esse valor (Combate com Armas Grandes)
  */
-function rolarExpressao(expressao, bonus = 0, multiplicador = 1, { extraPrimeiro = 0, rerrolarAte = 0, rerrolarMenores = 0 } = {}) {
+function rolarExpressao(expressao, bonus = 0, multiplicador = 1, { extraPrimeiro = 0, rerrolarAte = 0, rerrolarMenores = 0, melhorDoPrimeiro = false } = {}) {
     const grupos = []
     let fixo = bonus
     String(expressao).replace(/\s/g, '').replace(/-/g, '+-').split('+').forEach(parte => {
@@ -157,6 +157,19 @@ function rolarExpressao(expressao, bonus = 0, multiplicador = 1, { extraPrimeiro
             dados.push({ lados: g.lados, valor: v })
         }
     })
+    // Atacante Bestial: os dados da arma (o primeiro grupo) rolam de novo e fica a soma maior
+    let bestial = null
+    if (melhorDoPrimeiro && grupos.length) {
+        const q = Math.min(grupos[0].qtd, 60)
+        const soma = l => l.reduce((s, d) => s + d.valor, 0)
+        const outra = dados.slice(0, q).map(d => {
+            let v = dado(d.lados)
+            if (rerrolarAte && v <= rerrolarAte) v = dado(d.lados)
+            return { lados: d.lados, valor: v }
+        })
+        bestial = [soma(dados.slice(0, q)), soma(outra)]
+        if (bestial[1] > bestial[0]) dados.splice(0, q, ...outra)
+    }
     // Magia Potencializada: rola de novo os N dados mais baixos (só os abaixo da média)
     if (rerrolarMenores) {
         dados.map((d, i) => ({ d, i })).filter(x => x.d.valor <= x.d.lados / 2)
@@ -164,7 +177,7 @@ function rolarExpressao(expressao, bonus = 0, multiplicador = 1, { extraPrimeiro
             .forEach(x => { dados[x.i] = { lados: x.d.lados, valor: dado(x.d.lados) } })
     }
     return {
-        dados, bonus: fixo,
+        dados, bonus: fixo, bestial,
         total: Math.max(0, dados.reduce((s, d) => s + d.valor, 0) + fixo),
         expressao: grupos.map(g => `${g.qtd}d${g.lados}`).join(' + ') + (fixo ? ` ${sinal(fixo)}` : ''),
     }
@@ -254,7 +267,7 @@ function magiaComAtaque({ personagem, rotulo, bonusAtaque, expressao, tipoDano =
  * `forcarModo` vale só para esta rolagem (Ataque Descuidado) e o seletor
  * volta para Normal do mesmo jeito.
  */
-function ataqueComArma({ personagem, rotulo, bonusAtaque, expressao, bonusDano = 0, tipoDano = '', critMin = 20, dadosCritExtra = 0, rerrolarAte = 0, forcarModo, auto }) {
+function ataqueComArma({ personagem, rotulo, bonusAtaque, expressao, bonusDano = 0, tipoDano = '', critMin = 20, dadosCritExtra = 0, rerrolarAte = 0, forcarModo, auto, melhorDoPrimeiro = false, criticoForcado = false }) {
     const r = resolverModo(consumirModo(forcarModo), auto)
     const m = r.modo
     const atq = rolarD20(m, auto && auto.sortudo)
@@ -262,11 +275,14 @@ function ataqueComArma({ personagem, rotulo, bonusAtaque, expressao, bonusDano =
     const somados = rolarExtras(auto)
     bonusAtaque += somados.soma
     rotulo = comMotivo(rotulo, r, [textoProdigio, ...(atq.sorte ? ['Sortudo: rolou de novo o 1'] : []), ...somados.textos].filter(Boolean))
-    const critico = atq.natural >= critMin
     const falha = atq.natural === 1
+    // Assassinar: o acerto em criatura surpresa é crítico
+    const critico = (atq.natural >= critMin || criticoForcado) && !falha
     const dano = falha
         ? { dados: [], bonus: 0, total: 0, expressao: '' }
-        : rolarExpressao(expressao, bonusDano, critico ? 2 : 1, { extraPrimeiro: critico ? dadosCritExtra : 0, rerrolarAte })
+        : rolarExpressao(expressao, bonusDano, critico ? 2 : 1, { extraPrimeiro: critico ? dadosCritExtra : 0, rerrolarAte, melhorDoPrimeiro })
+    if (dano.bestial) rotulo += ` · Atacante Bestial (${dano.bestial[0]} e ${dano.bestial[1]}: fica ${Math.max(...dano.bestial)})`
+    if (criticoForcado && !falha && atq.natural < critMin) rotulo += ' · crítico se acertar (Assassinar)'
     const res = {
         personagem, rotulo, tipo: 'magia', tipoDano, modo: m,
         ataque: { dados: atq.dados, natural: atq.natural, bonus: bonusAtaque, total: atq.natural + bonusAtaque },

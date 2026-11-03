@@ -853,6 +853,14 @@ function calcular(stats) {
         const a = D.OPCOES['ancestrais-draconicos'].find(o => o.id === ancestral)
         if (a) resistenciasDano.add(a.dano)
     }
+    // Na Forma Selvagem valem também as defesas da criatura (os elementais têm várias)
+    const imunidadesDano = new Set()
+    const vulnerabilidadesDano = new Set()
+    if (forma) {
+        CR.tiposDoTexto(forma.resistencias).forEach(t => resistenciasDano.add(t))
+        CR.tiposDoTexto(forma.imunidades, true).forEach(t => imunidadesDano.add(t))
+        CR.tiposDoTexto(forma.vulnerabilidades).forEach(t => vulnerabilidadesDano.add(t))
+    }
 
     // ── Conjuração ────────────────────────────────────────────────────────────
     const conjuracao = resumoConjuracao(stats, mods, prof)
@@ -904,7 +912,7 @@ function calcular(stats) {
         forma: forma ? { ...forma, pv: stats.forma.pv, pvMax: forma.pv } : null,
         semConjurar: !!forma && !(stats.classe === 'druida' && nivel >= 18),
         talentos: talentos.map(t => t.id),
-        visaoEscuro: visao, resistenciasDano: [...resistenciasDano],
+        visaoEscuro: visao, resistenciasDano: [...resistenciasDano], imunidadesDano: [...imunidadesDano], vulnerabilidadesDano: [...vulnerabilidadesDano],
         efeitosRecebidos: recebidos, pvAjuda: ajuda,
         proficiencias: {
             armaduras: [...p.armaduras], categoriasArma: [...p.categoriasArma], armas: [...p.armas],

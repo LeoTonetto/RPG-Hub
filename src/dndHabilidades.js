@@ -164,6 +164,18 @@ function lista(char) {
                     sheet().gravar(char.id, { forma: { id: besta.id, pv: besta.pv } })
                     chat(`🐾 ${char.name} assume a forma de ${besta.nome.toLowerCase()} (${besta.pv} PV), gastando a ${rotuloCusto}.`)
                 } })
+            // Forma Selvagem de Elemental (Lua, 10º): dois usos; fichas do SRD 5.1
+            if (sub === 'lua' && nv >= 10) {
+                add({ id: 'forma-elemental', nome: 'Forma de Elemental', custo: custoForma, recurso: 'forma-selvagem', gasta: 2, campos: ['besta'],
+                    bestas: CR.ELEMENTAIS.map(id => CR.criatura(id)).filter(Boolean),
+                    desc: `Gasta dois usos de Forma Selvagem: vira elemental do ar, da terra, do fogo ou da água (gasta a ${rotuloCusto}).`,
+                    faz: (c, ff, v) => {
+                        const el = CR.criatura(v.besta)
+                        if (!el) return
+                        sheet().gravar(char.id, { forma: { id: el.id, pv: el.pv } })
+                        chat(`🔥 ${char.name} vira ${el.nome.toLowerCase()} (${el.pv} PV), gastando dois usos de Forma Selvagem e a ${rotuloCusto}.`)
+                    } })
+            }
         } else {
             add({ id: 'forma-voltar', nome: 'Voltar à forma normal', custo: 'bonus', desc: 'Volta à forma de druida.',
                 faz: () => { sheet().gravar(char.id, { forma: null }); chat(`🐾 ${char.name} volta à forma normal (ação bônus).`) } })
@@ -180,6 +192,25 @@ function lista(char) {
                     } })
             }
         }
+    }
+
+    // ── Patrulheiro Caçador (11º): Ataque Múltiplo (Saraivada ou Ataque Giratório) ──
+    const multiplo = cl === 'patrulheiro' && sub === 'cacador' && nv >= 11
+        ? D.OPCOES['ataques-multiplos'].find(o => o.id === dnd.escolhidos(st, 'ataque-multiplo')[0]) : null
+    if (multiplo) {
+        const distancia = multiplo.id === 'saraivada'
+        const props = a => (D.ARMAS[a.base] || {}).props || []
+        const armas = dnd.armasDoPersonagem(st).filter(a => a.base !== dnd.DESARMADO
+            && (distancia ? (D.ARMAS[a.base].distancia || props(a).includes('arremesso')) : !D.ARMAS[a.base].distancia))
+        add({ id: 'multiplo', nome: multiplo.nome, custo: 'acao', campos: ['qtd', 'arma'], qtdPadrao: 2, qtdRotulo: 'Criaturas na área',
+            armas: armas.map(a => ({ id: a.id, nome: a.nome || D.ARMAS[a.base].nome })),
+            desc: `${multiplo.desc} Um ataque (com dano) para cada criatura.`,
+            requisito: () => (armas.length ? '' : distancia ? 'Precisa de uma arma à distância' : 'Precisa de uma arma corpo-a-corpo'),
+            faz: (c, ff, v) => {
+                const item = dnd.armasDoPersonagem(atual(char).stats || {}).find(a => a.id === v.arma) || armas[0]
+                const arremesso = distancia && !D.ARMAS[item.base].distancia
+                for (let i = 1; i <= v.qtd; i++) require('./dndArmas').atacar(char, item, { tipo: 'livre', op: arremesso ? { arremesso: true } : {}, rotuloExtra: ` (${multiplo.nome} ${i}/${v.qtd})` })
+            } })
     }
 
     // ── Patrulheiro ──
@@ -465,12 +496,19 @@ function abrirCampos(char, h, botao, aoMudar) {
     let qtd = null
     let besta = null
     let espaco = null
+    let arma = null
+    if (h.campos.includes('arma') && (h.armas || []).length) {
+        arma = document.createElement('select')
+        arma.className = 'dc-select'
+        arma.setAttribute('aria-label', 'Arma')
+        h.armas.forEach(a => arma.appendChild(new Option(a.nome, a.id)))
+    }
     const espacos = h.campos.includes('espaco') ? dnd.espacosLivres(st, f, 1) : []
     if (h.campos.includes('besta')) {
         besta = document.createElement('select')
         besta.className = 'dc-select'
         besta.setAttribute('aria-label', 'Besta')
-        CR.formasPermitidas(f.nivel, st.subclasse).forEach(c => besta.appendChild(new Option(`${c.nome} · ${c.pv} PV`, c.id)))
+        ;(h.bestas || CR.formasPermitidas(f.nivel, st.subclasse)).forEach(c => besta.appendChild(new Option(`${c.nome} · ${c.pv} PV`, c.id)))
     }
     if (espacos.length) {
         espaco = document.createElement('select')
@@ -490,9 +528,10 @@ function abrirCampos(char, h, botao, aoMudar) {
         qtd = document.createElement('input')
         qtd.type = 'number'
         qtd.min = '1'
-        qtd.value = '5'
+        qtd.value = String(h.qtdPadrao || 5)
         qtd.className = 'room-input cn-qtd'
-        qtd.setAttribute('aria-label', 'Pontos')
+        qtd.setAttribute('aria-label', h.qtdRotulo || 'Pontos')
+        qtd.title = h.qtdRotulo || 'Pontos'
         qtd.addEventListener('keydown', e => e.stopPropagation())
     }
     const aviso = mk('span', 'dc-muted')
@@ -503,6 +542,7 @@ function abrirCampos(char, h, botao, aoMudar) {
         const m = usar(char, h, {
             alvo: alvoChar, qtd: qtd ? Math.max(1, parseInt(qtd.value, 10) || 1) : null,
             besta: besta ? besta.value : null, espaco: espaco ? espacos.find(e => e.id === espaco.value) : null,
+            arma: arma ? arma.value : null,
         })
         if (m) { aviso.textContent = m; return }
         if (aoMudar) aoMudar()
@@ -511,6 +551,7 @@ function abrirCampos(char, h, botao, aoMudar) {
     if (qtd) w.appendChild(qtd)
     if (besta) w.appendChild(besta)
     if (espaco) w.appendChild(espaco)
+    if (arma) w.appendChild(arma)
     w.appendChild(ok)
     w.appendChild(aviso)
     botao.replaceWith(w)
