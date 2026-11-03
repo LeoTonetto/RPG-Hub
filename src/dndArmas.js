@@ -319,6 +319,8 @@ function podeEditar(char) {
 }
 
 function redesenhar(char) {
+    // O palco da batalha mostra o último ataque e os extras também
+    if (combate().emBatalha()) combate().atualizarTurno()
     const el = document.getElementById('dndArmas')
     const aberto = state.statPopupChar
     if (!el || !el.classList.contains('visible') || !aberto || aberto.id !== char.id) return
@@ -1004,4 +1006,7 @@ function mk(tag, cls, text) {
 
 module.exports = {
     abrirPainel, atacar, ataqueDeCriatura, usarAtaqueDaAcao, pacoteUI, previaDoPacote, aoFimDaBatalha, ataquesRestantes,
+    // usados pelo palco da batalha (dndCena.js)
+    secaoBonus, secaoUltimo, efeitosDisponiveis, alternarEfeito, turnoDe,
+    temUltimo: charId => !!ultimo && ultimo.charId === charId,
 }

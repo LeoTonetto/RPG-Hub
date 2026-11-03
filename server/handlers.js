@@ -337,6 +337,9 @@ function setupSocketHandlers(io) {
             foto: typeof e?.foto === 'string' && e.foto.length < 600 ? e.foto : null,
             iniciativa: Number.isFinite(+e?.iniciativa) ? Math.round(+e.iniciativa) : 0,
             desempate: Number.isFinite(+e?.desempate) ? +e.desempate : 0,
+            // PV da criatura, se o mestre quiser (os jogadores veem só a barra)
+            pv: Number.isFinite(+e?.pv) && e?.pv !== null && e?.pv !== '' ? Math.max(0, Math.round(+e.pv)) : null,
+            pvMax: Number.isFinite(+e?.pvMax) && +e?.pvMax > 0 ? Math.round(+e.pvMax) : null,
         })
 
         socket.on('combate_iniciar', ({ ordem } = {}) => {
@@ -361,6 +364,17 @@ function setupSocketHandlers(io) {
             c.ordem.forEach(e => { if (!c.economia[e.id]) c.economia[e.id] = economiaNova() })
             const idx = c.ordem.findIndex(e => e.id === atual)
             c.turno = idx >= 0 ? idx : Math.min(c.turno, c.ordem.length - 1)
+            emitirCombate()
+        })
+
+        // Mestre mexe nos PV de uma criatura (dano, cura ou o máximo)
+        socket.on('combate_pv', ({ id, pv, pvMax } = {}) => {
+            const c = roomCombate[roomCode]
+            if (!c || !ehMestreAgora()) return
+            const ent = c.ordem.find(e => e.id === id && e.tipo === 'criatura')
+            if (!ent) return
+            if (Number.isFinite(+pvMax) && +pvMax > 0) ent.pvMax = Math.round(+pvMax)
+            if (Number.isFinite(+pv)) ent.pv = Math.max(0, Math.round(+pv))
             emitirCombate()
         })
 

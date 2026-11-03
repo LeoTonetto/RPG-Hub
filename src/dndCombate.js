@@ -155,6 +155,7 @@ function limpar() {
     anuncioAtual = null
     ;['combateBarra', 'combateTurno', 'combateSetup', 'combateAnuncio', 'combateResultado', 'combatePrompt']
         .forEach(id => { const el = document.getElementById(id); if (el) el.remove() })
+    require('./dndCena').limpar()
     atualizarBotaoMestre()
 }
 
@@ -231,6 +232,16 @@ function abrirMontagem() {
             ini.value = c.iniciativa
             ini.addEventListener('input', () => { c.iniciativa = ini.value })
             ini.addEventListener('keydown', e => e.stopPropagation())
+            const pv = document.createElement('input')
+            pv.className = 'room-input cb-ini'
+            pv.type = 'number'
+            pv.min = '1'
+            pv.placeholder = 'PV'
+            pv.title = 'Opcional: os jogadores veem só a barra'
+            pv.setAttribute('aria-label', 'PV da criatura (opcional)')
+            pv.value = c.pv || ''
+            pv.addEventListener('input', () => { c.pv = pv.value })
+            pv.addEventListener('keydown', e => e.stopPropagation())
             const d20 = mk('button', 'sp-adj-btn cb-d20', '🎲')
             d20.type = 'button'
             d20.title = 'Rolar um d20 (some o bônus da criatura)'
@@ -239,7 +250,7 @@ function abrirMontagem() {
             tirar.type = 'button'
             tirar.title = 'Remover'
             tirar.addEventListener('click', () => { criaturasRascunho.splice(i, 1); desenharCriaturas() })
-            l.appendChild(nome); l.appendChild(ini); l.appendChild(d20); l.appendChild(tirar)
+            l.appendChild(nome); l.appendChild(ini); l.appendChild(d20); l.appendChild(pv); l.appendChild(tirar)
             listaCr.appendChild(l)
         })
         const mais = mk('button', 'btn-ghost cb-mais', '+ Adicionar criatura')
@@ -298,9 +309,10 @@ function montarOrdem(pjs) {
         })
     })
     criaturasRascunho.filter(c => c.nome.trim()).forEach(c => {
+        const pv = parseInt(c.pv, 10) > 0 ? parseInt(c.pv, 10) : null
         ordem.push({
             id: 'cr:' + Math.random().toString(36).slice(2, 9), tipo: 'criatura', nome: c.nome.trim(),
-            iniciativa: parseInt(c.iniciativa, 10) || 0, desempate: Math.random() / 100,
+            iniciativa: parseInt(c.iniciativa, 10) || 0, desempate: Math.random() / 100, pv, pvMax: pv,
         })
     })
     if (linhas.length) emitir('chat_message', { playerName: '🎲 Dados', message: `Iniciativa — ${linhas.join(' · ')}`, type: 'roll' })
@@ -434,15 +446,23 @@ function formNovaCriatura() {
     ini.placeholder = 'Inic.'
     ini.setAttribute('aria-label', 'Iniciativa da criatura nova')
     ini.addEventListener('keydown', e => e.stopPropagation())
+    const pv = document.createElement('input')
+    pv.className = 'room-input cb-ini'
+    pv.type = 'number'
+    pv.min = '1'
+    pv.placeholder = 'PV'
+    pv.setAttribute('aria-label', 'PV da criatura nova (opcional)')
+    pv.addEventListener('keydown', e => e.stopPropagation())
     const add = botao('+ Entrar na ordem', 'Acrescentar a criatura na ordem', () => {
         if (!nome.value.trim()) return nome.focus()
+        const vida = parseInt(pv.value, 10) > 0 ? parseInt(pv.value, 10) : null
         const ordem = ordenar([...state.combate.ordem, {
             id: 'cr:' + Math.random().toString(36).slice(2, 9), tipo: 'criatura', nome: nome.value.trim(),
-            iniciativa: parseInt(ini.value, 10) || 0, desempate: Math.random() / 100,
+            iniciativa: parseInt(ini.value, 10) || 0, desempate: Math.random() / 100, pv: vida, pvMax: vida,
         }])
         emitir('combate_ordem', { ordem })
     })
-    f.appendChild(nome); f.appendChild(ini); f.appendChild(add)
+    f.appendChild(nome); f.appendChild(ini); f.appendChild(pv); f.appendChild(add)
     return f
 }
 
@@ -461,65 +481,14 @@ function confirmarEncerrar(onde) {
 // ── Painel "Seu turno" ───────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * O turno agora acontece no palco da batalha (dndCena.js): menu de comandos
+ * de quem joga, o grupo embaixo e as criaturas em cima. Aqui só repassa.
+ */
 function desenharTurno() {
-    let el = document.getElementById('combateTurno')
-    const minha = minhaEntrada()
-    const atual = entradaAtual()
-    // Turno de um aliado meu (familiar, companheiro): eu decido o que ele faz
-    const aliado = atual && atual.id.startsWith('al:') && state.playerCharacters.find(c => c.id === atual.charId)
-    if (emBatalha() && aliado) {
-        if (!el) { el = mk('div'); el.id = 'combateTurno'; segurar(el); document.body.appendChild(el) }
-        el.innerHTML = ''
-        el.appendChild(mk('div', 'cb-turno-titulo', `Turno de ${atual.nome}`))
-        const linha = mk('div', 'cb-acoes-linha')
-        require('./dndCompanheiros').ataquesDoAliado(aliado, atual.id.split(':')[2]).forEach(b => linha.appendChild(botao(b.rotulo, 'Rola ataque e dano', b.acao)))
-        if (linha.childNodes.length) el.appendChild(linha)
-        el.appendChild(botao('Encerrar turno ▶', 'Passar a vez', () => emitir('combate_proximo'), 'principal'))
-        return
-    }
-    if (!emBatalha() || !minha || atual.id !== minha.id) { if (el) el.remove(); return }
-    if (!el) {
-        el = mk('div')
-        el.id = 'combateTurno'
-        segurar(el)
-        document.body.appendChild(el)
-    }
-    el.innerHTML = ''
-    el.appendChild(mk('div', 'cb-turno-titulo', `Seu turno · ${minha.nome}`))
-    el.appendChild(fichas(minha, false))
-
-    const char = charDaEntrada(minha)
-    const st = (char && char.stats) || {}
-    // A 0 PV o turno é só o teste contra a morte
-    if (char && CD.caido(st)) {
-        const estavel = st.morte && st.morte.estavel
-        el.appendChild(mk('div', 'cb-turno-restam', estavel ? 'Estável a 0 PV: nada a fazer até ser curado.' : 'A 0 PV: role o teste contra a morte.'))
-        if (!estavel) el.appendChild(botao('💀 Teste contra a morte', '10 ou mais é sucesso', () => { require('./dndEstadoUI').testeMorte(char); desenharTurno() }, 'principal'))
-        el.appendChild(botao('Encerrar turno ▶', 'Passar a vez', () => emitir('combate_proximo')))
-        return
-    }
-    if (char && CD.semAcoes(st)) el.appendChild(mk('div', 'cb-turno-restam', 'Incapacitado: sem ações nem reações neste turno.'))
-    if (char) {
-        const restam = require('./dndArmas').ataquesRestantes(char)
-        if (restam > 0) el.appendChild(mk('div', 'cb-turno-restam', `Ação de Ataque: ${restam === 1 ? 'resta 1 ataque' : `restam ${restam} ataques`}`))
-        el.appendChild(botao('⚔ Armas', 'Abre a ficha no painel de armas', () => abrirArmas(char)))
-        if (!CD.semAcoes(st)) el.appendChild(acoesDeCombate(minha, char))
-    }
-
-    // Surto de Ação: uma ação a mais neste turno
-    if (char) {
-        const f = dnd.calcular(char.stats || {})
-        const surto = recursoLivre(char, f, 'surto-acao')
-        if (surto) {
-            const ec = economia(minha.id)
-            el.appendChild(botao('+1 Ação (Surto de Ação)', 'Gasta um uso de Surto de Ação', () => {
-                gastarRecurso(char, 'surto-acao')
-                gastar(minha.id, 'acoes', (ec ? ec.acoes : 1) + 1)
-                emitir('chat_message', { playerName: '⚔ Batalha', message: `${minha.nome} usa Surto de Ação.`, type: 'text' })
-            }))
-        }
-    }
-    el.appendChild(botao('Encerrar turno ▶', 'Passar a vez', () => emitir('combate_proximo'), 'principal'))
+    const velho = document.getElementById('combateTurno')
+    if (velho) velho.remove()
+    require('./dndCena').desenhar()
 }
 
 /** Abre a ficha do personagem já no painel de armas. */
@@ -676,7 +645,9 @@ function marcasDoAlvo(char) {
 
 let abaAnuncio = 'ataque'
 
-function abrirAnuncio() {
+/** `aba`: 'ataque' | 'magia' | 'oportunidade' (o palco abre direto na certa). */
+function abrirAnuncio(aba) {
+    if (typeof aba === 'string') abaAnuncio = aba
     const ov = overlay('combateAnuncio')
     ov.innerHTML = ''
     const card = mk('div', 'connect-card cb-anuncio')
@@ -1148,6 +1119,8 @@ function mk(tag, cls, text) {
 module.exports = {
     aoEstado, aoAnuncio, aoReacao, aoConjurar, atualizarBotaoMestre, limpar, minhaEntrada,
     regraMagiaBonus, gastarBonusDe, perguntar, marcasDoAlvo,
+    // usados pelo palco da batalha (dndCena.js)
+    entradaAtual, charDaEntrada, fichas, acoesDeCombate, abrirAnuncio, abrirArmas, podeMexer,
     // usados pelo painel de armas (dndArmas.js)
     emBatalha, entradaDoChar, turnoDoChar, chaveDoTurno, economia, gastar,
     gastarRecurso, gastarEspaco, espacosLivres, recursoLivre,

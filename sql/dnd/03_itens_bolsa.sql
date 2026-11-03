@@ -20,7 +20,7 @@
 alter table public.items add column if not exists sistema text;
 update public.items set sistema = 'calico' where sistema is null;
 
--- 2) Itens do D&D (80)
+-- 2) Itens do D&D (84)
 insert into public.items (name, icon, viewable, sistema)
 select v.name, v.icon, v.viewable, 'dnd'
 from (values
@@ -81,6 +81,10 @@ from (values
     ('Pena', '📜', false),
     ('Pergaminho de linhagem', '🪢', false),
     ('Píton', '🛠', false),
+    ('Poção de Cura', '🧪', false),
+    ('Poção de Cura Maior', '🧪', false),
+    ('Poção de Cura Superior', '🧪', false),
+    ('Poção de Cura Suprema', '🧪', false),
     ('Pote de ferro', '🛠', false),
     ('Presente de um admirador', '💍', false),
     ('Ração (1 dia)', '🍞', false),

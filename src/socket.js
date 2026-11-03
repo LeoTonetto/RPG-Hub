@@ -157,6 +157,7 @@ function connectToRoom(url, roomCode) {
             require('./dndSheet').persistirSeForMeu(charId)
             // Teste de concentração pedido por quem aplicou o dano
             require('./dndEstadoUI').aoMudarCampo(charId, field, value)
+            require('./dndCena').aoMudarFicha(charId)
         }
 
         if (state.statPopupCharId === charId && (field === 'expressao' || field === 'expressoes')) {

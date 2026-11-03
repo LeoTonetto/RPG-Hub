@@ -1867,3 +1867,252 @@ body.hud-hidden #dndBolsaBtn { opacity: 0.25; }
 .da-forma-ataque { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; font-size: 13px; color: rgba(var(--parchment-rgb), 0.8); }
 .da-forma-ataque b { color: var(--parchment); font-weight: 600; }
 .da-forma-ataque .ds-magia-btn { flex: none; }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ══ PALCO DA BATALHA ══
+   Criaturas em cima, grupo embaixo (no lugar dos cards), menu 2×2 de quem
+   está no turno. O fundo só escurece: chat, ficha e painéis continuam por cima.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+#cenaBatalha {
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.6) 70%, rgba(0, 0, 0, 0.82) 100%),
+        linear-gradient(180deg, rgba(var(--gold-rgb), 0.08) 0%, transparent 30%, transparent 70%, rgba(var(--gold-rgb), 0.1) 100%);
+    animation: cnEntra 0.4s ease;
+}
+
+@keyframes cnEntra { from { opacity: 0; } to { opacity: 1; } }
+
+#cenaBatalha > * { pointer-events: auto; }
+
+/* Os cards da sala dão lugar ao grupo do palco */
+body.em-batalha #characterBar { display: none !important; }
+
+/* ── Criaturas ── */
+.cn-inimigos {
+    position: absolute;
+    top: 128px;
+    left: 320px;
+    right: 340px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    pointer-events: none;
+}
+.cn-inimigos > * { pointer-events: auto; }
+
+.cn-cr {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 150px;
+    max-width: 200px;
+    padding: 8px 10px;
+    background: linear-gradient(160deg, rgba(var(--fundo-rgb), 0.95), rgba(var(--fundo-escuro-rgb), 0.97));
+    border: 1px solid rgba(var(--gold-rgb), 0.35);
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.cn-cr.atual { border-color: var(--gold-light); box-shadow: 0 0 18px rgba(var(--gold-light-rgb), 0.45), 0 6px 20px rgba(0, 0, 0, 0.6); transform: translateY(-3px); }
+.cn-cr.caida { opacity: 0.45; filter: grayscale(0.8); }
+.cn-cr-topo { display: flex; align-items: center; gap: 7px; }
+.cn-cr-icone { width: 22px; height: 22px; flex: none; color: var(--gold); }
+.cn-cr-nome { flex: 1; min-width: 0; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.06em; color: var(--parchment); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cn-ini { font-family: 'Cinzel', serif; font-size: 10px; padding: 1px 5px; border-radius: 8px; background: rgba(var(--gold-rgb), 0.2); color: var(--gold-light); }
+.cn-cr-pv { display: flex; align-items: center; gap: 4px; }
+.cn-cr-num { font-size: 12px; color: rgba(var(--parchment-rgb), 0.75); margin-right: auto; font-variant-numeric: tabular-nums; }
+.cn-qtd { width: 52px; padding: 3px 6px !important; font-size: 12px !important; }
+
+/* Barras de PV */
+.cn-barra { position: relative; height: 7px; background: rgba(0, 0, 0, 0.55); border: 1px solid rgba(var(--gold-rgb), 0.2); border-radius: 4px; overflow: hidden; }
+.cn-barra-fill { height: 100%; background: linear-gradient(90deg, #8b1e2b, #d4434f); transition: width 0.35s ease; }
+.cn-barra-fill.inimigo { background: linear-gradient(90deg, #6d2a1a, #c2552f); }
+.cn-barra-fill.forma { background: linear-gradient(90deg, #5d8a4a, #8fbf6a); }
+.cn-barra-temp { position: absolute; top: 0; right: 0; height: 100%; background: rgba(157, 187, 232, 0.6); }
+
+/* ── Grupo ── */
+.cn-grupo {
+    position: absolute;
+    left: 312px;
+    right: 500px;
+    bottom: 24px;
+    display: flex;
+    flex-wrap: wrap-reverse;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 8px;
+    pointer-events: none;
+}
+.cn-grupo > * { pointer-events: auto; }
+
+.cn-pj {
+    position: relative;
+    display: flex;
+    gap: 8px;
+    width: 200px;
+    padding: 8px;
+    background: linear-gradient(160deg, rgba(var(--fundo-rgb), 0.96), rgba(var(--fundo-escuro-rgb), 0.98));
+    border: 1px solid rgba(var(--gold-rgb), 0.3);
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.65);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.cn-pj.clicavel { cursor: pointer; }
+.cn-pj.meu { border-color: rgba(var(--gold-rgb), 0.6); }
+.cn-pj.atual { border-color: var(--gold-light); box-shadow: 0 0 20px rgba(var(--gold-light-rgb), 0.5), 0 6px 20px rgba(0, 0, 0, 0.65); transform: translateY(-6px); }
+.cn-pj.caido .cn-foto { filter: grayscale(0.8) brightness(0.6); }
+.cn-pj.morto { opacity: 0.5; filter: grayscale(1); }
+.cn-pj.aliado { width: 170px; border-style: dashed; }
+.cn-foto { flex: none; width: 46px; height: 46px; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(var(--gold-rgb), 0.25); }
+.cn-foto img { width: 100%; height: 100%; object-fit: cover; }
+.cn-foto .dm-icone { width: 30px; height: 30px; color: var(--gold); }
+.cn-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.cn-nome { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.05em; color: var(--parchment); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 18px; }
+.cn-pv { display: flex; flex-direction: column; gap: 1px; }
+.cn-pv-num { font-size: 11px; color: rgba(var(--parchment-rgb), 0.7); font-variant-numeric: tabular-nums; }
+.cn-marcas { font-size: 11px; line-height: 1.2; color: var(--parchment); }
+.cn-info .cb-fichas { justify-content: flex-start; }
+.cn-testes {
+    position: absolute; top: 5px; right: 5px;
+    width: 22px; height: 22px; padding: 0;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(var(--gold-rgb), 0.35);
+    border-radius: 4px;
+    font-size: 12px; line-height: 1;
+    cursor: pointer;
+}
+.cn-testes:hover { border-color: var(--gold-light); }
+
+/* ── Menu de comandos ── */
+.cn-menu-area {
+    position: absolute;
+    right: 100px;
+    bottom: 24px;
+    width: min(380px, calc(100vw - 132px));
+    display: flex;
+    justify-content: flex-end;
+    pointer-events: none;
+}
+.cn-menu-area > * { pointer-events: auto; }
+
+.cn-vez {
+    padding: 8px 14px;
+    background: rgba(var(--fundo-escuro-rgb), 0.92);
+    border: 1px solid rgba(var(--gold-rgb), 0.35);
+    border-radius: 6px;
+    font-family: 'Cinzel', serif;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--gold-light);
+}
+
+.cn-menu {
+    width: 100%;
+    max-height: calc(100vh - 220px);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: linear-gradient(170deg, rgba(var(--fundo-rgb), 0.98), rgba(var(--fundo-escuro-rgb), 0.99));
+    border: 2px solid var(--gold);
+    border-radius: 8px;
+    box-shadow: 0 0 24px rgba(var(--gold-rgb), 0.3), 0 10px 40px rgba(0, 0, 0, 0.85);
+    animation: cnMenu 0.25s ease;
+}
+@keyframes cnMenu { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+.cn-menu-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-family: 'Cinzel', serif; }
+.cn-menu-cab b { font-size: 14px; letter-spacing: 0.08em; color: var(--gold-light); }
+.cn-menu-cab span { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(var(--parchment-rgb), 0.5); }
+.cn-menu .cb-fichas.grandes { justify-content: flex-start; }
+.cn-menu-corpo { display: flex; flex-direction: column; gap: 6px; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--gold-dim) transparent; }
+.cn-nota { font-size: 12.5px; color: rgba(var(--parchment-rgb), 0.65); }
+
+/* Os 4 comandos, como Pokémon e Omori */
+.cn-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cn-cmd {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 62px;
+    padding: 8px;
+    border: 2px solid rgba(0, 0, 0, 0.75);
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18), 0 4px 0 rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-family: 'Cinzel', serif;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+    transition: transform 0.1s ease, filter 0.15s ease, box-shadow 0.1s ease;
+}
+.cn-cmd:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-2px); }
+.cn-cmd:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18), 0 1px 0 rgba(0, 0, 0, 0.55); }
+.cn-cmd:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.cn-cmd:disabled { filter: grayscale(0.85) brightness(0.6); cursor: not-allowed; }
+.cn-cmd-icone { font-size: 22px; text-shadow: none; }
+.cn-cmd.atacar { background: linear-gradient(180deg, #d0453f, #8e1f1f); }
+.cn-cmd.magia { background: linear-gradient(180deg, #4b7fc0, #24467a); }
+.cn-cmd.item { background: linear-gradient(180deg, #4f9c5a, #276234); }
+.cn-cmd.acoes { background: linear-gradient(180deg, #d6a637, #8a6516); }
+
+.cn-sub-cab { display: flex; align-items: center; gap: 10px; }
+.cn-sub-cab b { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.1em; color: var(--gold-light); text-transform: uppercase; }
+
+.cn-btn {
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.35);
+    border-radius: 4px;
+    color: var(--gold-light);
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+}
+.cn-btn:hover { border-color: var(--gold-light); }
+.cn-btn.cn-link { align-self: flex-start; background: none; border-color: transparent; padding: 2px 0; text-decoration: underline; text-underline-offset: 3px; }
+.cn-btn.cn-grande { padding: 12px; font-size: 13px; background: rgba(var(--gold-rgb), 0.18); border-color: var(--gold); }
+.cn-btn.cn-encerrar { align-self: flex-end; padding: 7px 14px; font-size: 11px; background: rgba(var(--gold-rgb), 0.15); border-color: var(--gold); }
+
+.cn-lista { display: flex; flex-direction: column; gap: 3px; }
+.cn-opcao, .cn-item {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    align-items: center;
+    gap: 9px;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(var(--gold-rgb), 0.18);
+    border-radius: 4px;
+    color: var(--parchment);
+    font-family: 'Crimson Text', serif;
+    text-align: left;
+    cursor: pointer;
+}
+.cn-opcao:hover:not(:disabled), .cn-item:hover:not(:disabled) { border-color: var(--gold-light); background: rgba(var(--gold-rgb), 0.1); }
+.cn-opcao:disabled, .cn-item:disabled { opacity: 0.45; cursor: not-allowed; }
+.cn-opcao .dm-icone { width: 22px; height: 22px; color: var(--gold); }
+.cn-opcao-vazio { width: 22px; }
+.cn-opcao-txt, .cn-item-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.cn-opcao-txt b, .cn-item-txt b { font-size: 14.5px; font-weight: 600; }
+.cn-opcao-txt span, .cn-item-txt span { font-size: 12px; color: rgba(var(--parchment-rgb), 0.55); }
+.cn-item-icone { font-size: 18px; text-align: center; }
+.cn-espacos { font-size: 12.5px; letter-spacing: 0.04em; color: var(--gold-light); white-space: pre-wrap; }
+.cn-magia-det { margin-top: 2px; }
+.cn-menu .cb-acoes-combate { width: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+    #cenaBatalha, .cn-menu { animation: none; }
+    .cn-pj, .cn-cr, .cn-cmd { transition: none; }
+}

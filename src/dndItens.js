@@ -28,6 +28,15 @@ const PACOTES = {
     'Pacote de sacerdote': [['Mochila'], ['Cobertor'], ['Vela', 10], ['Caixa de fogo'], ['Caixa de esmolas'], ['Bloco de incenso', 2], ['Incensário'], ['Vestes'], ['Ração (1 dia)', 2], ['Cantil']],
 }
 
+// Poções de cura (Guia do Mestre): usar uma rola a cura sozinho. O mestre
+// dá pelo Inventário; o SQL já põe estas no catálogo.
+const POCOES = {
+    'Poção de Cura': '2d4+2',
+    'Poção de Cura Maior': '4d4+4',
+    'Poção de Cura Superior': '8d4+8',
+    'Poção de Cura Suprema': '10d4+20',
+}
+
 // Textos do pacote da classe e do antecedente que viram outro nome no catálogo
 const TEXTOS = {
     '20 virotes': [['Virote', 20]],
@@ -47,7 +56,7 @@ const TEXTOS = {
 const ICONES = [
     [/mochila|saco de dormir|baú|estojo|algibeira|aljava|bolsa/i, '🎒'], [/ração|cantil|kit de refeição/i, '🍞'], [/tocha|vela|lanterna|lâmpada|caixa de fogo|óleo|parafina/i, '🕯'],
     [/corda|linha/i, '🪢'], [/pé de cabra|martelo|píton|pá|pote|ferramentas|kit/i, '🛠'], [/flecha|virote/i, '🏹'], [/símbolo|livro de preces|incens|esmolas|vestes/i, '✝'],
-    [/foco|grimório|componentes/i, '🔮'], [/alaúde|instrumento/i, '🎵'], [/roupas|fantasia|traje|vestimentas/i, '👘'], [/tinta|caneta|pena|papel|pergaminho|livro|carta|mapa|areia/i, '📜'],
+    [/poção/i, '🧪'], [/foco|grimório|componentes/i, '🔮'], [/alaúde|instrumento/i, '🎵'], [/roupas|fantasia|traje|vestimentas/i, '👘'], [/tinta|caneta|pena|papel|pergaminho|livro|carta|mapa|areia/i, '📜'],
     [/anel|insígnia|amuleto|perfume|sino|esferas|dados|troféu|fetiche|lembrança|presente/i, '💍'], [/faca/i, '🔪'], [/rato/i, '🐀'], [/armadilha/i, '🪤'], [/sabão|cobertor/i, '🧺'],
 ]
 function iconeDoItem(nome) {
@@ -87,6 +96,7 @@ function todosOsNomes() {
     Object.values(D.EQUIPAMENTO_ANTECEDENTE).forEach(a => (a.itens || []).forEach(i => textos.add(i)))
     Object.keys(PACOTES).forEach(p => textos.add(p))
     const nomes = new Set(expandir([...textos]).itens.map(([n]) => n))
+    Object.keys(POCOES).forEach(n => nomes.add(n))
     return [...nomes].sort((a, b) => a.localeCompare(b, 'pt'))
 }
 
@@ -133,4 +143,33 @@ async function entregarDaFicha(char) {
     return n
 }
 
-module.exports = { PACOTES, expandir, todosOsNomes, iconeDoItem, entregarItens, entregarDaFicha }
+/**
+ * Usa um item do inventário (menu Item da batalha): tira 1, avisa a mesa e,
+ * se for poção de cura, rola e cura. Quem chama gasta a Ação.
+ * `item` é a linha do inventário em memória ({ inventoryId, quantity, name }).
+ */
+async function usarItem(char, item) {
+    const inv = require('./inventory')
+    const restante = (item.quantity || 1) - 1
+    if (state.supabase) {
+        const r = restante > 0
+            ? await state.supabase.from('inventory').update({ quantity: restante }).eq('id', item.inventoryId)
+            : await state.supabase.from('inventory').delete().eq('id', item.inventoryId)
+        if (r.error) console.warn('[D&D] Inventário:', r.error.message)
+    }
+    const lista = (state.inventories[char.id] || [])
+        .map(i => (i.inventoryId === item.inventoryId ? { ...i, quantity: restante } : i))
+        .filter(i => i.quantity > 0)
+    inv.handleInventoryUpdate({ charId: char.id, items: lista })
+    if (state.socket) {
+        state.socket.emit('inventory_update', { charId: char.id, items: lista })
+        state.socket.emit('chat_message', { playerName: '🎒 Item', message: `${char.name} usa ${item.name}.`, type: 'text' })
+    }
+    const cura = POCOES[item.name]
+    if (cura) {
+        const r = require('./dndRolagem').rolarDados({ personagem: char.name, rotulo: item.name, expressao: cura, tipo: 'cura' })
+        require('./dndEstadoUI').curaNoPersonagem(char, r.total)
+    }
+}
+
+module.exports = { PACOTES, POCOES, expandir, todosOsNomes, iconeDoItem, entregarItens, entregarDaFicha, usarItem }

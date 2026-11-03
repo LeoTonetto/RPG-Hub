@@ -125,7 +125,16 @@
     flex-direction: column;
     gap: 9px;
     padding: 12px 14px 14px;
+    /* A ficha do D&D é mais alta que a tela: o corpo rola e o cabeçalho, a
+       gestão (trocar, editar, novo) e a lista de troca ficam sempre à vista */
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold-dim) transparent;
 }
+
+#statPopup { max-height: calc(100vh - 16px); }
+#statPopup .stat-popup-header, #statCharMgmt, #statSwitchPanel { flex-shrink: 0; }
 
 .stat-row {
     display: flex;

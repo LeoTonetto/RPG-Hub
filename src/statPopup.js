@@ -42,6 +42,9 @@ document.addEventListener('click', e => {
 statBtnSwitch?.addEventListener('click', () => {
     const open = statSwitchPanel.style.display !== 'none'
     statSwitchPanel.style.display = open ? 'none' : 'flex'
+    // A lista aumenta o popup: se passou da borda de baixo, sobe ele
+    const r = statPopup.getBoundingClientRect()
+    if (r.bottom > window.innerHeight - 8) statPopup.style.top = Math.max(8, window.innerHeight - r.height - 8) + 'px'
 })
 statBtnEdit?.addEventListener('click', () => {
     const char = state.statPopupChar; if (!char) return

@@ -20,7 +20,7 @@ const CAMADAS_FLUTUANTES = [
     '#statPopup', '.subpanel', '.calico-panel', '.dnd-panel', '#dndNivelModal', '#dndRollOverlay',
     // Batalha de D&D
     '#combateBarra', '#combateTurno', '#combateSetup', '#combateAnuncio', '#combateResultado', '#combatePrompt',
-    '#dndPergunta', '#dndBolsaBtn', '#dndBolsaPainel',
+    '#dndPergunta', '#dndBolsaBtn', '#dndBolsaPainel', '#cenaBatalha',
     // Inventário e o que nasce dele
     '#inventoryModal', '#invLightbox', '#transferPicker',
     // NPCs

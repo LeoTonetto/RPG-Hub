@@ -34,6 +34,12 @@ const CUSTO_METAMAGIA = { acelerada: 2, aumentada: 3, cuidadosa: 1, distante: 1,
 // Pontos para criar um espaço de magia (Conjuração Flexível)
 const CUSTO_ESPACO = { 1: 2, 2: 3, 3: 5, 4: 6, 5: 7 }
 
+// Magias de ataque cujo dano está só no texto do livro
+const DANO_DO_TEXTO = {
+    'orbe-cromatica': { dano: '3d8 à escolha', superior: '1d8' },     // ácido, frio, fogo, elétrico, veneno ou trovejante
+    'arma-espiritual': { dano: '1d8 força' },                         // + atributo; ver expressaoDe
+}
+
 // Magias de cura que somam o atributo de conjuração ao dado
 const CURA_SOMA_ATRIBUTO = new Set(['curar-ferimentos', 'palavra-curativa', 'curar-ferimentos-em-massa', 'palavra-curativa-em-massa', 'oracao-curativa'])
 
@@ -599,9 +605,18 @@ function secaoRecuperacaoArcana(stats, f) {
     return w
 }
 
-/** Conjurar (gasta o espaço e rola o efeito), ritual, ataque e dano/cura. */
-function acoesDaMagia(char, stats, f, m, canEdit) {
+/**
+ * Conjurar (gasta o espaço e rola o efeito), ritual, ataque e dano/cura.
+ * Grava no próprio personagem (não no popup aberto): o palco da batalha usa
+ * a mesma coisa. `aoMudar` redesenha quem chamou (padrão: o painel Magias).
+ */
+function acoesDaMagia(char, stats, f, m, canEdit, { aoMudar } = {}) {
+    // Dano que o livro descreve no texto e o dado da magia não traz
+    if (!m.dano && DANO_DO_TEXTO[m.id]) m = { ...m, ...DANO_DO_TEXTO[m.id] }
     const w = mk('div', 'ds-magia-acoes')
+    const atual = () => (estadoUI().charPorId(char.id) || char).stats || {}
+    const salvar = (campo, valor) => gravar(char.id, { [campo]: valor })
+    const refazer = () => (aoMudar ? aoMudar() : abrirPainelMagia(statsAtuais(), canEdit))
     const nome = char ? char.name : '?'
     const linhaInfo = mk('div', 'ds-magia-info', `${m.origem} · ${D.ATRIBUTO_POR_KEY[m.atributo].abrev} · CD ${m.cd}${m.ataque ? ` · ataque ${dnd.sinal(m.ataqueBonus)}` : ''}${m.usos ? ` · ${m.usos}` : ''}`)
     w.appendChild(linhaInfo)
@@ -643,6 +658,8 @@ function acoesDaMagia(char, stats, f, m, canEdit) {
         const acima = Math.max(0, nivelEscolhido() - m.nivel)
         // Mísseis Mágicos: três dardos de 1d4 + 1, mais um por nível acima
         if (m.id === 'misseis-magicos') return `${3 + acima}d4+${3 + acima}`
+        // Arma Espiritual: 1d8 + atributo, +1d8 a cada dois níveis acima do 2º
+        if (m.id === 'arma-espiritual') return `${1 + Math.floor(acima / 2)}d8${f.mods[m.atributo] >= 0 ? '+' : ''}${f.mods[m.atributo]}`
         if (m.nivel === 0 && m.escalaTruque) return dados.replace(/^(\d+)d/, (_, q) => `${q * tier}d`)
         if (!acima || !m.superior) return dados
         return `${dados}+${m.superior.replace(/^(\d+)d/, (_, q) => `${q * acima}d`)}`
@@ -690,22 +707,22 @@ function acoesDaMagia(char, stats, f, m, canEdit) {
             let onde = ''
             if (usaEspaco && sel) {
                 const o = opcoes.find(x => x.id === sel.value)
-                commit('espacos_usados', { ...(stats.espacos_usados || {}), [o.id]: ((stats.espacos_usados || {})[o.id] || 0) + 1 })
+                salvar('espacos_usados', { ...(atual().espacos_usados || {}), [o.id]: ((atual().espacos_usados || {})[o.id] || 0) + 1 })
                 onde = ` (espaço de ${o.nivel}º nível)`
             }
-            if (m.recurso) commit('recursos_usados', { ...(stats.recursos_usados || {}), [m.recurso]: 1 })
-            if (custo) commit('recursos_usados', { ...(statsAtuais().recursos_usados || {}), feiticaria: ((statsAtuais().recursos_usados || {}).feiticaria || 0) + custo })
+            if (m.recurso) salvar('recursos_usados', { ...(atual().recursos_usados || {}), [m.recurso]: 1 })
+            if (custo) salvar('recursos_usados', { ...(atual().recursos_usados || {}), feiticaria: ((atual().recursos_usados || {}).feiticaria || 0) + custo })
             const metaNomes = [...marcadas].map(id => (D.OPCOES.metamagias.find(o => o.id === id) || {}).nome).filter(Boolean)
             if (state.socket) state.socket.emit('chat_message', { playerName: '✦ Magia', message: `${nome} conjurou ${m.nome}${onde}${metaNomes.length ? ` com ${metaNomes.join(', ')}` : ''}.`, type: 'text' })
             // Em batalha, gasta a ação, a ação bônus ou a reação conforme o tempo da magia
             if (char) cb.aoConjurar(char, m, { acelerada: marcadas.has('acelerada') })
             if (char && m.concentracao) estadoUI().concentrar(char, m)
             // Bordão Místico muda a clava ou o bordão no painel de armas
-            if (m.id === 'bordao-mistico') commit('efeitos', { ...(statsAtuais().efeitos || {}), 'bordao-mistico': true })
+            if (m.id === 'bordao-mistico') salvar('efeitos', { ...(atual().efeitos || {}), 'bordao-mistico': true })
             const opc = { duplicada: marcadas.has('duplicada'), potencializada: marcadas.has('potencializada') ? Math.max(1, f.mods.car) : 0 }
             if (m.ataque) conjurarComAtaque(opc)
             else rolarEfeito(false, opc)
-            abrirPainelMagia(statsAtuais(), canEdit)
+            refazer()
         })
         linha.appendChild(conjurar)
 
@@ -716,7 +733,7 @@ function acoesDaMagia(char, stats, f, m, canEdit) {
             ritual.addEventListener('click', () => {
                 if (state.socket) state.socket.emit('chat_message', { playerName: '✦ Magia', message: `${nome} conjura ${m.nome} como ritual (10 minutos a mais, sem gastar espaço).`, type: 'text' })
                 if (char && m.concentracao) estadoUI().concentrar(char, m)
-                abrirPainelMagia(statsAtuais(), canEdit)
+                refazer()
             })
             linha.appendChild(ritual)
         }
@@ -1029,6 +1046,8 @@ function gravar(charId, campos) {
         updateCardStat(charId, k, v)
         if (state.socket) state.socket.emit('stat_update', { charId, field: k, value: v, ownerName: state.playerName })
     })
+    // O palco da batalha mostra PV, condições e economia de todo o grupo
+    try { require('./dndCena').aoMudarFicha(charId) } catch (e) { /* palco fechado */ }
     const stats = (meu && meu.stats) || (entry && entry.character.stats)
     if (stats && state.supabase) {
         state.supabase.from('characters').update({ stats }).eq('id', charId)
@@ -1216,4 +1235,5 @@ function copia(v) { return v && typeof v === 'object' ? JSON.parse(JSON.stringif
 
 module.exports = {
     buildSheet, fecharPaineis, onRemoteStatUpdate, isDnd, reabrirFicha, gravar, persistirSeForMeu, segurarCliques, painel,
+    acoesDaMagia, abrirPainelPericias,
 }
