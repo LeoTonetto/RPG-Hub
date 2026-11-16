@@ -1,6 +1,6 @@
 {
   "name": "hub-rpg",
-  "version": "4.9.1",
+  "version": "4.10.0",
   "description": "Lobby interativo para sessões de RPG",
   "author": "Tonetto",
   "main": "main.js",
