@@ -282,6 +282,8 @@ function atualizarBotaoMestre() {
         btn.after(teste)
     }
     teste.style.display = btn.style.display
+    // Baralho das Surpresas (só o mestre vê o botão)
+    require('./dndBaralho').desenharBotao()
 }
 
 // Criaturas da montagem ficam guardadas enquanto o app estiver aberto

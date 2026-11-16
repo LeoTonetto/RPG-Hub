@@ -1,4 +1,4 @@
-Ícones de classes, magias, talentos, armas e criaturas do D&D
+Ícones de classes, magias, talentos, armas, criaturas e cartas do D&D
 
 Origem: game-icons.net (https://game-icons.net), repositório
 https://github.com/game-icons/icons
@@ -15,6 +15,8 @@ Autores dos ícones usados aqui (o nome do arquivo começa pelo autor):
 - Carl Olsen      https://twitter.com/unstoppableCarl
 - Skoll
 - Caro Asercion
+- Cathelineau
+- Darkzaitzev
 
 Alteração feita: o quadrado de fundo foi removido e o desenho ficou preto,
 para o app pintar o ícone na cor da sala (máscara CSS).

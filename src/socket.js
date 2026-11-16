@@ -139,6 +139,7 @@ function connectToRoom(url, roomCode) {
     // ── Stats em tempo real ──────────────────────────────────────────────────
     state.socket.on('dnd_efeito', p => require('./dndEfeitos').aoReceber(p))
     state.socket.on('dnd_pedir_teste', p => require('./dndTestes').aoPedido(p))
+    state.socket.on('dnd_carta', c => require('./dndBaralho').mostrar(c))
     state.socket.on('dnd_resposta_teste', r => require('./dndTestes').aoResposta(r))
     state.socket.on('stat_update', ({ charId, field, value, ownerName }) => {
         const entry = state.allCharsCache.find(e => e.character.id === charId)

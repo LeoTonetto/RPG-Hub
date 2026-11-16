@@ -498,6 +498,14 @@ function setupSocketHandlers(io) {
         })
 
         // Resposta de um jogador a um anúncio: gasta a reação dele
+        // Baralho das Surpresas: o mestre puxa e a carta aparece para todos
+        socket.on('dnd_carta', (c = {}) => {
+            if (!ehMestreAgora()) return
+            const id = String(c.id ?? '').slice(0, 20)
+            if (!/^[a-z-]+$/.test(id)) return
+            io.to(roomCode).emit('dnd_carta', { id, rolado: Number.isFinite(+c.rolado) && c.rolado !== null ? Math.round(+c.rolado) : null })
+        })
+
         // Teste pedido pelo mestre: o pedido vai a todos (cada app vê se é com
         // ele) e as respostas voltam para o mestre, que confere a CD
         socket.on('dnd_pedir_teste', (p = {}) => {
