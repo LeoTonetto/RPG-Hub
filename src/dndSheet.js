@@ -796,6 +796,7 @@ function acoesDaMagia(char, stats, f, m, canEdit, { aoMudar } = {}) {
         if (f.semConjurar) base = 'Na Forma Selvagem não dá para conjurar'
         else if (f.semProfArmadura) base = 'Vestindo armadura sem proficiência, não dá para conjurar'
         else if (CD.semAcoes(stats)) base = 'Incapacitado: sem ações'
+        else if (m.soRitual) base = 'Do livro de rituais: só se conjura como ritual'
         else if (usaEspaco && !opcoes.length) base = 'Sem espaço de magia livre'
         else if (!usoLivre) base = 'Já usada; volta no descanso longo'
 
@@ -877,7 +878,7 @@ function acoesDaMagia(char, stats, f, m, canEdit, { aoMudar } = {}) {
         linha.appendChild(conjurar)
 
         // Ritual: sem gastar espaço, 10 minutos a mais (bardo, clérigo, druida, mago)
-        if (m.ritual && f.conjuracao && f.conjuracao.ritual && !f.semConjurar) {
+        if (m.ritual && !f.semConjurar && (m.soRitual || (f.conjuracao && f.conjuracao.ritual))) {
             const ritual = mk('button', 'ds-magia-btn', '📜 Ritual')
             const emBatalha = cb.emBatalha() && !state.isRoomMaster
             ritual.disabled = emBatalha

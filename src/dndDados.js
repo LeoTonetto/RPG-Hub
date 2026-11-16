@@ -266,6 +266,7 @@ const OPCOES = {
         { id: 'punho-ar', nome: 'Punho do Ar Contínuo', desc: '2 chi: rajada de ar que causa dano e empurra.' },
         { id: 'punho-trovoes', nome: 'Punho dos Quatro Trovões', desc: '2 chi: onda trovejante.' },
         { id: 'chicote-agua', nome: 'Chicote de Água', desc: '2 chi: chicote d\'água que causa dano e puxa ou derruba.' },
+        { id: 'varredura-cauterizante', nome: 'Golpe de Varredura Cauterizante', desc: '2 chi: mãos flamejantes.' },
         { id: 'gongo-pico', nome: 'Gongo do Pico', desc: '3 chi: despedaçar.', req: { nivel: 6 } },
         { id: 'serragem-norte', nome: 'Serragem do Vento do Norte', desc: '3 chi: imobilizar pessoa.', req: { nivel: 6 } },
         { id: 'cavalgar-vento', nome: 'Cavalgar o Vento', desc: '4 chi: voo em si.', req: { nivel: 11 } },

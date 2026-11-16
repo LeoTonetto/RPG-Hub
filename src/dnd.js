@@ -32,6 +32,12 @@ const NOME_DA_LISTA = { bardo: 'bardo', bruxo: 'bruxo', clerigo: 'clérigo', dru
 const talentos = () => C.talentos()
 
 // ── Atributos ─────────────────────────────────────────────────────────────────
+// Talentos cujas magias vêm da lista de uma classe à escolha
+const TALENTOS_DE_LISTA = {
+    'atirador-de-magia': { id: 'truque-ataque', rotulo: 'Truque de ataque', qtd: 1, nivel: 0, soAtaque: true },
+    'conjurador-de-ritual': { id: 'rituais', rotulo: 'Rituais de 1º nível', qtd: 2, nivel: 1, soRitual: true },
+}
+
 const COMPRA_PONTOS = 27
 const CUSTO_COMPRA = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 13: 5, 14: 7, 15: 9 }
 const CONJUNTO_PADRAO = [15, 14, 13, 12, 10, 8]
@@ -155,6 +161,21 @@ function vagasDeEscolha(stats, ateNivel = stats.nivel || 1) {
                         add(`nv${n}:talento:aumento`, n, origemT, { id: 'aumento', rotulo: '+1 em', tipo: 'atributo', qtd: 1, de: talento.aumento.de })
                     }
                     ;(talento.escolhas || []).forEach(e => add(`nv${n}:talento:${e.id}`, n, origemT, e))
+                    // Atirador de Magia (um truque que usa jogada de ataque) e Conjurador
+                    // de Ritual (duas magias de 1º nível com ritual): o jogador escolhe a
+                    // classe, e as magias saem da lista dela (LdJ, cap. 6)
+                    if (TALENTOS_DE_LISTA[asi.talento]) {
+                        const kClasse = `nv${n}:talento:classe`
+                        if (!(talento.escolhas || []).some(e => e.id === 'classe')) {
+                            add(kClasse, n, origemT, { id: 'classe', rotulo: 'Classe das magias', tipo: 'opcao', qtd: 1, fonte: 'classes-iniciado' })
+                        }
+                        const daClasse = ((stats.escolhas || {})[kClasse] || [])[0]
+                        if (daClasse) {
+                            const t = TALENTOS_DE_LISTA[asi.talento]
+                            add(`nv${n}:talento:${t.id}`, n, origemT, { id: t.id, rotulo: `${t.rotulo} de ${NOME_DA_LISTA[daClasse]}`, tipo: 'magia', qtd: t.qtd, lista: daClasse,
+                                nivelMin: t.nivel, nivelMax: t.nivel, atributo: ATRIBUTO_DA_LISTA[daClasse], soAtaque: t.soAtaque, soRitual: t.soRitual })
+                        }
+                    }
                     // Iniciado em Magia: as magias dependem da classe escolhida
                     const lista = asi.talento === 'iniciado-em-magia' && ((stats.escolhas || {})[`nv${n}:talento:classe`] || [])[0]
                     if (lista) {
@@ -297,8 +318,9 @@ function magiasDoPersonagem(stats) {
         let uso = {}
         if (/:arcana$/.test(v.key)) uso = { usos: '1 vez por descanso longo, sem espaço', semEspaco: true, recurso: 'arcana:' }
         if (/:talento:magia$/.test(v.key)) uso = { usos: '1 vez por descanso longo, no 1º nível', semEspaco: true, recurso: 'iniciado:', nivelFixo: 1 }
+        const livroDeRituais = /:talento:rituais$/.test(v.key) ? { soRitual: true, semEspaco: true, usos: 'só como ritual' } : {}
         ;((stats.escolhas || {})[v.key] || []).forEach(id => incluir(id, {
-            origem: v.origem, atributo,
+            origem: v.origem, atributo, ...livroDeRituais,
             ...(uso.recurso ? { ...uso, recurso: uso.recurso + id, rotuloUso: uso.recurso === 'arcana:' ? 'Arcana Mística' : 'Iniciado em Magia' } : {}),
         }))
     })
@@ -600,6 +622,9 @@ function opcoesDaVaga(stats, vaga) {
             const min = vaga.nivelMin ?? 0
             const max = vaga.nivelMax ?? 9
             lista = lista.filter(m => m.nivel >= min && m.nivel <= max)
+            // Atirador de Magia: só truque com jogada de ataque; Conjurador de Ritual: só magia com ritual
+            if (vaga.soAtaque) lista = lista.filter(m => m.ataque)
+            if (vaga.soRitual) lista = lista.filter(m => m.ritual)
             // Cavaleiro Arcano e Trapaceiro Arcano: fora das duas escolas da
             // subclasse só cabem as magias "livres" dos níveis 3, 8, 14 e 20
             const fora = vaga.escolas ? [...atual].filter(id => { const m = C.magia(id); return m && !vaga.escolas.includes(m.escola) }).length : 0
