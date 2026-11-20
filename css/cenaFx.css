@@ -9,6 +9,7 @@
 @property --fx-bal  { syntax: '<number>'; inherits: true; initial-value: 0; }
 @property --fx-con  { syntax: '<number>'; inherits: true; initial-value: 0; }
 @property --fx-mov  { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --fx-voo  { syntax: '<number>'; inherits: true; initial-value: 0; }
 @property --fx-zoom { syntax: '<number>'; inherits: true; initial-value: 1; }
 @property --fx-olho { syntax: '<length>'; inherits: false; initial-value: 0px; }
 @property --fx-iris { syntax: '<length>'; inherits: false; initial-value: 0px; }
@@ -69,6 +70,21 @@ body.fxon-movimento #fxMov { animation: fxCorrida 0.78s ease-in-out infinite; }
     100% { transform: translate(calc(var(--fx-mov) * -5px), calc(var(--fx-mov) * -2px)) rotate(calc(var(--fx-mov) * -0.4deg)) scale(1); }
 }
 
+/* Voo: a câmera inclina nas curvas e sobe e desce com as correntes de ar.
+   Ritmo e sentido sorteados em src/cenaFx.js; o avanço para o destino é uma
+   animação lenta em #fxVooAvanco, também de lá. */
+#fxVoo { transition: --fx-voo 1.8s ease; }
+body.fxon-voo #fxVoo {
+    animation: fxVoo var(--fx-voo-dur, 12s) ease-in-out var(--fx-voo-atraso, 0s) infinite var(--fx-voo-dir, alternate);
+}
+@keyframes fxVoo {
+    0%   { transform: translate(calc(var(--fx-voo) * -6px), calc(var(--fx-voo) *  4px)) rotate(calc(var(--fx-voo) * -0.7deg)); }
+    24%  { transform: translate(calc(var(--fx-voo) *  3px), calc(var(--fx-voo) * -7px)) rotate(calc(var(--fx-voo) * -0.15deg)); }
+    52%  { transform: translate(calc(var(--fx-voo) *  7px), calc(var(--fx-voo) *  2px)) rotate(calc(var(--fx-voo) *  0.65deg)); }
+    77%  { transform: translate(calc(var(--fx-voo) * -2px), calc(var(--fx-voo) *  6px)) rotate(calc(var(--fx-voo) *  0.3deg)); }
+    100% { transform: translate(calc(var(--fx-voo) * -6px), calc(var(--fx-voo) * -3px)) rotate(calc(var(--fx-voo) * -0.55deg)); }
+}
+
 /* Desfoque fixo */
 #fxBlur {
     filter: blur(var(--fx-blur, 0px));
@@ -95,7 +111,7 @@ body.fxon-movimento #fxMov { animation: fxCorrida 0.78s ease-in-out infinite; }
 /* Ligado/desligado sem rampa: usado no meio de uma transição, com a tela coberta */
 #cenaFx.fx-seco > *, #cenaFx.fx-seco .fx-cinema i,
 body.fxon-seco #fxBlur, body.fxon-seco #fxZoom,
-body.fxon-seco #fxBal, body.fxon-seco #fxCon, body.fxon-seco #fxMov { transition: none !important; }
+body.fxon-seco #fxBal, body.fxon-seco #fxCon, body.fxon-seco #fxMov, body.fxon-seco #fxVoo { transition: none !important; }
 
 /* Bordas de movimento: as laterais borradas de quem corre */
 .fx-mov-borda {
@@ -104,6 +120,15 @@ body.fxon-seco #fxBal, body.fxon-seco #fxCon, body.fxon-seco #fxMov { transition
             mask-image: radial-gradient(ellipse 60% 55% at 50% 50%, transparent 45%, #000 100%);
 }
 body.fxon-movimento .fx-mov-borda { opacity: 1; }
+
+/* Voo: vento borrando as bordas e o ar clareando longe do centro */
+.fx-voo-borda {
+    backdrop-filter: blur(calc(var(--fx-voo) * 1.4px));
+    background: radial-gradient(ellipse 75% 70% at 50% 45%, transparent 50%, rgba(226, 234, 244, calc(var(--fx-voo) * 0.07)) 100%);
+    -webkit-mask-image: radial-gradient(ellipse 62% 58% at 50% 45%, transparent 50%, #000 100%);
+            mask-image: radial-gradient(ellipse 62% 58% at 50% 45%, transparent 50%, #000 100%);
+}
+body.fxon-voo .fx-voo-borda { opacity: 1; }
 
 /* Linhas de velocidade saindo do centro */
 .fx-velocidade {

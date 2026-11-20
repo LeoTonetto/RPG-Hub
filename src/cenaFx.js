@@ -25,6 +25,7 @@ const EFEITOS = [
     { id: 'granulado', nome: 'Granulado',         grupo: 'Tela' },
     { id: 'camera',    nome: 'Câmera passeando',  grupo: 'Câmera' },
     { id: 'balanco',   nome: 'Balanço',           grupo: 'Câmera' },
+    { id: 'voo',       nome: 'Voo',               grupo: 'Câmera' },
     { id: 'blur',      nome: 'Desfoque',          grupo: 'Câmera' },
     { id: 'neblina',   nome: 'Neblina',           grupo: 'Ambiente' },
     { id: 'poeira',    nome: 'Poeira',            grupo: 'Ambiente' },
@@ -58,6 +59,7 @@ const FORCA = {
     balanco:   [0, 1, 2, 3.5],
     concussao: [0, 1, 1.8, 2.8],
     movimento: [0, 1, 1.8, 2.8],
+    voo:       [0, 1, 1.6, 2.3],
     cinema:    [0, 8, 11, 15],          // vh
     blur:      [0, 2, 5, 10],           // px
     sangue:    [0, 1.3, 1.15, 1.0],     // escala: menor = borda mais grossa
@@ -99,6 +101,7 @@ function aplicarEfeitos(efeitos, { seco = false } = {}) {
         if (id === 'balanco')   body.style.setProperty('--fx-bal', FORCA.balanco[n])
         if (id === 'concussao') body.style.setProperty('--fx-con', FORCA.concussao[n])
         if (id === 'movimento') body.style.setProperty('--fx-mov', FORCA.movimento[n])
+        if (id === 'voo')       { body.style.setProperty('--fx-voo', FORCA.voo[n]); avancoVoo(n, seco) }
         if (id === 'cinema' && n)    body.style.setProperty('--fx-cinema-h', FORCA.cinema[n] + 'vh')
         if (id === 'blur')           body.style.setProperty('--fx-blur', FORCA.blur[n] + 'px')
         if (id === 'sangue' && n)    body.style.setProperty('--fx-sangue-escala', FORCA.sangue[n])
@@ -112,7 +115,7 @@ function aplicarEfeitos(efeitos, { seco = false } = {}) {
 
         // Os que mexem a imagem precisam da animação viva enquanto a força
         // desce até zero, senão a imagem pula de volta para o lugar.
-        const comRampa = ['balanco', 'concussao', 'movimento'].includes(id)
+        const comRampa = ['balanco', 'concussao', 'movimento', 'voo'].includes(id)
         if (comRampa && !seco && body.classList.contains('fxon-' + id)) {
             timersDesliga[id] = setTimeout(() => body.classList.remove('fxon-' + id), 1700)
         } else {
@@ -125,6 +128,7 @@ function aplicarEfeitos(efeitos, { seco = false } = {}) {
     if (novo.balanco)   zoom = Math.max(zoom, 1.025 + 0.015 * FORCA.balanco[novo.balanco])
     if (novo.concussao) zoom = Math.max(zoom, 1.04 + 0.02 * FORCA.concussao[novo.concussao])
     if (novo.movimento) zoom = Math.max(zoom, 1.05 + 0.02 * FORCA.movimento[novo.movimento])
+    if (novo.voo)       zoom = Math.max(zoom, 1.03 + 0.022 * FORCA.voo[novo.voo])
     if (novo.blur)      zoom = Math.max(zoom, 1 + FORCA.blur[novo.blur] * 0.006)
     body.style.setProperty('--fx-zoom', zoom)
 
@@ -159,8 +163,14 @@ function variar(id) {
         body.style.setProperty('--fx-tocha-x', x + '%')
         body.style.setProperty('--fx-tocha-y', y + '%')
     }
+    if (id === 'voo') {
+        body.style.setProperty('--fx-voo-dur', sorteio(9, 14).toFixed(1) + 's')
+        body.style.setProperty('--fx-voo-dir', umDe(['alternate', 'alternate-reverse']))
+        body.style.setProperty('--fx-voo-atraso', -sorteio(0, 12).toFixed(1) + 's')
+    }
     if (id === 'camera') novoTrajeto()
     if (SISTEMAS[id]) SISTEMAS[id].variar()
+    if (id === 'voo') novoVoo()     // depois do sorteio do ponto de fuga, que ele usa
 }
 
 /** Troca de cena: tudo que está ligado ganha um jeito novo. */
@@ -285,6 +295,52 @@ function novoTrajeto() {
     cam.pos = alvoCamera()
     trechoCamera()
     if (anterior) anterior.cancel()
+}
+
+// ── Voo: avança devagar em direção a um ponto da imagem (o destino) ─────────
+// O ponto é o mesmo de onde as nuvens saem (SISTEMAS.voo). Chega perto e para;
+// a sensação de seguir voando fica com as nuvens e o vento.
+const voo = { forca: 0, anim: null }
+const AVANCO_VOO = [null, { s: 1.08, dur: 80 }, { s: 1.13, dur: 60 }, { s: 1.2, dur: 45 }]
+function escalaAtual(el) { return new DOMMatrix(getComputedStyle(el).transform).a || 1 }
+function avancoVoo(n, seco) {
+    const el = document.getElementById('fxVooAvanco')
+    if (!el) return
+    if (n) {
+        if (voo.forca === n && voo.anim) return
+        voo.forca = n
+        const de = voo.anim ? escalaAtual(el) : 1
+        const cfg = AVANCO_VOO[n]
+        const anterior = voo.anim
+        // Mudando a força no meio, o tempo é proporcional ao que falta
+        const falta = Math.max(0.15, Math.abs(cfg.s - de) / (cfg.s - 1))
+        voo.anim = el.animate([{ transform: `scale(${de})` }, { transform: `scale(${cfg.s})` }],
+            { duration: cfg.dur * 1000 * falta, easing: 'cubic-bezier(.35,0,.55,1)', fill: 'forwards' })
+        if (anterior) anterior.cancel()
+        return
+    }
+    if (!voo.forca) return
+    voo.forca = 0
+    const anterior = voo.anim
+    voo.anim = null
+    if (!anterior) return
+    if (seco) { anterior.cancel(); return }
+    const saindo = el.animate([{ transform: `scale(${escalaAtual(el)})` }, { transform: 'none' }],
+        { duration: 2500, easing: 'ease-in-out', fill: 'forwards' })
+    anterior.cancel()
+    saindo.onfinish = () => saindo.cancel()
+}
+/** Cena nova (ou acabou de ligar): o destino muda e o avanço recomeça de longe. */
+function novoVoo() {
+    const el = document.getElementById('fxVooAvanco')
+    if (!el) return
+    const s = SISTEMAS.voo
+    el.style.transformOrigin = `${(s.fx * 100).toFixed(1)}% ${(s.fy * 100).toFixed(1)}%`
+    if (!voo.forca) return
+    const n = voo.forca
+    if (voo.anim) voo.anim.cancel()
+    voo.anim = null; voo.forca = 0
+    avancoVoo(n)
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -448,14 +504,110 @@ const SISTEMAS = {
             })
         },
     },
+
+    // Nuvens e rajadas de vento vindo de um ponto de fuga em direção à câmera.
+    // Cada partícula tem uma posição no espaço (ângulo e raio em volta do eixo
+    // de voo) e uma profundidade z que diminui: projetada, ela acelera e cresce
+    // ao passar, como num voo de verdade. O raio mínimo deixa o centro (o
+    // destino) livre. Acompanha a inclinação da câmera lendo o #fxVoo.
+    voo: {
+        qtd: [0, 34, 60, 95],
+        fx: 0.5, fy: 0.45, n: 1,
+        variar() { this.fx = sorteio(0.42, 0.58); this.fy = sorteio(0.38, 0.5) },
+        nova(qualquer) {
+            const nuvem = Math.random() < 0.13
+            return {
+                nuvem, ang: Math.random() * Math.PI * 2,
+                raio: nuvem ? sorteio(0.9, 1.7) : sorteio(0.35, 1.3),
+                z: qualquer ? sorteio(0.4, 4) : sorteio(3.2, 4.2),
+                tam: sorteio(0.3, 0.6), a: nuvem ? sorteio(0.18, 0.38) : sorteio(0.14, 0.32),
+                vel: nuvem ? sorteio(0.45, 0.7) : sorteio(0.9, 1.4),
+                sprite: Math.floor(Math.random() * 3), giro: Math.random() * 6.3,
+            }
+        },
+        mover(p, dt) {
+            p.z -= p.vel * [0, 0.6, 0.85, 1.15][this.n] * dt
+            const d = p.raio / p.z
+            return p.z > 0.12 && d < (p.nuvem ? 2.2 : 1.4)
+        },
+        desenhar(ctx, ps, w, h, t, esc, alfa) {
+            const sprites = spritesNuvem()
+            const cx = this.fx * w, cy = this.fy * h
+            ctx.save()
+            // A mesma inclinação e balanço da imagem
+            const el = document.getElementById('fxVoo')
+            if (el) {
+                const m = new DOMMatrix(getComputedStyle(el).transform)
+                ctx.translate(w / 2 + m.e * esc, h / 2 + m.f * esc)
+                ctx.rotate(Math.atan2(m.b, m.a))
+                ctx.translate(-w / 2, -h / 2)
+            }
+            const proj = (p, z) => {
+                const d = p.raio / z * h * 0.5
+                return [cx + Math.cos(p.ang) * d * 1.25, cy + Math.sin(p.ang) * d]
+            }
+            // Surge já fora do centro (o destino fica limpo) e some quando passa raspando
+            const fade = (p, perto) => {
+                const d = p.raio / p.z
+                return Math.max(0, Math.min(1, (4.2 - p.z) / 1.2, (p.z - 0.12) / 0.35, (d - perto) / perto))
+            }
+
+            ps.forEach(p => {
+                if (!p.nuvem) return
+                const [x, y] = proj(p, p.z)
+                const r = p.tam / p.z * h * 0.5
+                ctx.globalAlpha = alfa * p.a * fade(p, 0.45)
+                ctx.save()
+                ctx.translate(x, y); ctx.rotate(p.giro)
+                ctx.drawImage(sprites[p.sprite], -r * 1.6, -r, r * 3.2, r * 2)
+                ctx.restore()
+            })
+            // Rajadas: um traço do ponto atual até onde estava um pouco antes
+            ctx.globalAlpha = 1
+            ctx.lineCap = 'round'
+            ps.forEach(p => {
+                if (p.nuvem) return
+                const [x1, y1] = proj(p, p.z)
+                const [x0, y0] = proj(p, p.z + 0.35 + 0.2 * this.n)
+                const a = alfa * p.a * fade(p, 0.22)
+                ctx.strokeStyle = `rgba(236, 242, 250, ${a})`
+                ctx.lineWidth = Math.min(3, 0.6 + 0.5 / p.z) * esc
+                ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke()
+            })
+            ctx.restore()
+        },
+    },
 }
 Object.values(SISTEMAS).forEach(s => { s.parts = []; s.alvo = 0; s.alfa = 0; s.ligado = false })
+
+// Três tufos de nuvem desenhados uma vez; o voo só os estica e posiciona
+let nuvens = null
+function spritesNuvem() {
+    if (nuvens) return nuvens
+    nuvens = [0, 1, 2].map(() => {
+        const c = document.createElement('canvas')
+        c.width = 320; c.height = 200
+        const ctx = c.getContext('2d')
+        for (let i = 0; i < 16; i++) {
+            const x = sorteio(70, 250), y = sorteio(60, 140), r = sorteio(30, 70)
+            const g = ctx.createRadialGradient(x, y, 0, x, y, r)
+            g.addColorStop(0, 'rgba(240, 244, 250, 0.32)')
+            g.addColorStop(0.6, 'rgba(232, 238, 246, 0.14)')
+            g.addColorStop(1, 'rgba(232, 238, 246, 0)')
+            ctx.fillStyle = g
+            ctx.fillRect(x - r, y - r, r * 2, r * 2)
+        }
+        return c
+    })
+    return nuvens
+}
 
 const motor = { raf: 0, ultimo: 0 }
 function particulas(id, n, seco) {
     const s = SISTEMAS[id]
     s.ligado = !!n
     if (n) {
+        s.n = n
         s.alvo = s.qtd[n]
         while (s.parts.length < s.alvo) s.parts.push(s.nova(true))
         if (seco) s.alfa = 1
@@ -716,6 +868,7 @@ const MOMENTOS = [
     { id: 'susto',     nome: 'Susto',     icone: '❗' },
     { id: 'cura',      nome: 'Cura',      icone: '✨' },
     { id: 'apagao',    nome: 'Piscar',    icone: '👁' },
+    { id: 'rasante',   nome: 'Rasante',   icone: '🦅' },
 ]
 
 /** Tremor que vai morrendo: `forca` em px, `n` sacudidas. */
@@ -791,6 +944,20 @@ function executarMomento(tipo) {
         case 'cura':
             brilho.animate([{ opacity: 0 }, { opacity: 1, offset: 0.3 }, { opacity: 0 }], { duration: 2200, easing: 'ease-in-out' })
             break
+        case 'rasante': {
+            // Mergulho: cai inclinando para um lado e sobe de volta
+            const lado = Math.random() < 0.5 ? 1 : -1
+            golpe.animate([
+                { transform: 'translateY(0) rotate(0deg) scale(1)' },
+                { transform: `translateY(-2.2%) rotate(${-1.4 * lado}deg) scale(1.1)`, offset: 0.35, easing: 'ease-in-out' },
+                { transform: `translateY(1%) rotate(${0.6 * lado}deg) scale(1.06)`, offset: 0.7, easing: 'ease-in-out' },
+                { transform: 'translateY(0) rotate(0deg) scale(1)' },
+            ], { duration: 2200, easing: 'cubic-bezier(.4,0,.3,1)' })
+            golpeFiltro.animate([
+                { filter: 'blur(0px) brightness(1)' }, { filter: 'blur(2.5px) brightness(1.12)', offset: 0.35 }, { filter: 'blur(0px) brightness(1)' },
+            ], { duration: 2200, easing: 'ease-in-out' })
+            break
+        }
         case 'apagao':
             pisca('#000', [{ opacity: 0 }, { opacity: 1, offset: 0.25 }, { opacity: 1, offset: 0.45 }, { opacity: 0 }], 700)
             break
