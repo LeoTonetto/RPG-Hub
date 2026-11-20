@@ -18,16 +18,23 @@
 const state = require('./state')
 const { prepararCena } = require('./scene')
 
+// Agrupados como aparecem no painel
 const EFEITOS = [
-    { id: 'preto',     nome: 'Tela preta' },
-    { id: 'cinema',    nome: 'Bordas de cinema' },
-    { id: 'balanco',   nome: 'Balanço' },
-    { id: 'concussao', nome: 'Concussão' },
-    { id: 'sangue',    nome: 'Bordas de sangue' },
-    { id: 'blur',      nome: 'Desfoque' },
-    { id: 'granulado', nome: 'Granulado' },
-    { id: 'poeira',    nome: 'Poeira' },
-    { id: 'movimento', nome: 'Correria' },
+    { id: 'preto',     nome: 'Tela preta',        grupo: 'Tela' },
+    { id: 'cinema',    nome: 'Bordas de cinema',  grupo: 'Tela' },
+    { id: 'granulado', nome: 'Granulado',         grupo: 'Tela' },
+    { id: 'camera',    nome: 'Câmera passeando',  grupo: 'Câmera' },
+    { id: 'balanco',   nome: 'Balanço',           grupo: 'Câmera' },
+    { id: 'blur',      nome: 'Desfoque',          grupo: 'Câmera' },
+    { id: 'neblina',   nome: 'Neblina',           grupo: 'Ambiente' },
+    { id: 'poeira',    nome: 'Poeira',            grupo: 'Ambiente' },
+    { id: 'chuva',     nome: 'Chuva',             grupo: 'Ambiente' },
+    { id: 'brasas',    nome: 'Brasas',            grupo: 'Ambiente' },
+    { id: 'folhas',    nome: 'Folhas',            grupo: 'Ambiente' },
+    { id: 'tocha',     nome: 'Luz de tocha',      grupo: 'Ambiente' },
+    { id: 'concussao', nome: 'Concussão',         grupo: 'Tensão' },
+    { id: 'sangue',    nome: 'Bordas de sangue',  grupo: 'Tensão' },
+    { id: 'movimento', nome: 'Correria',          grupo: 'Tensão' },
 ]
 // 'suave' é o crossfade de sempre; fica fora de "Transição agora" (sem imagem nova não faz nada)
 const TRANSICAO_SUAVE = { id: 'suave', nome: 'Suave' }
@@ -36,6 +43,12 @@ const TRANSICOES = [
     { id: 'fade_branco', nome: 'Fade branco' },
     { id: 'despertar',   nome: 'Despertar' },
     { id: 'desfoque',    nome: 'Desfoque' },
+    { id: 'iris',        nome: 'Íris' },
+    { id: 'varredura',   nome: 'Varredura' },
+    { id: 'zoom',        nome: 'Zoom' },
+    { id: 'dissolver',   nome: 'Dissolver lento' },
+    { id: 'lembranca',   nome: 'Lembrança' },
+    { id: 'fumaca',      nome: 'Fumaça' },
     { id: 'corte',       nome: 'Corte seco' },
 ]
 const nomeTransicao = id => ([TRANSICAO_SUAVE, ...TRANSICOES].find(t => t.id === id) || TRANSICAO_SUAVE).nome
@@ -47,13 +60,16 @@ const FORCA = {
     movimento: [0, 1, 1.8, 2.8],
     cinema:    [0, 8, 11, 15],          // vh
     blur:      [0, 2, 5, 10],           // px
-    sangue:    [0, 1.3, 1.15, 1.0],   // escala: menor = borda mais grossa
+    sangue:    [0, 1.3, 1.15, 1.0],     // escala: menor = borda mais grossa
     granulado: [0, 0.25, 0.4, 0.6],     // opacidade
-    poeira:    [0, 35, 75, 130],        // partículas
+    neblina:   [0, 0.4, 0.65, 0.9],     // opacidade
+    tocha:     [0, 0.55, 0.8, 1],       // opacidade
 }
 
 let atuais = {}           // { id: força } — o que está na tela agora
 const timersDesliga = {}  // efeitos com rampa de saída esperam para tirar a classe
+const sorteio = (a, b) => a + Math.random() * (b - a)
+const umDe = lista => lista[Math.floor(Math.random() * lista.length)]
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ── CONTÍNUOS ────────────────────────────────────────────────────────────────
@@ -74,9 +90,12 @@ function aplicarEfeitos(efeitos, { seco = false } = {}) {
 
     EFEITOS.forEach(({ id }) => {
         const n = novo[id] || 0
+        const antes = atuais[id] || 0
         clearTimeout(timersDesliga[id])
 
-        // Força em variável CSS
+        // Ao ligar, cada efeito sorteia o próprio jeito (ritmo, vento, lugar da luz)
+        if (n && !antes) variar(id)
+
         if (id === 'balanco')   body.style.setProperty('--fx-bal', FORCA.balanco[n])
         if (id === 'concussao') body.style.setProperty('--fx-con', FORCA.concussao[n])
         if (id === 'movimento') body.style.setProperty('--fx-mov', FORCA.movimento[n])
@@ -84,7 +103,10 @@ function aplicarEfeitos(efeitos, { seco = false } = {}) {
         if (id === 'blur')           body.style.setProperty('--fx-blur', FORCA.blur[n] + 'px')
         if (id === 'sangue' && n)    body.style.setProperty('--fx-sangue-escala', FORCA.sangue[n])
         if (id === 'granulado' && n) { garantirGrao(); body.style.setProperty('--fx-gran-op', FORCA.granulado[n]) }
-        if (id === 'poeira')         poeira(n)
+        if (id === 'neblina' && n)   { garantirNeblina(); body.style.setProperty('--fx-neb-op', FORCA.neblina[n]) }
+        if (id === 'tocha' && n)     body.style.setProperty('--fx-tocha-op', FORCA.tocha[n])
+        if (id === 'camera')         camera(n, seco)
+        if (SISTEMAS[id])            particulas(id, n, seco)
 
         if (n) { body.classList.add('fxon-' + id); return }
 
@@ -115,6 +137,37 @@ function aplicarEfeitos(efeitos, { seco = false } = {}) {
     renderPainel()
 }
 
+/**
+ * Sorteia de novo o "jeito" de um efeito. Roda quando ele liga e a cada troca
+ * de cena: é o que impede duas cenas calmas de se mexerem exatamente igual.
+ */
+function variar(id) {
+    const body = document.body
+    if (id === 'balanco') {
+        body.style.setProperty('--fx-bal-dur', sorteio(5.5, 9.5).toFixed(1) + 's')
+        body.style.setProperty('--fx-bal-dir', umDe(['alternate', 'alternate-reverse']))
+        body.style.setProperty('--fx-bal-atraso', -sorteio(0, 8).toFixed(1) + 's')
+    }
+    if (id === 'neblina') {
+        body.style.setProperty('--fx-neb-dur1', sorteio(70, 110).toFixed(0) + 's')
+        body.style.setProperty('--fx-neb-dur2', sorteio(120, 180).toFixed(0) + 's')
+        body.style.setProperty('--fx-neb-dir', umDe(['normal', 'reverse']))
+        body.style.setProperty('--fx-neb-alt', sorteio(45, 75).toFixed(0) + '%')
+    }
+    if (id === 'tocha') {
+        const [x, y] = umDe([[18, 88], [82, 85], [50, 100], [12, 45], [88, 50], [30, 95], [70, 95]])
+        body.style.setProperty('--fx-tocha-x', x + '%')
+        body.style.setProperty('--fx-tocha-y', y + '%')
+    }
+    if (id === 'camera') novoTrajeto()
+    if (SISTEMAS[id]) SISTEMAS[id].variar()
+}
+
+/** Troca de cena: tudo que está ligado ganha um jeito novo. */
+function variarTudo() {
+    Object.keys(atuais).forEach(variar)
+}
+
 // ── Granulado: um ladrilho de ruído gerado uma vez ───────────────────────────
 let graoPronto = false
 function garantirGrao() {
@@ -135,70 +188,313 @@ function garantirGrao() {
     graoPronto = true
 }
 
-// ── Poeira: partículas num canvas, só desenhando enquanto ligada ─────────────
-const pz = { raf: 0, parts: [], alvo: 0, parar: 0 }
-function poeira(n) {
-    const canvas = document.querySelector('#cenaFx .fx-poeira')
-    if (!canvas) return
-    clearTimeout(pz.parar)
+// ── Neblina: textura de nuvem que emenda nas laterais, gerada uma vez ────────
+let texturaNeblina = null
+function gerarTexturaNeblina() {
+    if (texturaNeblina) return texturaNeblina
+    const W = 1024, H = 512
+    const c = document.createElement('canvas')
+    c.width = W; c.height = H
+    const ctx = c.getContext('2d')
+    for (let i = 0; i < 90; i++) {
+        const x = Math.random() * W, y = H * (0.25 + Math.random() * 0.75)
+        const r = 60 + Math.random() * 170, a = 0.04 + Math.random() * 0.1
+        // Desenha também deslocado de uma largura: a textura repete sem emenda
+        for (const dx of [-W, 0, W]) {
+            const g = ctx.createRadialGradient(x + dx, y, 0, x + dx, y, r)
+            g.addColorStop(0, `rgba(225, 228, 232, ${a})`)
+            g.addColorStop(1, 'rgba(225, 228, 232, 0)')
+            ctx.fillStyle = g
+            ctx.fillRect(x + dx - r, y - r, r * 2, r * 2)
+        }
+    }
+    texturaNeblina = c.toDataURL()
+    return texturaNeblina
+}
+function garantirNeblina() {
+    const camadas = document.querySelectorAll('#cenaFx .fx-neblina i, #cenaFx .fx-fumaca')
+    if (!camadas.length || camadas[0].style.backgroundImage) return
+    const url = `url(${gerarTexturaNeblina()})`
+    camadas.forEach(el => { el.style.backgroundImage = url })
+}
 
-    if (!n) {
-        // Espera o fade da camada antes de parar de desenhar
-        if (pz.raf) pz.parar = setTimeout(() => { cancelAnimationFrame(pz.raf); pz.raf = 0 }, 1400)
+// ── Câmera passeando: aproxima e desliza devagar, para um lado sorteado ───────
+// Cada trecho vai de onde a imagem está até um ponto novo; ao chegar, sorteia
+// o próximo. A força define o quanto aproxima e a velocidade.
+const cam = { forca: 0, anim: null, pos: { s: 1, x: 0, y: 0 }, saida: null }
+const CAMERA = [null,
+    { s: [1.04, 1.09], dur: [34, 46] },
+    { s: [1.06, 1.14], dur: [24, 34] },
+    { s: [1.09, 1.2],  dur: [16, 24] },
+]
+function alvoCamera() {
+    const cfg = CAMERA[cam.forca]
+    const s = sorteio(cfg.s[0], cfg.s[1])
+    const folga = (s - 1) / 2 / s * 100 * 0.9      // quanto dá para deslizar sem mostrar borda (em % da imagem)
+    return { s, x: sorteio(-folga, folga), y: sorteio(-folga, folga) }
+}
+const tCamera = p => `scale(${p.s.toFixed(4)}) translate(${p.x.toFixed(3)}%, ${p.y.toFixed(3)}%)`
+function posAtualCamera() {
+    const el = document.getElementById('fxCamera')
+    const m = new DOMMatrix(getComputedStyle(el).transform)
+    const s = m.a || 1
+    // translate em % do próprio elemento, aplicado depois do scale
+    return { s, x: m.e / s / el.offsetWidth * 100, y: m.f / s / el.offsetHeight * 100 }
+}
+function trechoCamera() {
+    const el = document.getElementById('fxCamera')
+    if (!el || !cam.forca) return
+    const de = cam.pos, para = alvoCamera()
+    const cfg = CAMERA[cam.forca]
+    const anterior = cam.anim
+    cam.anim = el.animate([{ transform: tCamera(de) }, { transform: tCamera(para) }],
+        { duration: sorteio(cfg.dur[0], cfg.dur[1]) * 1000, easing: 'ease-in-out', fill: 'forwards' })
+    if (anterior) anterior.cancel()
+    cam.pos = para
+    cam.anim.onfinish = () => trechoCamera()
+}
+function camera(n, seco) {
+    const el = document.getElementById('fxCamera')
+    if (!el) return
+    clearTimeout(cam.saida)
+    if (n) {
+        const mudouForca = cam.forca !== n
+        cam.forca = n
+        if (!cam.anim || mudouForca) { if (cam.anim) cam.pos = posAtualCamera(); trechoCamera() }
         return
     }
-
-    pz.alvo = FORCA.poeira[n]
-    while (pz.parts.length < pz.alvo) pz.parts.push(novaParticula(true))
-    pz.parts.length = pz.alvo
-    if (pz.raf) return
-
-    const ctx = canvas.getContext('2d')
-    const escala = Math.min(window.devicePixelRatio || 1, 1.5)
-    let ultimo = performance.now()
-
-    const quadro = agora => {
-        const w = Math.round(window.innerWidth * escala), h = Math.round(window.innerHeight * escala)
-        if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h }
-        const dt = Math.min(50, agora - ultimo) / 16.67
-        ultimo = agora
-        ctx.clearRect(0, 0, w, h)
-        const t = agora / 1000
-
-        pz.parts.forEach(p => {
-            p.x += (p.vx + Math.sin(t * p.f + p.fase) * 0.15) * dt / 1000
-            p.y += (p.vy + Math.cos(t * p.f * 0.7 + p.fase) * 0.12) * dt / 1000
-            if (p.x > 1.05 || p.x < -0.05 || p.y < -0.05 || p.y > 1.05) Object.assign(p, novaParticula(false))
-
-            const brilho = p.a * (0.55 + 0.45 * Math.sin(t * p.pisca + p.fase))
-            const x = p.x * w, y = p.y * h, r = p.r * escala
-            if (p.r > 3) {
-                const g = ctx.createRadialGradient(x, y, 0, x, y, r)
-                g.addColorStop(0, `rgba(255, 238, 205, ${brilho * 0.35})`)
-                g.addColorStop(1, 'rgba(255, 238, 205, 0)')
-                ctx.fillStyle = g
-            } else {
-                ctx.fillStyle = `rgba(255, 242, 215, ${brilho})`
-            }
-            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill()
-        })
-        pz.raf = requestAnimationFrame(quadro)
-    }
-    pz.raf = requestAnimationFrame(quadro)
+    if (!cam.forca) return
+    cam.forca = 0
+    const anterior = cam.anim
+    if (!anterior) return
+    if (seco) { anterior.cancel(); cam.anim = null; cam.pos = { s: 1, x: 0, y: 0 }; return }
+    // Volta ao enquadramento normal sem pulo
+    const de = posAtualCamera()
+    cam.anim = el.animate([{ transform: tCamera(de) }, { transform: 'none' }], { duration: 2500, easing: 'ease-in-out', fill: 'forwards' })
+    anterior.cancel()
+    cam.pos = { s: 1, x: 0, y: 0 }
+    const saindo = cam.anim
+    saindo.onfinish = () => { saindo.cancel(); if (cam.anim === saindo) cam.anim = null }
 }
-function novaParticula(qualquerLugar) {
-    const grande = Math.random() < 0.12
-    return {
-        x: qualquerLugar ? Math.random() : (Math.random() < 0.5 ? -0.03 : Math.random()),
-        y: qualquerLugar ? Math.random() : (Math.random() < 0.5 ? 1.03 : Math.random()),
-        r: grande ? 5 + Math.random() * 8 : 0.9 + Math.random() * 2,
-        a: grande ? 0.55 + Math.random() * 0.4 : 0.35 + Math.random() * 0.5,
-        vx: 0.12 + Math.random() * 0.4,     // milésimos da tela por quadro (~1-3% da tela por segundo)
-        vy: -(0.04 + Math.random() * 0.2),
-        f: 0.3 + Math.random() * 0.8,
-        pisca: 0.8 + Math.random() * 2.2,
-        fase: Math.random() * Math.PI * 2,
+/** Recomeça de um enquadramento novo (usado com a tela coberta, na troca de cena). */
+function novoTrajeto() {
+    if (!cam.forca) return
+    const anterior = cam.anim
+    if (anterior) anterior.onfinish = null
+    cam.anim = null
+    cam.pos = alvoCamera()
+    trechoCamera()
+    if (anterior) anterior.cancel()
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── PARTÍCULAS ───────────────────────────────────────────────────────────────
+//
+// Um só canvas para todos os sistemas (poeira, chuva, brasas, folhas). Cada
+// sistema tem a própria opacidade, que sobe e desce em rampa, e o desenho só
+// roda enquanto algum está visível. Posições em fração da tela, velocidades em
+// fração da tela por segundo.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const PALETAS_FOLHA = [
+    ['#b5541c', '#d9822b', '#8e3b12', '#c9a227', '#6f2a0c'],   // outono
+    ['#4f7a2a', '#6b9a34', '#3d5e22', '#87a84a', '#2f4a1a'],   // verde
+    ['#8a6a3a', '#a68450', '#6e5230', '#b89a62', '#5a4325'],   // seca
+]
+
+const SISTEMAS = {
+    poeira: {
+        qtd: [0, 35, 75, 130],
+        vento: 1,
+        variar() { this.vento = umDe([1, -1]) * sorteio(0.6, 1.4) },
+        nova(qualquer) {
+            const grande = Math.random() < 0.12
+            const daBorda = this.vento > 0 ? -0.03 : 1.03
+            return {
+                x: qualquer ? Math.random() : (Math.random() < 0.5 ? daBorda : Math.random()),
+                y: qualquer ? Math.random() : (Math.random() < 0.5 ? 1.03 : Math.random()),
+                r: grande ? 5 + Math.random() * 8 : 0.9 + Math.random() * 2,
+                a: grande ? 0.55 + Math.random() * 0.4 : 0.35 + Math.random() * 0.5,
+                vx: (0.007 + Math.random() * 0.024) * this.vento,
+                vy: -(0.0025 + Math.random() * 0.012),
+                f: 0.3 + Math.random() * 0.8, pisca: 0.8 + Math.random() * 2.2, fase: Math.random() * 6.3,
+            }
+        },
+        mover(p, dt, t) {
+            p.x += (p.vx + Math.sin(t * p.f + p.fase) * 0.009) * dt
+            p.y += (p.vy + Math.cos(t * p.f * 0.7 + p.fase) * 0.007) * dt
+            return p.x > -0.05 && p.x < 1.05 && p.y > -0.05 && p.y < 1.05
+        },
+        desenhar(ctx, ps, w, h, t, esc, alfa) {
+            ps.forEach(p => {
+                const brilho = alfa * p.a * (0.55 + 0.45 * Math.sin(t * p.pisca + p.fase))
+                const x = p.x * w, y = p.y * h, r = p.r * esc
+                if (p.r > 3) {
+                    const g = ctx.createRadialGradient(x, y, 0, x, y, r)
+                    g.addColorStop(0, `rgba(255, 238, 205, ${brilho * 0.35})`)
+                    g.addColorStop(1, 'rgba(255, 238, 205, 0)')
+                    ctx.fillStyle = g
+                } else {
+                    ctx.fillStyle = `rgba(255, 242, 215, ${brilho})`
+                }
+                ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill()
+            })
+        },
+    },
+
+    chuva: {
+        qtd: [0, 140, 300, 560],
+        angulo: 0.15,
+        variar() { this.angulo = umDe([1, -1]) * sorteio(0.05, 0.3) },
+        nova(qualquer) {
+            const perto = Math.random() < 0.35
+            const v = perto ? sorteio(1.7, 2.3) : sorteio(1.1, 1.5)
+            return {
+                x: Math.random() * 1.3 - 0.15, y: qualquer ? Math.random() : -Math.random() * 0.2,
+                v, len: perto ? sorteio(0.045, 0.07) : sorteio(0.02, 0.035), perto,
+            }
+        },
+        mover(p, dt) {
+            p.y += p.v * dt
+            p.x += p.v * Math.tan(this.angulo) * dt * 0.56   // 0.56 ≈ altura/largura de uma tela 16:9
+            return p.y < 1.08
+        },
+        desenhar(ctx, ps, w, h, t, esc, alfa) {
+            const dx = Math.tan(this.angulo) * 0.56
+            for (const perto of [false, true]) {
+                ctx.strokeStyle = `rgba(200, 212, 230, ${alfa * (perto ? 0.38 : 0.2)})`
+                ctx.lineWidth = (perto ? 1.4 : 0.8) * esc
+                ctx.beginPath()
+                ps.forEach(p => {
+                    if (p.perto !== perto) return
+                    const x = p.x * w, y = p.y * h
+                    ctx.moveTo(x, y)
+                    ctx.lineTo(x - dx * p.len * w, y - p.len * h)
+                })
+                ctx.stroke()
+            }
+        },
+    },
+
+    brasas: {
+        qtd: [0, 22, 48, 90],
+        vento: 0,
+        variar() { this.vento = sorteio(-0.025, 0.025) },
+        nova(qualquer) {
+            const vida = sorteio(4, 9)
+            return {
+                x: Math.random(), y: qualquer ? sorteio(0.3, 1.05) : sorteio(1.0, 1.08),
+                vy: -sorteio(0.05, 0.14), r: sorteio(0.9, 2.6), vida, idade: qualquer ? Math.random() * vida : 0,
+                f: sorteio(0.6, 1.6), fase: Math.random() * 6.3, cor: umDe(['255, 170, 70', '255, 120, 40', '255, 210, 120']),
+            }
+        },
+        mover(p, dt, t) {
+            p.idade += dt
+            p.y += p.vy * dt
+            p.x += (this.vento + Math.sin(t * p.f + p.fase) * 0.018) * dt
+            return p.idade < p.vida && p.y > -0.05
+        },
+        desenhar(ctx, ps, w, h, t, esc, alfa) {
+            ctx.save()
+            ctx.globalCompositeOperation = 'lighter'
+            ps.forEach(p => {
+                const vida = Math.min(1, p.idade / 0.8, (p.vida - p.idade) / 1.5)
+                const a = alfa * Math.max(0, vida) * (0.6 + 0.4 * Math.sin(t * 9 * p.f + p.fase))
+                const x = p.x * w, y = p.y * h, r = p.r * esc
+                const g = ctx.createRadialGradient(x, y, 0, x, y, r * 4)
+                g.addColorStop(0, `rgba(${p.cor}, ${a})`)
+                g.addColorStop(0.25, `rgba(${p.cor}, ${a * 0.45})`)
+                g.addColorStop(1, `rgba(${p.cor}, 0)`)
+                ctx.fillStyle = g
+                ctx.fillRect(x - r * 4, y - r * 4, r * 8, r * 8)
+            })
+            ctx.restore()
+        },
+    },
+
+    folhas: {
+        qtd: [0, 10, 22, 40],
+        paleta: PALETAS_FOLHA[0], vento: 0.02,
+        variar() { this.paleta = umDe(PALETAS_FOLHA); this.vento = umDe([1, -1]) * sorteio(0.01, 0.05) },
+        nova(qualquer) {
+            return {
+                x: Math.random() * 1.2 - 0.1, y: qualquer ? Math.random() : -0.05,
+                vy: sorteio(0.035, 0.08), tam: sorteio(8, 15), giro: sorteio(-1.5, 1.5), ang: Math.random() * 6.3,
+                bal: sorteio(0.02, 0.05), f: sorteio(0.5, 1.2), fase: Math.random() * 6.3,
+                vira: sorteio(1, 3), cor: umDe(this.paleta),
+            }
+        },
+        mover(p, dt, t) {
+            p.y += p.vy * dt
+            p.x += (this.vento + Math.cos(t * p.f + p.fase) * p.bal) * dt
+            p.ang += p.giro * dt
+            return p.y < 1.06 && p.x > -0.15 && p.x < 1.15
+        },
+        desenhar(ctx, ps, w, h, t, esc, alfa) {
+            ps.forEach(p => {
+                const s = p.tam * esc
+                ctx.save()
+                ctx.translate(p.x * w, p.y * h)
+                ctx.rotate(p.ang)
+                ctx.scale(1, Math.cos(t * p.vira + p.fase))    // folha virando no ar
+                ctx.globalAlpha = alfa * 0.9
+                ctx.fillStyle = p.cor
+                ctx.beginPath()
+                ctx.moveTo(-s, 0)
+                ctx.quadraticCurveTo(0, -s * 0.55, s, 0)
+                ctx.quadraticCurveTo(0, s * 0.55, -s, 0)
+                ctx.fill()
+                ctx.restore()
+            })
+        },
+    },
+}
+Object.values(SISTEMAS).forEach(s => { s.parts = []; s.alvo = 0; s.alfa = 0; s.ligado = false })
+
+const motor = { raf: 0, ultimo: 0 }
+function particulas(id, n, seco) {
+    const s = SISTEMAS[id]
+    s.ligado = !!n
+    if (n) {
+        s.alvo = s.qtd[n]
+        while (s.parts.length < s.alvo) s.parts.push(s.nova(true))
+        if (seco) s.alfa = 1
+    } else if (seco) {
+        s.alfa = 0; s.parts.length = 0
     }
+    if (!motor.raf && Object.values(SISTEMAS).some(x => x.ligado || x.alfa > 0)) {
+        motor.ultimo = performance.now()
+        motor.raf = requestAnimationFrame(quadroParticulas)
+    }
+}
+function quadroParticulas(agora) {
+    const canvas = document.querySelector('#cenaFx .fx-particulas')
+    if (!canvas) { motor.raf = 0; return }
+    const esc = Math.min(window.devicePixelRatio || 1, 1.5)
+    const w = Math.round(window.innerWidth * esc), h = Math.round(window.innerHeight * esc)
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h }
+    const dt = Math.min(0.05, (agora - motor.ultimo) / 1000)
+    motor.ultimo = agora
+    const t = agora / 1000
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, w, h)
+
+    let algum = false
+    Object.values(SISTEMAS).forEach(s => {
+        // Rampa de entrada e saída (~1,2 s)
+        s.alfa = Math.max(0, Math.min(1, s.alfa + (s.ligado ? dt : -dt) / 1.2))
+        if (!s.ligado && s.alfa === 0) { s.parts.length = 0; return }
+        algum = true
+        for (let i = 0; i < s.parts.length; i++) {
+            if (!s.mover(s.parts[i], dt, t)) {
+                // Saiu da tela: renasce na borda, ou some se a força baixou
+                if (s.parts.length > s.alvo) { s.parts.splice(i--, 1); continue }
+                s.parts[i] = s.nova(false)
+            }
+        }
+        s.desenhar(ctx, s.parts, w, h, t, esc, s.alfa)
+    })
+    motor.raf = algum ? requestAnimationFrame(quadroParticulas) : 0
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -240,11 +536,14 @@ async function executarTransicao({ tipo, cena, efeitos }) {
             if (pronta) pronta({ instantaneo: true })
         }
         if (efeitos) aplicarEfeitos(efeitos, { seco: true })
+        if (cena) variarTudo()   // lugar novo: câmera, vento e luz sorteiam de novo
     }
 
     const cortina = document.querySelector('#cenaFx .fx-cortina')
     const olho = document.querySelector('#cenaFx .fx-olho')
     const palco = document.getElementById('cenaPalco')
+    const iris = document.querySelector('#cenaFx .fx-iris')
+    const fumaca = document.querySelector('#cenaFx .fx-fumaca')
 
     if (tipo === 'fade_preto' || tipo === 'fade_branco') {
         const branco = tipo === 'fade_branco'
@@ -303,8 +602,96 @@ async function executarTransicao({ tipo, cena, efeitos }) {
         const pronta = preparo ? await preparo : null
         if (pronta) pronta()
         if (efeitos) aplicarEfeitos(efeitos)
+        if (cena) variarTudo()
         return
     }
+
+    if (tipo === 'iris') {
+        // Círculo que fecha no centro, como o fim de um filme antigo
+        await animar(iris, [{ '--fx-iris': '120vmax', opacity: 1 }, { '--fx-iris': '0vmax', opacity: 1 }], { duration: 850, easing: 'cubic-bezier(.55,0,.75,.3)' })
+        await trocar()
+        await espera(250)
+        await animar(iris, [{ '--fx-iris': '0vmax', opacity: 1 }, { '--fx-iris': '120vmax', opacity: 1 }], { duration: 1000, easing: 'cubic-bezier(.25,.7,.45,1)' })
+        return
+    }
+
+    if (tipo === 'varredura') {
+        // Uma cortina preta atravessa a tela; a cena nova aparece atrás dela
+        const lado = Math.random() < 0.5
+        const [entra, cobre, sai] = lado
+            ? ['inset(0 100% 0 0)', 'inset(0 0 0 0)', 'inset(0 0 0 100%)']
+            : ['inset(0 0 0 100%)', 'inset(0 0 0 0)', 'inset(0 100% 0 0)']
+        cortina.style.background = '#000'
+        await animar(cortina, [{ clipPath: entra, opacity: 1 }, { clipPath: cobre, opacity: 1 }], { duration: 650, easing: 'cubic-bezier(.65,0,.35,1)' })
+        await trocar()
+        await animar(cortina, [{ clipPath: cobre, opacity: 1 }, { clipPath: sai, opacity: 1 }], { duration: 750, easing: 'cubic-bezier(.65,0,.35,1)' })
+        return
+    }
+
+    if (tipo === 'zoom') {
+        // Mergulha na imagem até borrar, e a nova chega de perto
+        await animar(palco, [
+            { transform: 'scale(1)', filter: 'blur(0px) brightness(1)' },
+            { transform: 'scale(1.6)', filter: 'blur(16px) brightness(1.3)' },
+        ], { duration: 650, easing: 'cubic-bezier(.6,0,.9,.5)' })
+        await trocar()
+        await animar(palco, [
+            { transform: 'scale(1.35)', filter: 'blur(14px) brightness(1.3)' },
+            { transform: 'scale(1)', filter: 'blur(0px) brightness(1)' },
+        ], { duration: 950, easing: 'cubic-bezier(.15,.6,.3,1)' })
+        return
+    }
+
+    if (tipo === 'dissolver') {
+        // Crossfade longo: uma imagem derrete na outra
+        const pronta = preparo ? await preparo : null
+        if (pronta) pronta({ duracao: 3200 })
+        if (efeitos) aplicarEfeitos(efeitos)
+        if (cena) variarTudo()
+        await espera(3200)
+        return
+    }
+
+    if (tipo === 'lembranca') {
+        // Flashback: clareia, amarela e borra; a cena nova surge do claro
+        cortina.style.background = '#f6ead0'
+        await Promise.all([
+            animar(palco, [{ filter: 'sepia(0) blur(0px) brightness(1)' }, { filter: 'sepia(0.9) blur(7px) brightness(1.5)' }], { duration: 1000, easing: 'ease-in' }),
+            animar(cortina, [{ opacity: 0 }, { opacity: 0.92 }], { duration: 1000, easing: 'ease-in' }),
+        ])
+        await trocar()
+        await espera(200)
+        await Promise.all([
+            animar(palco, [{ filter: 'sepia(0.9) blur(7px) brightness(1.5)' }, { filter: 'sepia(0) blur(0px) brightness(1)' }], { duration: 1800, easing: 'ease-out' }),
+            animar(cortina, [{ opacity: 0.92 }, { opacity: 0 }], { duration: 1500, easing: 'ease-out' }),
+        ])
+        return
+    }
+
+    if (tipo === 'fumaca') {
+        // Fumaça sobe e cobre tudo; quando dissipa, o lugar é outro
+        garantirNeblina()
+        cortina.style.background = '#58544f'
+        await Promise.all([
+            animar(fumaca, [
+                { opacity: 0, backgroundPosition: '0% 120%', transform: 'scale(1)' },
+                { opacity: 1, backgroundPosition: '30% 40%', transform: 'scale(1.3)' },
+            ], { duration: 1400, easing: 'ease-in' }),
+            animar(cortina, [{ opacity: 0 }, { opacity: 0 , offset: 0.4 }, { opacity: 0.96 }], { duration: 1400, easing: 'ease-in' }),
+            animar(palco, [{ filter: 'blur(0px)' }, { filter: 'blur(10px)' }], { duration: 1400, easing: 'ease-in' }),
+        ])
+        await trocar()
+        await Promise.all([
+            animar(fumaca, [
+                { opacity: 1, backgroundPosition: '30% 40%', transform: 'scale(1.3)' },
+                { opacity: 0, backgroundPosition: '60% -40%', transform: 'scale(1.6)' },
+            ], { duration: 2200, easing: 'ease-out' }),
+            animar(cortina, [{ opacity: 0.96 }, { opacity: 0 }], { duration: 1300, easing: 'ease-out' }),
+            animar(palco, [{ filter: 'blur(10px)' }, { filter: 'blur(0px)' }], { duration: 1800, easing: 'ease-out' }),
+        ])
+        return
+    }
+
 
     // corte seco (e qualquer tipo desconhecido)
     await trocar()
@@ -454,11 +841,12 @@ function alternarEm(conjunto, id, forca) {
 
 /** As linhas "nome + I II III" — usadas na aba Efeitos e no editor de cena do roteiro. */
 function htmlLinhasEfeitos(valores, attr = 'data-efeito') {
-    return EFEITOS.map(({ id, nome }) => {
+    return EFEITOS.map(({ id, nome, grupo }, i) => {
+        const titulo = i === 0 || EFEITOS[i - 1].grupo !== grupo ? `<div class="cfx-grupo">${grupo}</div>` : ''
         const n = valores[id] || 0
         const forcas = id === 'preto' ? '' : [1, 2, 3].map(f =>
             `<button class="cfx-n${n === f ? ' ativo' : ''}" ${attr}="${id}" data-forca="${f}" title="${nome}: força ${f}" aria-label="${nome}: força ${f}">${'I'.repeat(f)}</button>`).join('')
-        return `<div class="cfx-efeito${n ? ' ligado' : ''}">
+        return titulo + `<div class="cfx-efeito${n ? ' ligado' : ''}">
             <button class="cfx-b" ${attr}="${id}" aria-pressed="${!!n}">${nome}</button>${forcas}
         </div>`
     }).join('')

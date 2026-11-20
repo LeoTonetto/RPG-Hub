@@ -34,6 +34,7 @@
          dois efeitos no mesmo `transform` se anulam; aninhados, eles somam. -->
     <div id="cenaPalco">
         <div id="fxZoom" class="fx-camada">
+         <div id="fxCamera" class="fx-camada">
           <div id="fxGolpe" class="fx-camada">
             <div id="fxGolpeFiltro" class="fx-camada">
               <div id="fxMov" class="fx-camada">
@@ -48,14 +49,17 @@
               </div>
             </div>
           </div>
+         </div>
         </div>
     </div>
 
     <!-- ══ EFEITOS POR CIMA DA CENA (abaixo do HUD) ══ -->
     <div id="cenaFx" aria-hidden="true">
+        <div class="fx-neblina"><i></i><i></i></div>
+        <div class="fx-tocha"></div>
         <div class="fx-mov-borda"></div>
         <div class="fx-velocidade"></div>
-        <canvas class="fx-poeira"></canvas>
+        <canvas class="fx-particulas"></canvas>
         <div class="fx-granulado"></div>
         <svg class="fx-sangue" viewBox="0 0 1600 900" preserveAspectRatio="none">
             <defs>
@@ -81,6 +85,8 @@
         <div class="fx-brilho"></div>
         <div class="fx-flash"></div>
         <div class="fx-preto"></div>
+        <div class="fx-iris"></div>
+        <div class="fx-fumaca"></div>
         <div class="fx-olho"></div>
         <div class="fx-cortina"></div>
     </div>

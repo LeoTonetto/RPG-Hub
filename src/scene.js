@@ -40,7 +40,7 @@ async function prepararCena({ url, mimeType }) {
     try { displayUrl = await fetchAsBlobUrl(absoluteUrl) }
     catch (e) { console.warn('[Cena] Fetch bypass falhou, usando URL direta:', e.message) }
 
-    return function trocar({ instantaneo = false } = {}) {
+    return function trocar({ instantaneo = false, duracao = 0 } = {}) {
         const layerA = document.getElementById('bgA')
         const layerB = document.getElementById('bgB')
         const next = state.activeBgLayer === 'A' ? layerB : layerA
@@ -62,6 +62,11 @@ async function prepararCena({ url, mimeType }) {
 
         // Debaixo de uma transição o crossfade só atrasaria a imagem nova
         if (instantaneo) { next.style.transition = 'none'; prev.style.transition = 'none' }
+        // Crossfade mais longo que o padrão (transição "Dissolver lento")
+        if (duracao) {
+            next.style.transition = prev.style.transition = `opacity ${duracao}ms ease-in-out`
+            setTimeout(() => { next.style.transition = ''; prev.style.transition = '' }, duracao + 100)
+        }
         next.style.opacity = '1'
         prev.style.opacity = '0'
         if (instantaneo) {
@@ -76,7 +81,7 @@ async function prepararCena({ url, mimeType }) {
             prev.querySelectorAll('video').forEach(v => { URL.revokeObjectURL(v.src); v.src = '' })
             prev.innerHTML = ''
             prev.style.backgroundImage = ''
-        }, instantaneo ? 50 : 950)
+        }, instantaneo ? 50 : (duracao || 850) + 100)
     }
 }
 

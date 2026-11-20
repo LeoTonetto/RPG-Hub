@@ -7,8 +7,8 @@ const {
 
 // ── Efeitos de cena ───────────────────────────────────────────────────────────
 // Mesmas listas de src/cenaFx.js. Efeito desconhecido é descartado.
-const EFEITOS_CENA = ['preto', 'cinema', 'balanco', 'concussao', 'sangue', 'blur', 'granulado', 'poeira', 'movimento']
-const TRANSICOES = new Set(['suave', 'fade_preto', 'fade_branco', 'despertar', 'desfoque', 'corte'])
+const EFEITOS_CENA = ['preto', 'cinema', 'granulado', 'camera', 'balanco', 'blur', 'neblina', 'poeira', 'chuva', 'brasas', 'folhas', 'tocha', 'concussao', 'sangue', 'movimento']
+const TRANSICOES = new Set(['suave', 'fade_preto', 'fade_branco', 'despertar', 'desfoque', 'iris', 'varredura', 'zoom', 'dissolver', 'lembranca', 'fumaca', 'corte'])
 const MOMENTOS = new Set(['flechada', 'golpe', 'explosao', 'relampago', 'tontura', 'susto', 'cura', 'apagao'])
 function efeitosLimpos(bruto) {
     const out = {}

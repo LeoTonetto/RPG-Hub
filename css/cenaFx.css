@@ -11,6 +11,7 @@
 @property --fx-mov  { syntax: '<number>'; inherits: true; initial-value: 0; }
 @property --fx-zoom { syntax: '<number>'; inherits: true; initial-value: 1; }
 @property --fx-olho { syntax: '<length>'; inherits: false; initial-value: 0px; }
+@property --fx-iris { syntax: '<length>'; inherits: false; initial-value: 0px; }
 
 /* ── Palco: a imagem e seus embrulhos ──────────────────────────────────────── */
 #cenaPalco {
@@ -31,7 +32,10 @@
 #fxBal {
     transition: --fx-bal 1.6s ease;
 }
-body.fxon-balanco #fxBal { animation: fxBalanco 7s ease-in-out infinite alternate; }
+/* Ritmo, sentido e ponto de partida sorteados em src/cenaFx.js (variar) */
+body.fxon-balanco #fxBal {
+    animation: fxBalanco var(--fx-bal-dur, 7s) ease-in-out var(--fx-bal-atraso, 0s) infinite var(--fx-bal-dir, alternate);
+}
 @keyframes fxBalanco {
     0%   { transform: translate(calc(var(--fx-bal) * -7px), calc(var(--fx-bal) *  3px)) rotate(calc(var(--fx-bal) * -0.35deg)); }
     30%  { transform: translate(calc(var(--fx-bal) *  4px), calc(var(--fx-bal) * -5px)) rotate(calc(var(--fx-bal) *  0.25deg)); }
@@ -120,8 +124,53 @@ body.fxon-movimento .fx-velocidade {
     75% { transform: rotate(2.1deg) scale(1.04); }
 }
 
-/* Poeira (o desenho é do canvas, em src/cenaFx.js) */
-body.fxon-poeira .fx-poeira { opacity: 1; }
+/* Poeira, chuva, brasas e folhas: um canvas só; cada sistema faz a própria
+   rampa de opacidade no desenho (src/cenaFx.js), então a camada fica sempre visível */
+:where(#cenaFx) > .fx-particulas { opacity: 1; transition: none; }
+
+/* Neblina: duas camadas da mesma textura andando em velocidades diferentes */
+.fx-neblina {
+    -webkit-mask-image: linear-gradient(to top, #000 0%, #000 15%, transparent var(--fx-neb-alt, 60%));
+            mask-image: linear-gradient(to top, #000 0%, #000 15%, transparent var(--fx-neb-alt, 60%));
+    transition: opacity 2s ease;
+}
+body.fxon-neblina .fx-neblina { opacity: var(--fx-neb-op, 0.6); }
+.fx-neblina i {
+    position: absolute; left: 0; right: 0; bottom: -10%; height: 90%;
+    background-repeat: repeat-x;
+    background-position: 0 100%;
+}
+.fx-neblina i:first-child { background-size: 130vw 100%; }
+.fx-neblina i:last-child  { background-size: 190vw 120%; opacity: 0.7; bottom: -25%; }
+body.fxon-neblina .fx-neblina i:first-child { animation: fxNeblina1 var(--fx-neb-dur1, 90s) linear infinite var(--fx-neb-dir, normal); }
+body.fxon-neblina .fx-neblina i:last-child  { animation: fxNeblina2 var(--fx-neb-dur2, 150s) linear infinite var(--fx-neb-dir, normal); }
+@keyframes fxNeblina1 { from { background-position-x: 0; } to { background-position-x: 130vw; } }
+@keyframes fxNeblina2 { from { background-position-x: 0; } to { background-position-x: 190vw; } }
+
+/* Luz de tocha: brilho quente perto da fonte, sombra longe dela, os dois
+   tremulando em ritmos diferentes para nunca repetir igual */
+.fx-tocha { transition: opacity 1.5s ease; }
+body.fxon-tocha .fx-tocha { opacity: var(--fx-tocha-op, 0.8); }
+.fx-tocha::before, .fx-tocha::after { content: ''; position: absolute; inset: 0; }
+.fx-tocha::before {
+    background: radial-gradient(circle at var(--fx-tocha-x, 50%) var(--fx-tocha-y, 95%),
+        rgba(255, 170, 80, 0.55) 0%, rgba(255, 120, 40, 0.22) 30%, transparent 62%);
+    mix-blend-mode: screen;
+    animation: fxChama1 2.3s steps(1) infinite, fxChama2 0.37s ease-in-out infinite alternate;
+}
+.fx-tocha::after {
+    background: radial-gradient(circle at var(--fx-tocha-x, 50%) var(--fx-tocha-y, 95%),
+        transparent 25%, rgba(25, 10, 0, 0.55) 95%);
+    animation: fxSombra 3.1s ease-in-out infinite;
+}
+@keyframes fxChama1 {
+    0% { opacity: 0.9; } 9% { opacity: 1; } 17% { opacity: 0.75; } 26% { opacity: 0.95; }
+    41% { opacity: 0.82; } 53% { opacity: 1; } 67% { opacity: 0.7; } 78% { opacity: 0.92; } 89% { opacity: 0.85; }
+}
+@keyframes fxChama2 { from { transform: scale(1); } to { transform: scale(1.04) translateY(-0.5%); } }
+@keyframes fxSombra {
+    0%, 100% { opacity: 0.85; } 23% { opacity: 1; } 47% { opacity: 0.78; } 71% { opacity: 0.95; }
+}
 
 /* Granulado de filme */
 .fx-granulado {
@@ -197,6 +246,18 @@ body.fxon-preto .fx-preto { opacity: 1; }
 }
 /* Cortina de cor das transições de fade */
 .fx-cortina { transition: none; }
+
+/* Transições "Íris" e "Fumaça" */
+.fx-iris {
+    transition: none;
+    background: radial-gradient(circle var(--fx-iris) at 50% 50%, transparent 99%, #000 100%);
+}
+.fx-fumaca {
+    transition: none;
+    background-repeat: repeat;
+    background-size: 90vw 70vh;
+    filter: blur(2px) brightness(0.85);
+}
 
 /* Momentâneos: camadas próprias, animadas só por src/cenaFx.js */
 .fx-flash { transition: none; }
@@ -376,3 +437,9 @@ body.fxon-preto .fx-preto { opacity: 1; }
 .cfr-rodape .cfx-b { padding: 7px 12px; }
 .cfr-rodape .cfr-link, .cfr-rodape .cfr-perigo { margin-left: auto; }
 #cenaFxPainel .cfx-b.largo { width: 100%; }
+
+.cfx-grupo {
+    font-family: 'Cinzel', serif; font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: rgba(var(--parchment-rgb), 0.4); margin: 8px 0 4px;
+}
+.cfx-grupo:first-child { margin-top: 0; }
