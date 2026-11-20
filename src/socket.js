@@ -29,6 +29,7 @@ function connectToRoom(url, roomCode) {
     state.personagensCarregados = false
     require('./dndCombate').limpar()
     require('./dndBolsa').limpar()
+    require('./cenaFx').limparCenaFx()
 
     // O token so existe para quem criou a sala. Recuperamos do localStorage
     // tambem, para o mestre reassumir depois de fechar e reabrir o app.
@@ -74,7 +75,7 @@ function connectToRoom(url, roomCode) {
 
     state.socket.on('master_status', isMaster => {
         state.isRoomMaster = isMaster
-        initMusicPanel(); initNPC(); initSfxPanel(); initReputation(); initImageShow()
+        initMusicPanel(); initNPC(); initSfxPanel(); initReputation(); initImageShow(); require('./cenaFx').initCenaFx()
         showJournalButtons()
         updateDiceMasterUI()   // mostra/esconde o interruptor de rolagem secreta
 
@@ -132,6 +133,9 @@ function connectToRoom(url, roomCode) {
     state.socket.on('music_stop', () => { stopYouTubeVideo(); hideMusicActive() })
     state.socket.on('play_sfx', ({ audioUrl, sfxName }) => { playSfxAudio(audioUrl) })
     state.socket.on('scene_change', data => applyScene(data))
+    state.socket.on('cena_fx', ({ efeitos } = {}) => require('./cenaFx').aplicarEfeitos(efeitos))
+    state.socket.on('cena_transicao', p => require('./cenaFx').receberTransicao(p))
+    state.socket.on('cena_momento', ({ tipo } = {}) => require('./cenaFx').executarMomento(tipo))
     state.socket.on('image_show', data => handleImageShow(data))
     state.socket.on('image_hide', () => handleImageHide())
     state.socket.on('room_characters', allChars => renderCharacterBar(allChars))

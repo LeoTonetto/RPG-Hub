@@ -24,13 +24,82 @@
     <link rel="stylesheet" href="css/calico.css">
     <link rel="stylesheet" href="css/dnd.css">
     <link rel="stylesheet" href="css/config.css">
+    <link rel="stylesheet" href="css/cenaFx.css">
 </head>
 
 <body>
 
-    <!-- ══ CAMADAS DE FUNDO ══ -->
-    <div id="bgA" class="bg-layer"></div>
-    <div id="bgB" class="bg-layer"></div>
+    <!-- ══ CAMADAS DE FUNDO ══
+         Cada embrulho carrega um efeito de src/cenaFx.js. Um por camada porque
+         dois efeitos no mesmo `transform` se anulam; aninhados, eles somam. -->
+    <div id="cenaPalco">
+        <div id="fxZoom" class="fx-camada">
+          <div id="fxGolpe" class="fx-camada">
+            <div id="fxGolpeFiltro" class="fx-camada">
+              <div id="fxMov" class="fx-camada">
+                <div id="fxBal" class="fx-camada">
+                    <div id="fxCon" class="fx-camada">
+                        <div id="fxBlur" class="fx-camada">
+                            <div id="bgA" class="bg-layer"></div>
+                            <div id="bgB" class="bg-layer"></div>
+                        </div>
+                    </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <!-- ══ EFEITOS POR CIMA DA CENA (abaixo do HUD) ══ -->
+    <div id="cenaFx" aria-hidden="true">
+        <div class="fx-mov-borda"></div>
+        <div class="fx-velocidade"></div>
+        <canvas class="fx-poeira"></canvas>
+        <div class="fx-granulado"></div>
+        <svg class="fx-sangue" viewBox="0 0 1600 900" preserveAspectRatio="none">
+            <defs>
+                <radialGradient id="fxSangueGrad" cx="50%" cy="50%" r="54%">
+                    <stop offset="52%" stop-color="#5a0000" stop-opacity="0" />
+                    <stop offset="70%" stop-color="#8a0a0a" stop-opacity="0.6" />
+                    <stop offset="84%" stop-color="#640202" stop-opacity="0.95" />
+                    <stop offset="100%" stop-color="#2a0000" stop-opacity="1" />
+                </radialGradient>
+                <filter id="fxSangueBorda" x="-10%" y="-10%" width="120%" height="120%">
+                    <feTurbulence type="fractalNoise" baseFrequency="0.009 0.014" numOctaves="4" seed="11" result="ruido" />
+                    <feDisplacementMap in="SourceGraphic" in2="ruido" scale="170" xChannelSelector="R" yChannelSelector="G" />
+                </filter>
+            </defs>
+            <rect x="-120" y="-120" width="1840" height="1140" fill="url(#fxSangueGrad)" filter="url(#fxSangueBorda)" />
+        </svg>
+        <div class="fx-con-veu"></div>
+        <div class="fx-cinema"><i></i><i></i></div>
+        <!-- momentâneos (Flechada, Explosão…) -->
+        <svg class="fx-golpe-sangue" viewBox="0 0 1600 900" preserveAspectRatio="none">
+            <rect x="-120" y="-120" width="1840" height="1140" fill="url(#fxSangueGrad)" filter="url(#fxSangueBorda)" />
+        </svg>
+        <div class="fx-brilho"></div>
+        <div class="fx-flash"></div>
+        <div class="fx-preto"></div>
+        <div class="fx-olho"></div>
+        <div class="fx-cortina"></div>
+    </div>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <!-- Concussão: separa os canais de cor e deixa eles tremendo -->
+        <filter id="fxRgb" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+            <feColorMatrix in="SourceGraphic" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="r" />
+            <feOffset in="r" dx="-6" dy="0" result="r2">
+                <animate attributeName="dx" values="-4;-9;-3;-7;-5;-4" dur="1.7s" repeatCount="indefinite" />
+            </feOffset>
+            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="g" />
+            <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="b" />
+            <feOffset in="b" dx="6" dy="1" result="b2">
+                <animate attributeName="dx" values="5;8;3;9;4;5" dur="2.3s" repeatCount="indefinite" />
+            </feOffset>
+            <feBlend in="r2" in2="g" mode="screen" result="rg" />
+            <feBlend in="rg" in2="b2" mode="screen" />
+        </filter>
+    </svg>
 
     <!-- ══ BARRA DE REPUTAÇÃO ══ -->
     <div id="reputationBar">
@@ -274,9 +343,7 @@
             </div>
             <button id="musicStopBtn">■ Parar</button>
             <hr class="panel-divider">
-            <button id="scenePickerBtn">🖼 Trocar Cena</button>
-            <input id="sceneFileInput" type="file"
-                accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" style="display:none;" />
+            <button id="cenaFxBtn" style="display:none;">🎬 Cenas e Efeitos</button>
             <button id="imageShowBtn">🔍 Mostrar Imagem</button>
             <input id="imageShowInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp"
                 style="display:none;" />

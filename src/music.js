@@ -137,8 +137,6 @@ function initMusicPanel() {
     const urlInput = document.getElementById('musicUrlInput')
     const volSlider = document.getElementById('volumeSlider')
     const volVal = document.getElementById('volumeVal')
-    const scenePickerBtn = document.getElementById('scenePickerBtn')
-    const sceneFileInput = document.getElementById('sceneFileInput')
 
     playBtn.addEventListener('click', () => {
         const url = urlInput.value.trim()
@@ -172,26 +170,6 @@ function initMusicPanel() {
             if (v === 0) ytPlayer.mute()
             else ytPlayer.unMute()
         }
-    })
-
-    scenePickerBtn.addEventListener('click', () => sceneFileInput.click())
-    sceneFileInput.addEventListener('change', async () => {
-        const file = sceneFileInput.files[0]
-        if (!file) return
-        scenePickerBtn.textContent = '⏳ Enviando…'
-        scenePickerBtn.disabled = true
-        try {
-            const url = await require('./scene').enviarArquivoDaSala(file)
-            state.socket.emit('scene_change', { url, mimeType: file.type })
-        } catch (e) {
-            console.error('[Cena] Erro no upload:', e)
-            scenePickerBtn.textContent = '✗ Erro no upload'
-            setTimeout(() => { scenePickerBtn.textContent = '🖼 Trocar Cena'; scenePickerBtn.disabled = false }, 2500)
-            return
-        }
-        scenePickerBtn.textContent = '✓ Cena enviada'
-        setTimeout(() => { scenePickerBtn.textContent = '🖼 Trocar Cena'; scenePickerBtn.disabled = false }, 2000)
-        sceneFileInput.value = ''
     })
 }
 

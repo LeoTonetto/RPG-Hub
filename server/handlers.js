@@ -1,9 +1,24 @@
 const {
     rooms, roomCodes, urlCodes, roomChars,
-    roomMusic, roomMasters, roomScene, roomNPCs,
+    roomMusic, roomMasters, roomScene, roomCenaFx, roomNPCs,
     roomReputation, roomMissions, roomOwners, roomCombate, roomBolsa,
     normalizeUrl, tocarSala
 } = require('./roomState')
+
+// ── Efeitos de cena ───────────────────────────────────────────────────────────
+// Mesmas listas de src/cenaFx.js. Efeito desconhecido é descartado.
+const EFEITOS_CENA = ['preto', 'cinema', 'balanco', 'concussao', 'sangue', 'blur', 'granulado', 'poeira', 'movimento']
+const TRANSICOES = new Set(['suave', 'fade_preto', 'fade_branco', 'despertar', 'desfoque', 'corte'])
+const MOMENTOS = new Set(['flechada', 'golpe', 'explosao', 'relampago', 'tontura', 'susto', 'cura', 'apagao'])
+function efeitosLimpos(bruto) {
+    const out = {}
+    if (!bruto || typeof bruto !== 'object') return out
+    EFEITOS_CENA.forEach(id => {
+        const n = Math.round(+bruto[id] || 0)
+        if (n > 0) out[id] = Math.min(3, n)
+    })
+    return out
+}
 
 // ── Bolsa do grupo (D&D) ──────────────────────────────────────────────────────
 // Valor de cada moeda em peças de cobre (LdJ p. 143)
@@ -93,6 +108,7 @@ function setupSocketHandlers(io) {
         socket.emit('room_system', { sistema: (dono && dono.sistema) || null })
         if (roomMusic[roomCode]) { const elapsed = (Date.now() - roomMusic[roomCode].startTime) / 1000; socket.emit('music_play', { ...roomMusic[roomCode], seekTime: elapsed }) }
         if (roomScene[roomCode]) { socket.emit('scene_change', roomScene[roomCode]) }
+        if (roomCenaFx[roomCode]) { socket.emit('cena_fx', { efeitos: roomCenaFx[roomCode] }) }
         if (roomNPCs[roomCode]) { Object.values(roomNPCs[roomCode]).forEach(npc => { socket.emit('npc_summon', { ...npc, silent: true }) }) }
 
         if (roomMissions[roomCode]) {
@@ -111,6 +127,37 @@ function setupSocketHandlers(io) {
 
         // ── Cena ─────────────────────────────────────────────────────────────
         socket.on('scene_change', ({ url, mimeType }) => { if (roomMasters[roomCode] !== socket.id) return; if (!url || typeof url !== 'string') return; roomScene[roomCode] = { url, mimeType: mimeType || 'image/jpeg' }; io.to(roomCode).emit('scene_change', roomScene[roomCode]); console.log(`[Cena] Nova cena na sala ${roomCode}:`, url) })
+
+        // ── Efeitos de cena (src/cenaFx.js) ──────────────────────────────────
+        // Os contínuos ficam guardados: quem entra no meio já vê o mesmo clima.
+        // A transição só passa adiante — quem chega depois cai no resultado dela.
+        socket.on('cena_fx', ({ efeitos } = {}) => {
+            if (roomMasters[roomCode] !== socket.id) return
+            roomCenaFx[roomCode] = efeitosLimpos(efeitos)
+            io.to(roomCode).emit('cena_fx', { efeitos: roomCenaFx[roomCode] })
+        })
+        socket.on('cena_transicao', ({ tipo, cena, efeitos } = {}) => {
+            if (roomMasters[roomCode] !== socket.id) return
+            if (!TRANSICOES.has(tipo)) return
+            const pacote = { tipo }
+            if (cena && typeof cena.url === 'string' && cena.url) {
+                roomScene[roomCode] = { url: cena.url, mimeType: typeof cena.mimeType === 'string' ? cena.mimeType : 'image/jpeg' }
+                pacote.cena = roomScene[roomCode]
+            }
+            if (efeitos && typeof efeitos === 'object') {
+                roomCenaFx[roomCode] = efeitosLimpos(efeitos)
+                pacote.efeitos = roomCenaFx[roomCode]
+            }
+            io.to(roomCode).emit('cena_transicao', pacote)
+            console.log(`[Cena] Transição "${tipo}" na sala ${roomCode}${pacote.cena ? ' com cena nova' : ''}`)
+        })
+
+        // Momentâneo: um clique, roda uma vez em todo mundo e não fica guardado
+        socket.on('cena_momento', ({ tipo } = {}) => {
+            if (roomMasters[roomCode] !== socket.id) return
+            if (!MOMENTOS.has(tipo)) return
+            io.to(roomCode).emit('cena_momento', { tipo })
+        })
 
         // ── Imagem mostrada pelo mestre ──────────────────────────────────────
         // Não é cena nem item: aparece por cima de tudo e cada um fecha a sua.

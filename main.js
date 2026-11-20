@@ -149,6 +149,9 @@ function setMusicVolume(vol) {
 }
 
 // ── IPC de música ─────────────────────────────────────────────────────────────
+// Pasta de dados do app: o roteiro de cenas do mestre (src/cenaRoteiro.js) guarda lá
+ipcMain.handle('caminho-dados', () => app.getPath('userData'))
+
 ipcMain.on('music-play', (e, { videoId, seekTime }) => playMusic(videoId, seekTime))
 ipcMain.on('music-stop', () => stopMusic())
 ipcMain.on('music-volume', (e, { volume }) => setMusicVolume(volume))

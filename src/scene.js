@@ -28,43 +28,61 @@ async function enviarArquivoDaSala(file) {
     return `${state.serverUrl}${scenePath}`
 }
 
-async function applyScene({ url, mimeType }) {
-    const layerA = document.getElementById('bgA')
-    const layerB = document.getElementById('bgB')
-    const next = state.activeBgLayer === 'A' ? layerB : layerA
-    const prev = state.activeBgLayer === 'A' ? layerA : layerB
-
-    next.innerHTML = ''
-    next.style.backgroundImage = ''
-
+/**
+ * Baixa a cena e devolve uma função que a coloca na tela. Separado em dois
+ * tempos para as transições (src/cenaFx.js): o download começa junto com o
+ * escurecer, e a troca acontece só quando a tela já está coberta.
+ */
+async function prepararCena({ url, mimeType }) {
     const absoluteUrl = url.startsWith('/') ? (state.serverUrl + url) : url
 
     let displayUrl = absoluteUrl
     try { displayUrl = await fetchAsBlobUrl(absoluteUrl) }
     catch (e) { console.warn('[Cena] Fetch bypass falhou, usando URL direta:', e.message) }
 
-    if (mimeType && mimeType.startsWith('video/')) {
-        const vid = document.createElement('video')
-        vid.src = displayUrl; vid.autoplay = true; vid.loop = true; vid.muted = true; vid.playsInline = true
-        vid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;'
-        next.appendChild(vid)
-    } else {
-        next.style.backgroundImage = `url('${displayUrl}')`
-        next.style.backgroundSize = 'cover'
-        next.style.backgroundPosition = 'center'
+    return function trocar({ instantaneo = false } = {}) {
+        const layerA = document.getElementById('bgA')
+        const layerB = document.getElementById('bgB')
+        const next = state.activeBgLayer === 'A' ? layerB : layerA
+        const prev = state.activeBgLayer === 'A' ? layerA : layerB
+
+        next.innerHTML = ''
+        next.style.backgroundImage = ''
+
+        if (mimeType && mimeType.startsWith('video/')) {
+            const vid = document.createElement('video')
+            vid.src = displayUrl; vid.autoplay = true; vid.loop = true; vid.muted = true; vid.playsInline = true
+            vid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;'
+            next.appendChild(vid)
+        } else {
+            next.style.backgroundImage = `url('${displayUrl}')`
+            next.style.backgroundSize = 'cover'
+            next.style.backgroundPosition = 'center'
+        }
+
+        // Debaixo de uma transição o crossfade só atrasaria a imagem nova
+        if (instantaneo) { next.style.transition = 'none'; prev.style.transition = 'none' }
+        next.style.opacity = '1'
+        prev.style.opacity = '0'
+        if (instantaneo) {
+            void next.offsetWidth
+            next.style.transition = ''; prev.style.transition = ''
+        }
+        state.activeBgLayer = state.activeBgLayer === 'A' ? 'B' : 'A'
+
+        setTimeout(() => {
+            const oldSrc = prev.style.backgroundImage.match(/url\(['"]?(blob:[^'")\s]+)/)
+            if (oldSrc) URL.revokeObjectURL(oldSrc[1])
+            prev.querySelectorAll('video').forEach(v => { URL.revokeObjectURL(v.src); v.src = '' })
+            prev.innerHTML = ''
+            prev.style.backgroundImage = ''
+        }, instantaneo ? 50 : 950)
     }
-
-    next.style.opacity = '1'
-    prev.style.opacity = '0'
-    state.activeBgLayer = state.activeBgLayer === 'A' ? 'B' : 'A'
-
-    setTimeout(() => {
-        const oldSrc = prev.style.backgroundImage.match(/url\(['"]?(blob:[^'")\s]+)/)
-        if (oldSrc) URL.revokeObjectURL(oldSrc[1])
-        prev.querySelectorAll('video').forEach(v => { URL.revokeObjectURL(v.src); v.src = '' })
-        prev.innerHTML = ''
-        prev.style.backgroundImage = ''
-    }, 950)
 }
 
-module.exports = { applyScene, fetchAsBlobUrl, enviarArquivoDaSala }
+async function applyScene(data) {
+    const trocar = await prepararCena(data)
+    trocar()
+}
+
+module.exports = { applyScene, prepararCena, fetchAsBlobUrl, enviarArquivoDaSala }

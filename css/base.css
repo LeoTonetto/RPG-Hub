@@ -68,10 +68,11 @@ body::before {
 }
 
 /* ══ BACKGROUND LAYERS ══ */
+/* As camadas vivem dentro de #cenaPalco (css/cenaFx.css), que fica em z -2;
+   absolutas para acompanhar os embrulhos quando eles balançam. */
 .bg-layer {
-    position: fixed;
+    position: absolute;
     inset: 0;
-    z-index: -2;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;

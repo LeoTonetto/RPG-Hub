@@ -6,6 +6,7 @@ const roomChars = {}  // { roomCode: { socketId: { playerName, characters[] } } 
 const roomMusic = {}  // { roomCode: { videoId, startedBy, startTime } | null }
 const roomMasters = {}  // { roomCode: socketId }  — quem é o mestre AGORA
 const roomScene = {}  // { roomCode: { url, mimeType } | null }
+const roomCenaFx = {}  // { roomCode: { efeitoId: intensidade 1-3 } } — efeitos contínuos da cena (src/cenaFx.js)
 const roomNPCs = {}  // { roomCode: { npcId: npcData } }  — NPCs ativos na cena
 const roomReputation = {}  // { roomCode: number (-10 a +10) }
 const roomMissions = {}  // { roomCode: [{ id, objective, status }] }
@@ -87,6 +88,7 @@ function fecharSala(code, motivo = 'inatividade') {
     delete roomMusic[code]
     delete roomMasters[code]
     delete roomScene[code]
+    delete roomCenaFx[code]
     delete roomNPCs[code]
     delete roomReputation[code]
     delete roomMissions[code]
@@ -150,7 +152,7 @@ function salasAtivas() {
 
 module.exports = {
     rooms, roomCodes, urlCodes, roomChars,
-    roomMusic, roomMasters, roomScene, roomNPCs,
+    roomMusic, roomMasters, roomScene, roomCenaFx, roomNPCs,
     roomReputation, roomMissions, roomOwners, roomCombate, roomBolsa,
     normalizeUrl, tocarSala, fecharSala, limparSalasVencidas,
     registrarAoFecharSala, salasAtivas,

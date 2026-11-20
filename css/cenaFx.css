@@ -1,0 +1,378 @@
+/* ══ EFEITOS DE CENA ══════════════════════════════════════════════════════════
+   Ver src/cenaFx.js. Tudo aqui afeta só a imagem de fundo: #cenaPalco fica em
+   z -2 e #cenaFx em z 0, ambos antes do HUD no documento, então fichas, chat e
+   botões continuam por cima e intactos.
+
+   As intensidades chegam como variáveis numéricas (0 = desligado). Registradas
+   com @property para que ligar e desligar seja uma rampa, não um pulo. */
+
+@property --fx-bal  { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --fx-con  { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --fx-mov  { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --fx-zoom { syntax: '<number>'; inherits: true; initial-value: 1; }
+@property --fx-olho { syntax: '<length>'; inherits: false; initial-value: 0px; }
+
+/* ── Palco: a imagem e seus embrulhos ──────────────────────────────────────── */
+#cenaPalco {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    overflow: hidden;
+    background: #0a0806;
+}
+.fx-camada { position: absolute; inset: 0; }
+
+/* Aumenta um pouco a imagem quando algo a mexe, para as bordas não aparecerem */
+#fxZoom {
+    transform: scale(var(--fx-zoom));
+    transition: --fx-zoom 1.4s ease, transform 1.4s ease;
+}
+
+#fxBal {
+    transition: --fx-bal 1.6s ease;
+}
+body.fxon-balanco #fxBal { animation: fxBalanco 7s ease-in-out infinite alternate; }
+@keyframes fxBalanco {
+    0%   { transform: translate(calc(var(--fx-bal) * -7px), calc(var(--fx-bal) *  3px)) rotate(calc(var(--fx-bal) * -0.35deg)); }
+    30%  { transform: translate(calc(var(--fx-bal) *  4px), calc(var(--fx-bal) * -5px)) rotate(calc(var(--fx-bal) *  0.25deg)); }
+    62%  { transform: translate(calc(var(--fx-bal) * -3px), calc(var(--fx-bal) *  6px)) rotate(calc(var(--fx-bal) *  0.45deg)); }
+    100% { transform: translate(calc(var(--fx-bal) *  7px), calc(var(--fx-bal) * -2px)) rotate(calc(var(--fx-bal) * -0.2deg)); }
+}
+
+/* Concussão: tranco irregular, desfoque que vai e volta, cor separada */
+#fxCon { transition: --fx-con 1.2s ease; }
+body.fxon-concussao #fxCon { animation: fxConcussao 3.1s ease-in-out infinite; }
+body.fxon-concussao #fxBlur { filter: url(#fxRgb) blur(var(--fx-blur, 0px)); }
+@keyframes fxConcussao {
+    0%   { transform: translate(0, 0) rotate(0); filter: blur(0) brightness(1); }
+    7%   { transform: translate(calc(var(--fx-con) * 9px), calc(var(--fx-con) * -4px)) rotate(calc(var(--fx-con) * 0.6deg)); filter: blur(calc(var(--fx-con) * 1.6px)) brightness(1.15); }
+    14%  { transform: translate(calc(var(--fx-con) * -6px), calc(var(--fx-con) * 5px)) rotate(calc(var(--fx-con) * -0.5deg)); }
+    22%  { transform: translate(calc(var(--fx-con) * 2px), calc(var(--fx-con) * 1px)) rotate(calc(var(--fx-con) * 0.15deg)); filter: blur(calc(var(--fx-con) * 0.6px)) brightness(0.9); }
+    45%  { transform: translate(calc(var(--fx-con) * -3px), calc(var(--fx-con) * 3px)) rotate(calc(var(--fx-con) * -0.3deg)); filter: blur(calc(var(--fx-con) * 2.4px)) brightness(0.7); }
+    58%  { transform: translate(calc(var(--fx-con) * 4px), calc(var(--fx-con) * -2px)) rotate(calc(var(--fx-con) * 0.35deg)); filter: blur(calc(var(--fx-con) * 1px)) brightness(0.85); }
+    80%  { transform: translate(calc(var(--fx-con) * -1px), calc(var(--fx-con) * -3px)) rotate(0); filter: blur(calc(var(--fx-con) * 1.8px)) brightness(0.75); }
+    100% { transform: translate(0, 0) rotate(0); filter: blur(0) brightness(1); }
+}
+
+/* Movimento: passada de corrida (sobe e desce, pende para os lados) */
+#fxMov { transition: --fx-mov 1s ease; }
+body.fxon-movimento #fxMov { animation: fxCorrida 0.78s ease-in-out infinite; }
+@keyframes fxCorrida {
+    0%   { transform: translate(calc(var(--fx-mov) * -5px), calc(var(--fx-mov) * -2px)) rotate(calc(var(--fx-mov) * -0.4deg)) scale(1); }
+    25%  { transform: translate(0, calc(var(--fx-mov) * 8px)) rotate(0) scale(calc(1 + var(--fx-mov) * 0.006)); }
+    50%  { transform: translate(calc(var(--fx-mov) * 5px), calc(var(--fx-mov) * -2px)) rotate(calc(var(--fx-mov) * 0.4deg)) scale(1); }
+    75%  { transform: translate(0, calc(var(--fx-mov) * 8px)) rotate(0) scale(calc(1 + var(--fx-mov) * 0.006)); }
+    100% { transform: translate(calc(var(--fx-mov) * -5px), calc(var(--fx-mov) * -2px)) rotate(calc(var(--fx-mov) * -0.4deg)) scale(1); }
+}
+
+/* Desfoque fixo */
+#fxBlur {
+    filter: blur(var(--fx-blur, 0px));
+    transition: filter 1.2s ease;
+}
+
+/* ── Sobreposições ─────────────────────────────────────────────────────────── */
+#cenaFx {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+/* :where() zera a especificidade, para as regras de cada efeito ligarem a opacidade */
+:where(#cenaFx) > * {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+}
+/* Ligado/desligado sem rampa: usado no meio de uma transição, com a tela coberta */
+#cenaFx.fx-seco > *, #cenaFx.fx-seco .fx-cinema i,
+body.fxon-seco #fxBlur, body.fxon-seco #fxZoom,
+body.fxon-seco #fxBal, body.fxon-seco #fxCon, body.fxon-seco #fxMov { transition: none !important; }
+
+/* Bordas de movimento: as laterais borradas de quem corre */
+.fx-mov-borda {
+    backdrop-filter: blur(calc(var(--fx-mov) * 2.5px));
+    -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 50%, transparent 45%, #000 100%);
+            mask-image: radial-gradient(ellipse 60% 55% at 50% 50%, transparent 45%, #000 100%);
+}
+body.fxon-movimento .fx-mov-borda { opacity: 1; }
+
+/* Linhas de velocidade saindo do centro */
+.fx-velocidade {
+    background: repeating-conic-gradient(from 0deg at 50% 50%,
+        transparent 0deg, rgba(235, 240, 225, 0.17) 0.35deg, transparent 1.1deg, transparent 3.7deg);
+    -webkit-mask-image: radial-gradient(ellipse 70% 65% at 50% 50%, transparent 38%, #000 95%);
+            mask-image: radial-gradient(ellipse 70% 65% at 50% 50%, transparent 38%, #000 95%);
+    inset: -20% !important; width: 140% !important; height: 140% !important;
+}
+body.fxon-movimento .fx-velocidade {
+    opacity: calc(0.25 + var(--fx-mov) * 0.22);
+    animation: fxLinhas 0.36s steps(1) infinite;
+}
+@keyframes fxLinhas {
+    0%  { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(1.3deg) scale(1.03); }
+    50% { transform: rotate(-0.8deg) scale(1.01); }
+    75% { transform: rotate(2.1deg) scale(1.04); }
+}
+
+/* Poeira (o desenho é do canvas, em src/cenaFx.js) */
+body.fxon-poeira .fx-poeira { opacity: 1; }
+
+/* Granulado de filme */
+.fx-granulado {
+    inset: -50% !important; width: 200% !important; height: 200% !important;
+    background-repeat: repeat;
+    mix-blend-mode: overlay;
+}
+body.fxon-granulado .fx-granulado {
+    opacity: var(--fx-gran-op, 0.35);
+    animation: fxGrao 0.5s steps(1) infinite;
+}
+@keyframes fxGrao {
+    0%   { transform: translate(0, 0); }
+    10%  { transform: translate(-5%, -7%); }
+    20%  { transform: translate(-12%, 4%); }
+    30%  { transform: translate(6%, -16%); }
+    40%  { transform: translate(-4%, 18%); }
+    50%  { transform: translate(-13%, 8%); }
+    60%  { transform: translate(14%, 0); }
+    70%  { transform: translate(0, 12%); }
+    80%  { transform: translate(3%, 22%); }
+    90%  { transform: translate(-9%, 9%); }
+}
+
+/* Bordas ensanguentadas, pulsando como batimento */
+.fx-sangue { transform: scale(var(--fx-sangue-escala, 1.1)); transform-origin: center; }
+body.fxon-sangue .fx-sangue {
+    opacity: 1;
+    animation: fxBatimento 1.15s ease-out infinite;
+}
+@keyframes fxBatimento {
+    0%   { opacity: 0.78; }
+    9%   { opacity: 1; }
+    20%  { opacity: 0.84; }
+    30%  { opacity: 0.97; }
+    55%  { opacity: 0.78; }
+    100% { opacity: 0.74; }
+}
+
+/* Concussão: o escuro que fecha pelas bordas, como quase desmaiar */
+.fx-con-veu {
+    background: radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0, 0, 0, 0.85) 100%);
+}
+body.fxon-concussao .fx-con-veu { opacity: 1; animation: fxApagao 3.1s ease-in-out infinite; }
+@keyframes fxApagao {
+    0%, 30% { opacity: calc(0.25 + var(--fx-con) * 0.1); }
+    45%     { opacity: calc(0.5 + var(--fx-con) * 0.15); }
+    65%     { opacity: calc(0.3 + var(--fx-con) * 0.1); }
+    80%     { opacity: calc(0.45 + var(--fx-con) * 0.15); }
+    100%    { opacity: calc(0.25 + var(--fx-con) * 0.1); }
+}
+
+/* Bordas de cinema */
+.fx-cinema { opacity: 1 !important; }
+.fx-cinema i {
+    position: absolute; left: 0; right: 0;
+    height: var(--fx-cinema-h, 11vh);
+    background: #000;
+    transition: transform 1.3s cubic-bezier(0.65, 0, 0.35, 1), height 1.3s ease;
+}
+.fx-cinema i:first-child { top: 0;    transform: translateY(-101%); }
+.fx-cinema i:last-child  { bottom: 0; transform: translateY(101%); }
+body.fxon-cinema .fx-cinema i { transform: translateY(0); }
+
+/* Tela preta */
+.fx-preto { background: #000; transition: opacity 1.6s ease; }
+body.fxon-preto .fx-preto { opacity: 1; }
+
+/* Pálpebras: uma elipse que abre na vertical (transição "despertar") */
+.fx-olho {
+    background: radial-gradient(ellipse 80vw var(--fx-olho) at 50% 50%, transparent 55%, #000 100%);
+    transition: none;
+}
+/* Cortina de cor das transições de fade */
+.fx-cortina { transition: none; }
+
+/* Momentâneos: camadas próprias, animadas só por src/cenaFx.js */
+.fx-flash { transition: none; }
+.fx-golpe-sangue { transition: none; transform: scale(1.08); transform-origin: center; }
+.fx-brilho {
+    transition: none;
+    background: radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(255, 214, 120, 0.28) 75%, rgba(170, 255, 190, 0.45) 100%);
+    mix-blend-mode: screen;
+}
+
+/* ══ PAINEL DO MESTRE ═══════════════════════════════════════════════════════ */
+#cenaFxBtn {
+    width: 100%; padding: 7px;
+    background: rgba(var(--gold-rgb), 0.06);
+    border: 1px dashed rgba(var(--gold-rgb), 0.25); border-radius: 3px;
+    color: rgba(var(--gold-rgb), 0.55); font-family: 'Cinzel', serif; font-size: 9px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    cursor: pointer; transition: all 0.2s; text-align: center;
+}
+#cenaFxBtn:hover, #cenaFxBtn.aberto { background: rgba(var(--gold-rgb), 0.1); border-color: var(--gold-dim); color: var(--gold); }
+
+#cenaFxPainel {
+    position: fixed; top: 16px; right: 332px;
+    z-index: 500;
+    width: 340px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: linear-gradient(160deg, rgb(var(--fundo-rgb)) 0%, var(--fundo-meio) 100%);
+    border: 1px solid rgba(var(--gold-rgb), 0.3); border-radius: 4px;
+    padding: 12px 14px 14px;
+    box-shadow: 0 0 0 1px rgba(var(--gold-rgb), 0.08), 0 8px 32px rgba(0, 0, 0, 0.7);
+    color: var(--parchment);
+    display: none;
+}
+#cenaFxPainel.aberto { display: block; }
+
+.cfx-topo {
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--gold-dim); margin-bottom: 8px;
+}
+.cfx-fechar {
+    background: none; border: none; color: rgba(var(--parchment-rgb), 0.5);
+    font-size: 14px; cursor: pointer; width: 28px; height: 28px; border-radius: 3px;
+}
+.cfx-fechar:hover { color: var(--parchment); background: rgba(var(--gold-rgb), 0.1); }
+
+.cfx-secao {
+    font-family: 'Cinzel', serif; font-size: 8px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: rgba(var(--gold-rgb), 0.55);
+    margin: 12px 0 6px;
+}
+
+.cfx-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.cfx-b {
+    padding: 7px 6px;
+    background: rgba(var(--gold-rgb), 0.05);
+    border: 1px solid rgba(var(--gold-rgb), 0.2); border-radius: 3px;
+    color: rgba(var(--parchment-rgb), 0.8);
+    font-family: 'Crimson Text', Georgia, serif; font-size: 13px;
+    cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
+    text-align: center;
+}
+.cfx-b:hover { background: rgba(var(--gold-rgb), 0.12); border-color: var(--gold-dim); color: var(--parchment); }
+.cfx-b:focus-visible, .cfx-n:focus-visible, .cfx-fechar:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.cfx-b.largo { grid-column: 1 / -1; }
+
+/* Linha de efeito contínuo: nome liga/desliga, números escolhem a força */
+.cfx-efeito { display: flex; align-items: stretch; gap: 4px; margin-bottom: 4px; }
+.cfx-efeito .cfx-b { flex: 1; text-align: left; padding-left: 10px; }
+.cfx-efeito.ligado .cfx-b {
+    background: rgba(var(--gold-rgb), 0.18); border-color: var(--gold); color: var(--gold-light);
+}
+.cfx-n {
+    width: 28px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(var(--gold-rgb), 0.15); border-radius: 3px;
+    color: rgba(var(--parchment-rgb), 0.45);
+    font-family: 'Cinzel', serif; font-size: 10px; cursor: pointer;
+}
+.cfx-n:hover { color: var(--parchment); border-color: var(--gold-dim); }
+.cfx-efeito.ligado .cfx-n.ativo { background: rgba(var(--gold-rgb), 0.3); border-color: var(--gold); color: var(--gold-light); }
+
+.cfx-salvar { display: flex; gap: 4px; margin-top: 6px; }
+.cfx-salvar input {
+    flex: 1; min-width: 0; padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.35); color: var(--parchment);
+    border: 1px solid rgba(var(--gold-rgb), 0.25); border-radius: 3px;
+    font-family: 'Crimson Text', Georgia, serif; font-size: 13px;
+}
+.cfx-salvar .cfx-b { flex: 0 0 auto; padding: 6px 10px; }
+.cfx-dica { font-size: 12px; color: rgba(var(--parchment-rgb), 0.45); margin-top: 4px; line-height: 1.3; }
+
+#cenaFxPainel { scrollbar-width: thin; scrollbar-color: rgba(var(--gold-rgb), 0.35) transparent; }
+
+/* Abas */
+.cfx-abas { display: flex; gap: 2px; }
+.cfx-aba {
+    padding: 6px 12px; background: none; border: none; border-bottom: 2px solid transparent;
+    font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgba(var(--parchment-rgb), 0.5); cursor: pointer;
+}
+.cfx-aba:hover { color: var(--parchment); }
+.cfx-aba.ativa { color: var(--gold-light); border-bottom-color: var(--gold); }
+.cfx-aba:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.cfx-corpo[hidden] { display: none; }
+
+/* Na hora */
+.cfx-momentos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.cfx-momento { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; font-size: 11px; }
+.cfx-momento span { font-size: 16px; line-height: 1; }
+.cfx-momento:active { transform: scale(0.96); }
+
+/* ── Roteiro ── */
+.cfr-vazio { text-align: center; padding: 8px 0 4px; }
+.cfr-vazio p { margin-bottom: 6px; }
+.cfr-sessao { display: flex; gap: 4px; }
+.cfr-sessao select, .cfr-select {
+    flex: 1; min-width: 0; padding: 6px 8px; width: 100%;
+    background: rgba(0, 0, 0, 0.35); color: var(--parchment);
+    border: 1px solid rgba(var(--gold-rgb), 0.25); border-radius: 3px;
+    font-family: 'Crimson Text', Georgia, serif; font-size: 14px;
+}
+.cfr-sessao .cfx-b { flex: 0 0 auto; padding: 6px 10px; }
+.cfr-acoes { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 4px 0 8px; align-items: center; }
+.cfr-link {
+    background: none; border: none; padding: 4px 0; cursor: pointer;
+    font-family: 'Crimson Text', Georgia, serif; font-size: 13px;
+    color: rgba(var(--gold-rgb), 0.75); text-decoration: underline; text-underline-offset: 2px;
+}
+.cfr-link:hover { color: var(--gold-light); }
+.cfr-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.cfx-b.cfr-perigo { background: rgba(160, 30, 30, 0.35); border-color: #c0392b; color: #ffd9d4; padding: 4px 8px; }
+
+.cfx-b.cfr-primario { background: rgba(var(--gold-rgb), 0.2); border-color: var(--gold); color: var(--gold-light); font-weight: 600; }
+.cfx-b.cfr-primario:hover { background: rgba(var(--gold-rgb), 0.3); }
+.cfx-b:disabled { opacity: 0.45; cursor: default; }
+.cfr-proxima { margin: 4px 0 8px; padding: 10px; font-size: 14px; text-align: left; }
+
+.cfr-lista { list-style: none; margin: 0 0 6px; padding: 0; }
+.cfr-cena { display: flex; flex-wrap: wrap; align-items: stretch; gap: 4px; margin-bottom: 4px; }
+.cfr-tocar {
+    flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px;
+    padding: 5px 6px; text-align: left; cursor: pointer;
+    background: rgba(var(--gold-rgb), 0.05); border: 1px solid rgba(var(--gold-rgb), 0.18); border-radius: 3px;
+    color: var(--parchment); font-family: 'Crimson Text', Georgia, serif;
+}
+.cfr-tocar:hover { background: rgba(var(--gold-rgb), 0.12); border-color: var(--gold-dim); }
+.cfr-tocar:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+.cfr-cena.atual .cfr-tocar { border-color: var(--gold); background: rgba(var(--gold-rgb), 0.16); }
+.cfr-num { width: 18px; text-align: center; font-family: 'Cinzel', serif; font-size: 11px; color: rgba(var(--parchment-rgb), 0.55); flex: 0 0 auto; }
+.cfr-cena.atual .cfr-num { color: var(--gold-light); }
+.cfr-mini {
+    width: 44px; height: 28px; flex: 0 0 auto; border-radius: 2px;
+    background: #000 center / cover no-repeat; border: 1px solid rgba(var(--gold-rgb), 0.15);
+    display: flex; align-items: center; justify-content: center; font-size: 12px; color: rgba(var(--parchment-rgb), 0.4);
+}
+.cfr-txt { min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.cfr-txt b { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cfr-txt small { font-size: 11px; color: rgba(var(--parchment-rgb), 0.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cfr-ferr { display: flex; gap: 2px; }
+.cfr-ferr .cfx-n { width: 26px; font-size: 13px; }
+.cfr-ferr .cfx-n:disabled { opacity: 0.3; cursor: default; }
+.cfr-erro { flex-basis: 100%; font-size: 12px; color: #f0a39a; padding-left: 4px; }
+
+.cfr-campo { display: block; font-size: 13px; color: rgba(var(--parchment-rgb), 0.7); margin: 8px 0 4px; }
+.cfr-campo input {
+    display: block; width: 100%; margin-top: 3px; padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.35); color: var(--parchment);
+    border: 1px solid rgba(var(--gold-rgb), 0.25); border-radius: 3px;
+    font-family: 'Crimson Text', Georgia, serif; font-size: 14px;
+}
+.cfr-imagem { display: flex; align-items: center; gap: 8px; }
+.cfr-imagem .cfr-mini { width: 80px; height: 45px; }
+.cfr-img-txt { font-size: 12px; color: rgba(var(--parchment-rgb), 0.55); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cfr-rodape { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(var(--gold-rgb), 0.12); }
+.cfr-rodape .cfx-b { padding: 7px 12px; }
+.cfr-rodape .cfr-link, .cfr-rodape .cfr-perigo { margin-left: auto; }
+#cenaFxPainel .cfx-b.largo { width: 100%; }
