@@ -281,7 +281,9 @@ body.fxon-preto .fx-preto { opacity: 1; }
 
 #cenaFxPainel {
     position: fixed; top: 16px; right: 332px;
-    z-index: 500;
+    /* Acima da barra de personagens e do chat (1001), que cobriam o rodapé do
+       painel; abaixo da batalha (1400+) e dos modais */
+    z-index: 1200;
     width: 340px;
     max-height: calc(100vh - 32px);
     overflow-y: auto;
@@ -433,7 +435,16 @@ body.fxon-preto .fx-preto { opacity: 1; }
 .cfr-imagem { display: flex; align-items: center; gap: 8px; }
 .cfr-imagem .cfr-mini { width: 80px; height: 45px; }
 .cfr-img-txt { font-size: 12px; color: rgba(var(--parchment-rgb), 0.55); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.cfr-rodape { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(var(--gold-rgb), 0.12); }
+/* Salvar/Cancelar grudados no pé do painel: o editor é comprido e o botão
+   ficava escondido lá embaixo */
+.cfr-rodape {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    position: sticky; bottom: -14px; z-index: 1;
+    margin: 12px -14px -14px; padding: 10px 14px 12px;
+    background: var(--fundo-meio);
+    border-top: 1px solid rgba(var(--gold-rgb), 0.2);
+    box-shadow: 0 -8px 16px rgba(0, 0, 0, 0.45);
+}
 .cfr-rodape .cfx-b { padding: 7px 12px; }
 .cfr-rodape .cfr-link, .cfr-rodape .cfr-perigo { margin-left: auto; }
 #cenaFxPainel .cfx-b.largo { width: 100%; }
